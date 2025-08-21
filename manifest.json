@@ -1,6 +1,6 @@
 {
-  "id": "financial-accunting",
-  "name": "Financial Accunting",
+  "id": "financial-accounting",
+  "name": "Financial accounting",
   "version": "0.0.1",
   "minAppVersion": "0.12.0",
   "description": "Plugin for easy entry of personal finance data",
