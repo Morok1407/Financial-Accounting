@@ -133,6 +133,13 @@
   background: #232e3c !important;
 }
 
+.main-header {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .main-content {
   width: 100%;
   height: 100%;
@@ -175,17 +182,18 @@
   width: 100%;
   padding: 16px;
 }
-.main-content-button button {
+
+.add-button {
   cursor: pointer;
-  background-color: #5288c1;
-  color: white;
-  width: 100%;
-  height: 50px;
+  background-color: #5288c1 !important;
+  color: white !important;
+  width: 100% !important;
+  height: 50px !important;
 }
 
 .exit-button {
   position: absolute;
-  top: 10px;
+  top: 31px;
   left: 10px;
   z-index: 10;
   cursor: pointer;
@@ -198,12 +206,12 @@
 
 .main-add-form {
   width: 100%;
-  height: 200px;
   background-color: #232e3c;
   display: flex;
   flex-direction: column;
   position: relative;
   gap: 20px;
+  border-radius: 12px;
 }
 
 .main-form_radio {
@@ -217,6 +225,7 @@
   margin: 0 20px 30px 20px;
   display: flex;
   flex-direction: column;
+  gap: 20px;
 }
 
 .main-radio_exprense {
@@ -252,6 +261,24 @@
   border-radius: 10px !important;
   background-color: #17212b !important;
   border: 1px #333c45 solid !important;
+}
+
+.form-selects {
+  font-size: 16px !important;
+  width: 100%;
+  height: 48px;
+  border-radius: 10px !important;
+  background-color: #17212b !important;
+  border: 1px #333c45 solid !important;
+}
+
+.form-selects-date-buttons {
+  display: flex;
+  gap: 6px;
+}
+.form-selects-date-buttons button {
+  font-size: 12px;
+  background: none;
 }
 
 /*# sourceMappingURL=styles.css.map */
