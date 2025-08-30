@@ -79,8 +79,22 @@ module.exports = class mainPlugin extends Plugin {
     }
 
     // add data to file
-    async addJsonToFile(data) {
-        return defAddJsonToFile(data, this)
+    async addJsonToHistory(data) {
+        return defAddJsonToHistory(data, this)
+    }
+
+    async addJsonToPlan(data) {
+        if(data.type === 'expense') {
+            return defAddJsonToExpenditurePlan(data, this)
+        } else if (data.type === 'income') {
+            return defAddJsonToIncomePlan(data, this)
+        } else {
+            return "Error radio result"
+        }
+    }
+
+    async addJsonToBills(data) {
+        return defAddJsonToBills(data, this)
     }
 
     onunload() {
@@ -353,8 +367,8 @@ async function defAddHistory() {
             resultCategory.sort((a, b) => b.amount - a.amount)
             resultCategory.forEach(plan => {
                 selectCategory.createEl('option', {
-                    text: `${plan.category} • ${plan.amount} ₸`,
-                    attr: { value: plan.category }
+                    text: `${plan.name} • ${plan.amount} ₸`,
+                    attr: { value: plan.name }
                 })
             })
         } else {
@@ -363,8 +377,8 @@ async function defAddHistory() {
             resultCategory.sort((a, b) => b.amount - a.amount)
             resultCategory.forEach(plan => {
                 selectCategory.createEl('option', {
-                    text: `${plan.category} • ${plan.amount} ₸`,
-                    attr: { value: plan.category }
+                    text: `${plan.name} • ${plan.amount} ₸`,
+                    attr: { value: plan.name }
                 })
             })
         }
@@ -444,7 +458,7 @@ async function defAddHistory() {
             date: selectDate.value,
             type: resultRadio,
         }
-        const resultOfadd = await pluginInstance.addJsonToFile(data)
+        const resultOfadd = await pluginInstance.addJsonToHistory(data)
         if(resultOfadd === "success") {
             viewInstance.onOpen()
             new Notice('Операция добавленна')
@@ -514,28 +528,26 @@ async function defAddPlan() {
         radioExpense.removeClass('main-radion-button--active')
         radioIncome.addClass('main-radion-button--active')
         resultRadio = radioIncome.dataset.radio
-        // createOptionCategory()
     })
     radioExpense.addEventListener('click', () => {
         radioIncome.removeClass('main-radion-button--active')
         radioExpense.addClass('main-radion-button--active')
         resultRadio = radioExpense.dataset.radio
-        // createOptionCategory()
     })
     
     // Form input
     const mainFormInput = mainAddForm.createEl('div', {
         cls: 'main-form-input'
     })
-    const inputSum = mainFormInput.createEl('input', {
+    const inputName = mainFormInput.createEl('input', {
         cls: 'form-inputs',
         attr: {
             placeholder: 'Название',
-            id: 'input-sum',
-            type: 'number'
+            id: 'input-name',
+            type: 'text'
         }
     })
-    inputSum.focus()
+    inputName.focus()
 
     const commentInput = mainFormInput.createEl('input', {
         cls: 'form-inputs',
@@ -554,30 +566,27 @@ async function defAddPlan() {
         }
     })
 
-    // addButton.addEventListener('click', async (e) => {
-    //     e.preventDefault();
+    addButton.addEventListener('click', async (e) => {
+        e.preventDefault();
 
-    //     if(!inputSum.value >= 1) {
-    //         inputSum.focus()
-    //         return new Notice('Введите сумму')
-    //     }
+        if(!inputName.value >= 1) {
+            inputName.focus()
+            return new Notice('Введите название')
+        }
 
-    //     const data = {
-    //         amount: inputSum.value,
-    //         bill: selectBills.value,
-    //         category: selectCategory.value,
-    //         comment: commentInput.value,
-    //         date: selectDate.value,
-    //         type: resultRadio,
-    //     }
-    //     const resultOfadd = await pluginInstance.addJsonToFile(data)
-    //     if(resultOfadd === "success") {
-    //         viewInstance.onOpen()
-    //         new Notice('Операция добавленна')
-    //     } else {
-    //         new Notice(resultOfadd)
-    //     }
-    // })
+        const data = {
+            name: inputName.value,
+            comment: commentInput.value,
+            type: resultRadio,
+        }
+        const resultOfadd = await pluginInstance.addJsonToPlan(data)
+        if(resultOfadd === "success") {
+            viewInstance.onOpen()
+            new Notice('Операция добавленна')
+        } else {
+            new Notice(resultOfadd)
+        }
+    })
 }
 
 async function defAddBills() {
@@ -599,7 +608,7 @@ async function defAddBills() {
         cls: 'main-header'
     })
     const headerTitle = header.createEl('h1', {
-        text: 'Счёт'
+        text: 'Категории'
     })
 
     const mainAddForm = contentEl.createEl('form', {
@@ -609,59 +618,36 @@ async function defAddBills() {
         }
     })
 
-    // Form radio
-    let resultRadio;
-    const expenseOrIncome = mainAddForm.createEl('div', {
-        cls: 'main-form_radio'
-    })
-    
-    const radioExpense = expenseOrIncome.createEl('button', {
-        text: "Расход",
-        cls: 'main-radio_exprense',
-        attr: {
-            'data-radio': 'expense',
-            type: 'button'
-        }
-    })
-
-    resultRadio = radioExpense.dataset.radio
-    radioExpense.addClass('main-radion-button--active')
-    
-    const radioIncome = expenseOrIncome.createEl('button', {
-        text: 'Доход',
-        cls: 'main-radio_income',
-        attr: {
-            'data-radio': 'income',
-            type: 'button'
-        }
-    })
-    
-    radioIncome.addEventListener('click', () => {
-        radioExpense.removeClass('main-radion-button--active')
-        radioIncome.addClass('main-radion-button--active')
-        resultRadio = radioIncome.dataset.radio
-        // createOptionCategory()
-    })
-    radioExpense.addEventListener('click', () => {
-        radioIncome.removeClass('main-radion-button--active')
-        radioExpense.addClass('main-radion-button--active')
-        resultRadio = radioExpense.dataset.radio
-        // createOptionCategory()
-    })
-    
     // Form input
     const mainFormInput = mainAddForm.createEl('div', {
         cls: 'main-form-input'
     })
-    const inputSum = mainFormInput.createEl('input', {
+    const inputName = mainFormInput.createEl('input', {
         cls: 'form-inputs',
         attr: {
             placeholder: 'Название',
-            id: 'input-sum',
+            id: 'input-name',
+            type: 'text'
+        }
+    })
+    inputName.focus()
+
+    const currencyInput = mainFormInput.createEl('select', {
+        cls: 'form-selects',
+        attr: {
+            name: 'select-currency',
+            id: 'select-currency'
+        }
+    })
+
+    const currentBalance = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Текущий баланс',
+            id: 'input-current-balance',
             type: 'number'
         }
     })
-    inputSum.focus()
 
     const commentInput = mainFormInput.createEl('input', {
         cls: 'form-inputs',
@@ -672,6 +658,24 @@ async function defAddBills() {
         }
     })
 
+    const chechboxDiv = mainFormInput.createEl('div', {
+        cls: 'form-checkbox-div'
+    })
+
+    const checkboxInput = chechboxDiv.createEl('input', {
+        cls: 'form-checkbox',
+        attr: {
+            id: 'input-checkbox',
+            type: 'checkbox',
+            checked: true
+        }
+    })
+
+    const chechboxText = chechboxDiv.createEl('span', {
+        text: 'Учитывать в общем балансе',
+        cls: 'form-text',
+    })
+
     const addButton = mainFormInput.createEl('button', {
         text: 'Добавить',
         cls: 'add-button',
@@ -680,35 +684,33 @@ async function defAddBills() {
         }
     })
 
-    // addButton.addEventListener('click', async (e) => {
-    //     e.preventDefault();
+    addButton.addEventListener('click', async (e) => {
+        e.preventDefault();
 
-    //     if(!inputSum.value >= 1) {
-    //         inputSum.focus()
-    //         return new Notice('Введите сумму')
-    //     }
+        if(!inputName.value >= 1) {
+            inputName.focus()
+            return new Notice('Введите название')
+        }
 
-    //     const data = {
-    //         amount: inputSum.value,
-    //         bill: selectBills.value,
-    //         category: selectCategory.value,
-    //         comment: commentInput.value,
-    //         date: selectDate.value,
-    //         type: resultRadio,
-    //     }
-    //     const resultOfadd = await pluginInstance.addJsonToFile(data)
-    //     if(resultOfadd === "success") {
-    //         viewInstance.onOpen()
-    //         new Notice('Операция добавленна')
-    //     } else {
-    //         new Notice(resultOfadd)
-    //     }
-    // })
+        const data = {
+            name: inputName.value,
+            balance: currentBalance.value,
+            generalBalance: checkboxInput.checked,
+            comment: commentInput.value,
+        }
+        const resultOfadd = await pluginInstance.addJsonToBills(data)
+        if(resultOfadd === "success") {
+            viewInstance.onOpen()
+            new Notice('Операция добавленна')
+        } else {
+            new Notice(resultOfadd)
+        }
+    })
 }
 
 //====================================== Add JSON to file ======================================
 
-async function defAddJsonToFile(data) {
+async function defAddJsonToHistory(data) {
     const { now, year, month } = getDate()
 
     const filePath = `My Life/My Finances/${year}/${month}/History.md`
@@ -730,6 +732,109 @@ async function defAddJsonToFile(data) {
             return "success"
         } else {
             const dataJson = {id: 1, ...data}
+            const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
+            const newContent = content.replace(/\```$/, dataStr);
+            await this.app.vault.modify(file, newContent)
+
+            return "success"
+        }
+    } catch (err) {
+        return err
+    }
+}
+
+async function defAddJsonToExpenditurePlan(data) {
+    const { now, year, month } = getDate()
+
+    const filePath = `My Life/My Finances/${year}/${month}/Expenditure plan.md`
+    const file = app.vault.getAbstractFileByPath(filePath);
+    const content = await app.vault.read(file);
+    const jsonMatch = content.match(/```json([\s\S]*?)```/);
+
+    try {
+        if(jsonMatch[1].length >= 2) {
+            const { name, comment, type } = data
+            const dataJson = {name, amount: 0, comment, type}
+            const dataStr = JSON.stringify([dataJson], null, 4) + "]\n```";
+
+            const index = content.lastIndexOf("}");
+            const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
+            await this.app.vault.modify(file, newContent);
+
+            return "success"
+        } else {
+            const { name, comment, type } = data
+            const dataJson = {name, amount: 0, comment, type}
+            const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
+            const newContent = content.replace(/\```$/, dataStr);
+            await this.app.vault.modify(file, newContent)
+
+            return "success"
+        }
+    } catch (err) {
+        return err
+    }
+}
+
+async function defAddJsonToIncomePlan(data) {
+    const { now, year, month } = getDate()
+
+    const filePath = `My Life/My Finances/${year}/${month}/Income plan.md`
+    const file = app.vault.getAbstractFileByPath(filePath);
+    const content = await app.vault.read(file);
+    const jsonMatch = content.match(/```json([\s\S]*?)```/);
+
+    try {
+        if(jsonMatch[1].length >= 2) {
+            const { name, comment, type } = data
+            const dataJson = {name, amount: 0, comment, type}
+            const dataStr = JSON.stringify([dataJson], null, 4) + "]\n```";
+
+            const index = content.lastIndexOf("}");
+            const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
+            await this.app.vault.modify(file, newContent);
+
+            return "success"
+        } else {
+            const { name, comment, type } = data
+            const dataJson = {name, amount: 0, comment, type}
+            const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
+            const newContent = content.replace(/\```$/, dataStr);
+            await this.app.vault.modify(file, newContent)
+
+            return "success"
+        }
+    } catch (err) {
+        return err
+    }
+}
+
+async function defAddJsonToBills(data) {
+    const { now, year, month } = getDate()
+
+    const filePath = `My Life/My Finances/${year}/${month}/Bills.md`
+    const file = app.vault.getAbstractFileByPath(filePath);
+    const content = await app.vault.read(file);
+    const jsonMatch = content.match(/```json([\s\S]*?)```/);
+    
+    if(!data.balance) {
+        data.balance = 0
+    }
+
+    try {
+        if(jsonMatch[1].length >= 2) {
+            const { name, balance, generalBalance, comment } = data
+            const dataJson = {name, balance, generalBalance, comment}
+            const dataStr = JSON.stringify([dataJson], null, 4) + "]\n```";
+
+            const index = content.lastIndexOf("}");
+            const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
+            await this.app.vault.modify(file, newContent);
+
+            return "success"
+        } else {
+            const { name, balance, generalBalance, comment } = data
+            const dataJson = {name, balance, generalBalance, comment}
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)

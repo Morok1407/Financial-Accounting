@@ -210,7 +210,6 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  gap: 20px;
   border-radius: 12px;
 }
 
@@ -222,7 +221,7 @@
 }
 
 .main-form-input {
-  margin: 0 20px 30px 20px;
+  margin: 20px 20px 30px 20px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -270,6 +269,15 @@
   border-radius: 10px !important;
   background-color: #17212b !important;
   border: 1px #333c45 solid !important;
+}
+
+.form-checkbox-div {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.form-checkbox-div span {
+  font-size: 18px;
 }
 
 .form-selects-date-buttons {
