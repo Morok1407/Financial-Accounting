@@ -92,9 +92,63 @@ module.exports = class mainPlugin extends Plugin {
             return "Error radio result"
         }
     }
-
+    
     async addJsonToBills(data) {
         return defAddJsonToBills(data, this)
+    }
+    
+    // Duplicating data to archive
+    
+    async archiveExpenditurePlan() {
+        defArchiveExpenditurePlan(this)
+    }
+    
+    async archiveIncomePlan() {
+        defArchiveIncomePlan(this)
+    }
+
+    async archiveBills() {
+        defArchiveBills(this)
+    }
+
+    // Transferring data to a new month
+
+    async newMonthExpenditurePlan() {
+        defNewMonthExpenditurePlan(this)
+    }
+
+    async newMonthIncomePlan() {
+        defNewMonthIncomePlan(this)
+    }
+
+    async newMonthBills() {
+        defNewMonthBills(this)
+    }
+
+    // Middleware function
+
+    async getDataFile(fileName) {
+        return defGetDataFile(fileName, this)
+    }
+
+    async getDataArchiveFile(fileName) {
+        return defGetDataArchiveFile(fileName, this)
+    }
+
+    async expenditureTransaction(data) {
+        return defExpenditureTransaction(data, this)
+    }
+
+    async incomeTransaction(data) {
+        return defIncomeTransaction(data, this)
+    }
+
+    async updateData(fileName, accountName, targetE, newTargetE) {
+        return defUpdateData(fileName, accountName, targetE, newTargetE, this)
+    }
+
+    async checkBill(data) {
+        return defCheckBill(data, this)
     }
 
     onunload() {
@@ -132,6 +186,10 @@ async function defCreateDirectory() {
     const { now, year, month } = getDate()
 
     const baseFolder = "My Life/My Finances";
+    const archiveFolder = `${baseFolder}/Archive`
+    const archiveExpenditurePlan = `${archiveFolder}/Archive expenditure plan.md`
+    const archiveIncomePlan = `${archiveFolder}/Archive income plan.md`
+    const archiveBills = `${archiveFolder}/Archive bills.md`
     const yearFolder = `${baseFolder}/${year}`;
     const monthFolder = `${yearFolder}/${month}`;
     const historyPath = `${monthFolder}/History.md`;
@@ -143,6 +201,25 @@ async function defCreateDirectory() {
         await this.app.vault.createFolder(baseFolder);
     }
 
+    if (!await this.app.vault.adapter.exists(archiveFolder)) {
+        await this.app.vault.createFolder(archiveFolder);
+    }
+
+    if (!await this.app.vault.adapter.exists(archiveExpenditurePlan)) {
+        await this.app.vault.create(archiveExpenditurePlan, '');
+        pluginInstance.archiveExpenditurePlan()
+    }
+
+    if (!await this.app.vault.adapter.exists(archiveIncomePlan)) {
+        await this.app.vault.create(archiveIncomePlan, '');
+        pluginInstance.archiveIncomePlan()
+    }
+
+    if (!await this.app.vault.adapter.exists(archiveBills)) {
+        await this.app.vault.create(archiveBills, '');
+        pluginInstance.archiveBills()
+    }
+
     if (!await this.app.vault.adapter.exists(yearFolder)) {
         await this.app.vault.createFolder(yearFolder);
     }
@@ -150,32 +227,31 @@ async function defCreateDirectory() {
     if (!await this.app.vault.adapter.exists(monthFolder)) {
         await this.app.vault.createFolder(monthFolder);
     }
-
+    
     if (!await this.app.vault.adapter.exists(historyPath)) {
         await this.app.vault.create(historyPath, '');
     }
 
     if (!await this.app.vault.adapter.exists(expenditurePlanPath)) {
         await this.app.vault.create(expenditurePlanPath, '');
+        pluginInstance.newMonthExpenditurePlan()
     }
-
+    
     if (!await this.app.vault.adapter.exists(incomePlanPath)) {
         await this.app.vault.create(incomePlanPath, '');
+        pluginInstance.newMonthIncomePlan()
     }
-
+    
     if (!await this.app.vault.adapter.exists(billsPath)) {
         await this.app.vault.create(billsPath, '');
+        pluginInstance.newMonthBills()
     }
 }
 
 //====================================== Search data ======================================
 
 async function defSearchHistory() {
-    const { now, year, month } = getDate()
-
-    const filePath = `My Life/My Finances/${year}/${month}/History.md`;
-    const fileContent = await this.app.vault.adapter.read(filePath);
-    const jsonMatch = fileContent.match(/```json([\s\S]*?)```/);
+    const { jsonMatch } = await pluginInstance.getDataFile('History')
     if(jsonMatch[1].length >= 2) {
         const jsonData = JSON.parse(jsonMatch[1].trim());
         return jsonData
@@ -185,28 +261,20 @@ async function defSearchHistory() {
 }
 
 async function defSearchExpenditurePlan() {
-    const { now, year, month } = getDate()
-
-    const ExpenditurePlanFilePath = `My Life/My Finances/${year}/${month}/Expenditure plan.md`;
-    const ExpenditurePlanFileContent = await this.app.vault.adapter.read(ExpenditurePlanFilePath);
-    const ExpenditurePlanJsonMatch = ExpenditurePlanFileContent.match(/```json([\s\S]*?)```/);
-    if(ExpenditurePlanJsonMatch[1].length >= 2) {
-        const ExpenditurePlanJsonData = JSON.parse(ExpenditurePlanJsonMatch[1].trim())
-        return ExpenditurePlanJsonData
+    const { jsonMatch } = await pluginInstance.getDataFile('Expenditure plan')
+    if(jsonMatch[1].length >= 2) {
+        const jsonData = JSON.parse(jsonMatch[1].trim())
+        return jsonData
     } else {
         return null
     }
 }
 
 async function defSearchIncomePlan() {
-    const { now, year, month } = getDate()
-
-    const IncomePlanFilePath = `My Life/My Finances/${year}/${month}/Income plan.md`;
-    const IncomePlanFileContent = await this.app.vault.adapter.read(IncomePlanFilePath);
-    const IncomePlanJsonMatch = IncomePlanFileContent.match(/```json([\s\S]*?)```/);
-    if(IncomePlanJsonMatch[1].length >= 2) {
-        const IncomePlanJsonData = JSON.parse(IncomePlanJsonMatch[1].trim());
-        return IncomePlanJsonData 
+    const { jsonMatch } = await pluginInstance.getDataFile('Income plan')
+    if(jsonMatch[1].length >= 2) {
+        const jsonData = JSON.parse(jsonMatch[1].trim());
+        return jsonData 
     } else {
         return null
     }
@@ -214,11 +282,7 @@ async function defSearchIncomePlan() {
 
 
 async function defSearchBills() {
-    const { now, year, month } = getDate()
-
-    const filePath = `My Life/My Finances/${year}/${month}/Bills.md`;
-    const fileContent = await this.app.vault.adapter.read(filePath);
-    const jsonMatch = fileContent.match(/```json([\s\S]*?)```/);
+    const { jsonMatch } = await pluginInstance.getDataFile('Bills')
     if(jsonMatch[1].length >= 2) {
         const jsonData = JSON.parse(jsonMatch[1].trim());
         return jsonData
@@ -230,26 +294,18 @@ async function defSearchBills() {
 //====================================== Add Data ======================================
 
 async function defAddHistory() {
-    const { now, year, month } = getDate()
-
-    const fileBillsPath = `My Life/My Finances/${year}/${month}/Bills.md`;
-    const fileBillsContent = await this.app.vault.adapter.read(fileBillsPath);
-    const fileBillsJson = fileBillsContent.match(/```json([\s\S]*?)```/);
-    if(fileBillsJson[1].length < 3) {
+    const { jsonMatch: billsJsonMatch } = await pluginInstance.getDataFile('Bills')
+    if(billsJsonMatch[1].length < 3) {
         return new Notice('Добавьте счета')
     }
     
-    const fileIncomePlanPath = `My Life/My Finances/${year}/${month}/Income plan.md`;
-    const fileIncomePlanContent = await this.app.vault.adapter.read(fileIncomePlanPath);
-    const fileIncomePlanJson = fileIncomePlanContent.match(/```json([\s\S]*?)```/);
-    if(fileIncomePlanJson[1].length < 3) {
+    const { jsonMatch: incomePlanJsonMatch } = await pluginInstance.getDataFile('Income plan')
+    if(incomePlanJsonMatch[1].length < 3) {
         return new Notice('Добавьте категорию доходов')
     }
     
-    const fileExpenditurePlanPath = `My Life/My Finances/${year}/${month}/Expenditure plan.md`;
-    const fileExpenditurePlanContent = await this.app.vault.adapter.read(fileExpenditurePlanPath);
-    const fileExpenditurePlanJson = fileExpenditurePlanContent.match(/```json([\s\S]*?)```/);
-    if(fileExpenditurePlanJson[1].length < 3) {
+    const { jsonMatch: ExpenditurePlanJsonMatch } = await pluginInstance.getDataFile('Expenditure plan')
+    if(ExpenditurePlanJsonMatch[1].length < 3) {
         return new Notice('Добавьте категорию расходов')
     }
 
@@ -451,7 +507,7 @@ async function defAddHistory() {
         }
 
         const data = {
-            amount: inputSum.value,
+            amount: Number(inputSum.value),
             bill: selectBills.value,
             category: selectCategory.value,
             comment: commentInput.value,
@@ -582,7 +638,7 @@ async function defAddPlan() {
         const resultOfadd = await pluginInstance.addJsonToPlan(data)
         if(resultOfadd === "success") {
             viewInstance.onOpen()
-            new Notice('Операция добавленна')
+            new Notice('План добавлен')
         } else {
             new Notice(resultOfadd)
         }
@@ -701,7 +757,7 @@ async function defAddBills() {
         const resultOfadd = await pluginInstance.addJsonToBills(data)
         if(resultOfadd === "success") {
             viewInstance.onOpen()
-            new Notice('Операция добавленна')
+            new Notice('Счёт добавлен')
         } else {
             new Notice(resultOfadd)
         }
@@ -711,13 +767,16 @@ async function defAddBills() {
 //====================================== Add JSON to file ======================================
 
 async function defAddJsonToHistory(data) {
-    const { now, year, month } = getDate()
-
-    const filePath = `My Life/My Finances/${year}/${month}/History.md`
-    const file = app.vault.getAbstractFileByPath(filePath);
-    const content = await app.vault.read(file);
-    const jsonMatch = content.match(/```json([\s\S]*?)```/);
-
+    if(data.amount === 0) {
+        return 'Нельзя добавить 0'
+    }
+    
+    const resultCheckBill  = await pluginInstance.checkBill(data)
+    if(!(resultCheckBill === 'success')) {
+        return resultCheckBill
+    }
+    
+    const { jsonMatch, content, file } = await pluginInstance.getDataFile('History')
     try {
         if(jsonMatch[1].length >= 2) {
             const jsonData = JSON.parse(jsonMatch[1].trim());
@@ -727,14 +786,28 @@ async function defAddJsonToHistory(data) {
 
             const index = content.lastIndexOf("}");
             const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
-            await this.app.vault.modify(file, newContent);
-
+            // await this.app.vault.modify(file, newContent);
+            if(data.type === 'expense') {
+                pluginInstance.expenditureTransaction(data)
+            } else if (data.type === 'income') {
+                pluginInstance.incomeTransaction(data)
+            } else {
+                return 'Error'
+            }
+            
             return "success"
         } else {
             const dataJson = {id: 1, ...data}
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
-            await this.app.vault.modify(file, newContent)
+            // await this.app.vault.modify(file, newContent)
+            if(data.type === 'expense') {
+                pluginInstance.expenditureTransaction(data)
+            } else if (data.type === 'income') {
+                pluginInstance.incomeTransaction(data)
+            } else {
+                return 'Error'
+            }
 
             return "success"
         }
@@ -744,13 +817,7 @@ async function defAddJsonToHistory(data) {
 }
 
 async function defAddJsonToExpenditurePlan(data) {
-    const { now, year, month } = getDate()
-
-    const filePath = `My Life/My Finances/${year}/${month}/Expenditure plan.md`
-    const file = app.vault.getAbstractFileByPath(filePath);
-    const content = await app.vault.read(file);
-    const jsonMatch = content.match(/```json([\s\S]*?)```/);
-
+    const { jsonMatch, content, file } = await pluginInstance.getDataFile('Expenditure plan')
     try {
         if(jsonMatch[1].length >= 2) {
             const { name, comment, type } = data
@@ -760,6 +827,7 @@ async function defAddJsonToExpenditurePlan(data) {
             const index = content.lastIndexOf("}");
             const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
             await this.app.vault.modify(file, newContent);
+            pluginInstance.archiveExpenditurePlan()
 
             return "success"
         } else {
@@ -768,6 +836,7 @@ async function defAddJsonToExpenditurePlan(data) {
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
+            pluginInstance.archiveExpenditurePlan()
 
             return "success"
         }
@@ -777,13 +846,7 @@ async function defAddJsonToExpenditurePlan(data) {
 }
 
 async function defAddJsonToIncomePlan(data) {
-    const { now, year, month } = getDate()
-
-    const filePath = `My Life/My Finances/${year}/${month}/Income plan.md`
-    const file = app.vault.getAbstractFileByPath(filePath);
-    const content = await app.vault.read(file);
-    const jsonMatch = content.match(/```json([\s\S]*?)```/);
-
+    const { jsonMatch, content, file } = await pluginInstance.getDataFile('Income plan')
     try {
         if(jsonMatch[1].length >= 2) {
             const { name, comment, type } = data
@@ -793,7 +856,8 @@ async function defAddJsonToIncomePlan(data) {
             const index = content.lastIndexOf("}");
             const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
             await this.app.vault.modify(file, newContent);
-
+            pluginInstance.archiveIncomePlan()
+            
             return "success"
         } else {
             const { name, comment, type } = data
@@ -801,6 +865,7 @@ async function defAddJsonToIncomePlan(data) {
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
+            pluginInstance.archiveIncomePlan()
 
             return "success"
         }
@@ -809,18 +874,12 @@ async function defAddJsonToIncomePlan(data) {
     }
 }
 
-async function defAddJsonToBills(data) {
-    const { now, year, month } = getDate()
-
-    const filePath = `My Life/My Finances/${year}/${month}/Bills.md`
-    const file = app.vault.getAbstractFileByPath(filePath);
-    const content = await app.vault.read(file);
-    const jsonMatch = content.match(/```json([\s\S]*?)```/);
-    
+async function defAddJsonToBills(data) {    
     if(!data.balance) {
         data.balance = 0
     }
 
+    const { jsonMatch, content, file } = await pluginInstance.getDataFile('Bills')
     try {
         if(jsonMatch[1].length >= 2) {
             const { name, balance, generalBalance, comment } = data
@@ -830,7 +889,8 @@ async function defAddJsonToBills(data) {
             const index = content.lastIndexOf("}");
             const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
             await this.app.vault.modify(file, newContent);
-
+            pluginInstance.archiveBills()
+            
             return "success"
         } else {
             const { name, balance, generalBalance, comment } = data
@@ -838,6 +898,7 @@ async function defAddJsonToBills(data) {
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
+            pluginInstance.archiveBills()
 
             return "success"
         }
@@ -1140,6 +1201,193 @@ async function showBills(mainContentBody, mainContentButton) {
             pluginInstance.addBills();
         }
     })
+}
+
+//====================================== Duplicating data to archive ======================================
+
+async function defArchiveExpenditurePlan() {
+    const { file } = await pluginInstance.getDataFile('Expenditure plan')
+
+    const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive expenditure plan')
+
+    const content = await app.vault.read(file);
+    await this.app.vault.modify(archiveFile, content);
+}
+
+async function defArchiveIncomePlan() {
+    const { file } = await pluginInstance.getDataFile('Income plan')
+
+    const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive income plan')
+
+    const content = await app.vault.read(file);
+    await this.app.vault.modify(archiveFile, content);
+}
+
+async function defArchiveBills() {
+    const { file } = await pluginInstance.getDataFile('Bills')
+
+    const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive bills')
+
+    const content = await app.vault.read(file);
+    await this.app.vault.modify(archiveFile, content);
+}
+
+//====================================== Transferring data to a new month ======================================
+
+async function defNewMonthExpenditurePlan() {
+    const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive expenditure plan')
+    
+    const { file } = await pluginInstance.getDataFile('Expenditure plan')
+
+    const content = await app.vault.read(archiveFile);
+    await this.app.vault.modify(file, content);
+}
+
+async function defNewMonthIncomePlan() {
+    const { file } = await pluginInstance.getDataFile('Income plan')
+    
+    const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive income plan')
+
+    const content = await app.vault.read(archiveFile);
+    await this.app.vault.modify(file, content);
+}
+
+async function defNewMonthBills() {
+    const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive bills')
+    
+    const { file } = await pluginInstance.getDataFile('Bills')
+
+    const content = await app.vault.read(archiveFile);
+    await this.app.vault.modify(file, content);
+}
+
+//====================================== Middleware Function ======================================
+
+async function defExpenditureTransaction(data) {
+    let billName;
+    let billBalace;
+
+    let planName;
+    let planAmount;
+
+    const { jsonMatch: billsJsonMatch } = await pluginInstance.getDataFile("Bills")
+    const billsJsonData = JSON.parse(billsJsonMatch[1].trim());
+    
+    billsJsonData.forEach((e, i) => {
+        if(e.name === data.bill) {
+            billBalace = billsJsonData[i].balance;
+            billName = billsJsonData[i].name
+        }
+    })
+
+    const { jsonMatch: planJsonMatch } = await pluginInstance.getDataFile("Expenditure plan")
+    const planJsonData = JSON.parse(planJsonMatch[1].trim());
+    planJsonData.forEach((e, i) => {
+        if(e.name === data.category) {
+            planAmount = planJsonData[i].amount
+            planName = planJsonData[i].name
+        }
+    })
+
+    billBalace -= data.amount
+    planAmount += data.amount
+
+    await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
+    await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
+}
+
+async function defIncomeTransaction(data) {
+    let billName;
+    let billBalace;
+
+    let planName;
+    let planAmount;
+
+    const { jsonMatch: billsJsonMatch } = await pluginInstance.getDataFile("Bills")
+    const billsJsonData = JSON.parse(billsJsonMatch[1].trim());
+    
+    billsJsonData.forEach((e, i) => {
+        if(e.name === data.bill) {
+            billBalace = billsJsonData[i].balance;
+            billName = billsJsonData[i].name
+        }
+    })
+
+    const { jsonMatch: planJsonMatch } = await pluginInstance.getDataFile("Income plan")
+    const planJsonData = JSON.parse(planJsonMatch[1].trim());
+    planJsonData.forEach((e, i) => {
+        if(e.name === data.category) {
+            planAmount = planJsonData[i].amount
+            planName = planJsonData[i].name
+        }
+    })
+
+    billBalace += data.amount
+    planAmount += data.amount
+
+    await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
+    await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
+}
+
+async function defUpdateData(fileName, accountName, targetE, newTargetE) {
+    const { jsonMatch, content, file } = await pluginInstance.getDataFile(fileName)
+
+    let data = JSON.parse(jsonMatch[1]);
+    const target = data.find(acc => acc.name === accountName);
+    if (target) {
+        target[targetE] = newTargetE;
+    } else {
+        console.warn("Аккаунт не найден:", accountName);
+    }
+
+    data =`---\ntags:\n- Finances\n---\n\`\`\`json\n${JSON.stringify(data, null, 4)}\n\`\`\``
+
+    await app.vault.modify(file, data); 
+}
+
+
+async function defCheckBill(data) {
+    const { year, month } = getDate()
+    const filePath = `My Life/My Finances/${year}/${month}/Bills.md`
+    const file = app.vault.getAbstractFileByPath(filePath);
+
+    const content = await app.vault.read(file);
+    const jsonMatch = content.match(/```json([\s\S]*?)```/);
+    const jsonData = JSON.parse(jsonMatch[1].trim());
+
+    let result;
+
+    jsonData.forEach((e, i) => {
+        if(e.name === data.bill) {
+            if(data.amount > jsonData[i].balance) {
+                result = `На счету ${jsonData[i].name} недостаточно средств`
+            } else {
+                result = "success"
+            }
+        }
+    })
+
+    return result
+}
+
+async function defGetDataFile(fileName) {
+    const { year, month } = getDate()
+    const filePath = `My Life/My Finances/${year}/${month}/${fileName}.md`
+    const file = app.vault.getAbstractFileByPath(filePath);
+    const content = await app.vault.read(file);
+    const jsonMatch = content.match(/```json([\s\S]*?)```/);
+    const dataFile = { jsonMatch, content, file }
+    return dataFile
+}
+
+async function defGetDataArchiveFile(fileName) {
+    const { year, month } = getDate()
+    const filePath = `My Life/My Finances/Archive/${fileName}.md`
+    const file = app.vault.getAbstractFileByPath(filePath);
+    const content = await app.vault.read(file);
+    const jsonMatch = content.match(/```json([\s\S]*?)```/);
+    const dataFile = { jsonMatch, content, file }
+    return dataFile
 }
 
 //====================================== Other Function ======================================
