@@ -169,6 +169,10 @@ class FinancialAccountingView extends ItemView {
         return "Financial accounting view";
     }
 
+    getIcon() {
+        return "chart-pie";
+    }
+
     onOpen() {
         viewInstance = this;
         showInitialView()
@@ -475,6 +479,7 @@ async function defAddHistory() {
             type: 'button'
         }
     })
+    // selectDateToday.addClass('button-selects-date--active')
     selectDateToday.addEventListener('click', () => {
         selectRelativeDate(selectDate, 0)
     })
@@ -523,8 +528,10 @@ async function defAddHistory() {
         }
         const resultOfadd = await pluginInstance.addJsonToHistory(data)
         if(resultOfadd === "success") {
-            viewInstance.onOpen()
-            new Notice('Операция добавленна')
+            setTimeout(() => {
+                viewInstance.onOpen()
+                new Notice('Операция добавленна')
+            }, 100)
         } else {
             new Notice(resultOfadd)
         }
@@ -644,8 +651,10 @@ async function defAddPlan() {
         }
         const resultOfadd = await pluginInstance.addJsonToPlan(data)
         if(resultOfadd === "success") {
-            viewInstance.onOpen()
-            new Notice('План добавлен')
+            setTimeout(() => {
+                viewInstance.onOpen()
+                new Notice('План добавлен')
+            }, 100)
         } else {
             new Notice(resultOfadd)
         }
@@ -763,8 +772,10 @@ async function defAddBills() {
         }
         const resultOfadd = await pluginInstance.addJsonToBills(data)
         if(resultOfadd === "success") {
-            viewInstance.onOpen()
-            new Notice('Счёт добавлен')
+            setTimeout(() => {
+                viewInstance.onOpen()
+                new Notice('Счёт добавлен')
+            }, 100)
         } else {
             new Notice(resultOfadd)
         }
@@ -919,13 +930,15 @@ async function defAddJsonToBills(data) {
 //====================================== View ======================================
 
 async function showInitialView() {
-    const { contentEl, containerEl } = viewInstance
+    const { contentEl } = viewInstance
     const { now, year, month } = getDate()
 
-    contentEl.addClass('finance-content')
-    containerEl.addClass('finance-container')
+    let billsInfo = await pluginInstance.searchBills();
+    let expenditurePlanInfo = await pluginInstance.searchExpenditurePlan();
+    let incomePlanInfo = await pluginInstance.searchIncomePlan();
 
     contentEl.empty()
+    contentEl.addClass('finance-content')
 
     const financeHeader = contentEl.createEl('div', {
         cls: 'finance-header'
@@ -963,16 +976,17 @@ async function showInitialView() {
     })
 
     balanceTop.createEl('p', {
-        text: '20000 ₸'
+        text: `${SummarizingDataForTheTrueBills(billsInfo)} ₸`
     })
 
     balanceTop.createEl('span', {
-        text: '~3000 на день'
+        text: `~${divideByRemainingDays(SummarizingDataForTheTrueBills(billsInfo))} на день`
     })
 
     const balanceLine = balance.createEl('div', {
         cls: 'balance-line'
     })
+    balanceLine.style.setProperty('--after-width', `${switchBalanceLine(billsInfo, expenditurePlanInfo)}%`);
 
     const balanceBody = balance.createEl('div', {
         cls: 'balance-body'
@@ -992,7 +1006,7 @@ async function showInitialView() {
 
     setIcon(balanceExpensesСheck, 'upload')
     balanceExpensesСheck.createEl('p', {
-        text: `17000`
+        text: SummarizingDataForTheDayExpense(expenditurePlanInfo)
     })
 
     const balanceIncome = balanceBody.createEl('div', {
@@ -1009,7 +1023,7 @@ async function showInitialView() {
 
     setIcon(balanceIncomeCheck, 'download')
     balanceIncomeCheck.createEl('p', {
-        text: '20000'
+        text: SummarizingDataForTheDayIncome(incomePlanInfo)
     })
 
     homeButtons(contentEl)
@@ -1056,7 +1070,7 @@ async function homeButtons(contentEl) {
     const mainContentBody = mainContent.createEl('div', {
         cls: 'main-content-body'
     })
-    const mainContentButton = mainContent.createEl('div', {
+    const mainContentButton = contentEl.createEl('div', {
         cls: 'main-content-button'
     })
 
@@ -1131,6 +1145,7 @@ async function showHistory(mainContentBody, mainContentButton) {
             text: 'Вносите любые доходы и расходы, чтобы видеть, сколько средств остаётся на самом деле'
         })
     } else {
+        mainContentBody.removeClass('main-content-body--undefined')
         const searchInput = mainContentBody.createEl('input', {
             cls: 'input-search',
             attr: {
@@ -1207,6 +1222,7 @@ async function showPlan(mainContentBody, mainContentButton) {
         const undefinedContent = mainContentBody.createEl('div', {
             cls: 'undefined-content'
         })
+        mainContentBody.addClass('main-content-body--undefined')
 
         const undefinedContentSmiles = undefinedContent.createEl('span', {
             text: '🍕 🎮 👕'
@@ -1216,7 +1232,62 @@ async function showPlan(mainContentBody, mainContentButton) {
             text: 'Вносите любые доходы и расходы, чтобы видеть, сколько средств остаётся на самом деле'
         })
     } else {
-        
+        mainContentBody.removeClass('main-content-body--undefined')
+        const resultExpense = expenditurePlanInfo.sort((a, b) => b.amount - a.amount)
+        const expensePlanBlock = mainContentBody.createEl('div', {
+            cls: 'plan-block'
+        })
+        const expenseDateBlock = expensePlanBlock.createEl('div', {
+            cls: 'full-data-block'
+        })
+        const expenseDateSpan = expenseDateBlock.createEl('span', {
+            text: 'Расходы'
+        })
+        const expenseMatchSpan = expenseDateBlock.createEl('span', {
+            text: SummarizingDataForTheDayExpense(resultExpense)
+        })
+        const expenseDataList = expensePlanBlock.createEl('ul', {
+            cls: 'data-list'
+        })
+        resultExpense.forEach((e, i) => {
+            const dataItem = expenseDataList.createEl('li', {
+                cls: 'data-item'
+            })
+            const itemCategory = dataItem.createEl('p', {
+                text: e.name
+            })
+            const itemAmount = dataItem.createEl('p', {
+                text: e.amount
+            })
+        })
+
+        const resultIncome = incomePlanInfo.sort((a, b) => b.amount - a.amount)
+        const incomePlanBlock = mainContentBody.createEl('div', {
+            cls: 'plan-block'
+        })
+        const incomeDateBlock = incomePlanBlock.createEl('div', {
+            cls: 'full-data-block'
+        })
+        const incomeDateSpan = incomeDateBlock.createEl('span', {
+            text: 'Доходы'
+        })
+        const incomeMatchSpan = incomeDateBlock.createEl('span', {
+            text: SummarizingDataForTheDayIncome(resultIncome)
+        })
+        const incomeDataList = incomePlanBlock.createEl('ul', {
+            cls: 'data-list'
+        })
+        resultIncome.forEach((e, i) => {
+            const dataItem = incomeDataList.createEl('li', {
+                cls: 'data-item'
+            })
+            const itemCategory = dataItem.createEl('p', {
+                text: e.name
+            })
+            const itemAmount = dataItem.createEl('p', {
+                text: e.amount
+            })
+        })
     }
 
     const addPlanButton = mainContentButton.createEl('button', {
@@ -1237,6 +1308,7 @@ async function showBills(mainContentBody, mainContentButton) {
         const undefinedContent = mainContentBody.createEl('div', {
             cls: 'undefined-content'
         })
+        mainContentBody.addClass('main-content-body--undefined')
 
         const undefinedContentSmiles = undefinedContent.createEl('span', {
             text: '🍕 🎮 👕'
@@ -1244,6 +1316,63 @@ async function showBills(mainContentBody, mainContentButton) {
 
         const undefinedContentText = undefinedContent.createEl('p', {
             text: 'Вносите любые доходы и расходы, чтобы видеть, сколько средств остаётся на самом деле'
+        })
+    } else {
+        mainContentBody.removeClass('main-content-body--undefined')
+        const trueBillBlock = mainContentBody.createEl('div', {
+            cls: 'bill-block'
+        })
+        const trueDateBlock = trueBillBlock.createEl('div', {
+            cls: 'full-data-block'
+        })
+        const trueDateSpan = trueDateBlock.createEl('span', {
+            text: 'Основные'
+        })
+        const trueMatchSpan = trueDateBlock.createEl('span', {
+            text: SummarizingDataForTheTrueBills(billsInfo)
+        })
+        const trueDataList = trueBillBlock.createEl('ul', {
+            cls: 'data-list'
+        })
+
+        const falseBillBlock = mainContentBody.createEl('div', {
+            cls: 'bill-block'
+        })
+        const falseDateBlock = falseBillBlock.createEl('div', {
+            cls: 'full-data-block'
+        })
+        const falseDateSpan = falseDateBlock.createEl('span', {
+            text: 'Дополнительные'
+        })
+        const falseMatchSpan = falseDateBlock.createEl('span', {
+            text: SummarizingDataForTheFalseBills(billsInfo)
+        })
+        const falseDataList = falseBillBlock.createEl('ul', {
+            cls: 'data-list'
+        })
+        
+        billsInfo.forEach((e, i) => {
+            if(e.generalBalance) {
+                const dataItem = trueDataList.createEl('li', {
+                    cls: 'data-item'
+                })
+                const itemCategory = dataItem.createEl('p', {
+                    text: e.name
+                })
+                const itemAmount = dataItem.createEl('p', {
+                    text: e.balance
+                })
+            } else {
+                const dataItem = falseDataList.createEl('li', {
+                    cls: 'data-item'
+                })
+                const itemCategory = dataItem.createEl('p', {
+                    text: e.name
+                })
+                const itemAmount = dataItem.createEl('p', {
+                    text: e.balance
+                })
+            }
         })
     }
 
@@ -1541,4 +1670,44 @@ function SummarizingDataForTheDayIncome(obj) {
         } 
     })
     return income
+}
+function SummarizingDataForTheTrueBills(obj) {
+    let balance = 0;
+    obj.forEach((e, i) => {
+        if(e.generalBalance) {
+            balance += e.balance
+        }
+    })
+    return balance
+}
+function SummarizingDataForTheFalseBills(obj) {
+    let balance = 0;
+    obj.forEach((e, i) => {
+        if(!e.generalBalance) {
+            balance += e.balance
+        }
+    })
+    return balance
+}
+function divideByRemainingDays(amount) {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const currentDay = today.getDate();
+    const remainingDays = daysInMonth - currentDay + 1;
+
+    return Math.trunc(amount / remainingDays);
+}
+function switchBalanceLine(billsInfo, expenditurePlanInfo) {
+    const fullSum = Number(SummarizingDataForTheTrueBills(billsInfo)) + Number(SummarizingDataForTheDayExpense(expenditurePlanInfo))
+    const percent = Number(SummarizingDataForTheDayExpense(expenditurePlanInfo)) / fullSum * 100
+    if(Number(SummarizingDataForTheDayExpense(expenditurePlanInfo)) <= fullSum) {
+        return 100 - percent
+    } else if(percent === 0) {
+        return 100
+    } else {
+        return percent
+    }
 }
