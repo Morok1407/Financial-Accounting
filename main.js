@@ -1036,26 +1036,70 @@ async function showAllMonths(contentEl) {
 
     const { now, year, month } = getDate()
 
-    const financeHeader = contentEl.createEl('div', {
-        cls: 'finance-header'
-    })
-
-    const showAllMonthsButton = financeHeader.createEl("button", {
-        text: `🗓️ ${month}`,
+    const exitButton = contentEl.createEl('div', {
+        cls: 'exit-button',
         attr: {
-            id: 'showAllMonths'
-        }
-    });
-
-    showAllMonthsButton.addEventListener('click', async () => {
-        if(contentEl.dataset.page === 'home') {
-            contentEl.setAttribute('data-page', 'months')
-            showAllMonths(contentEl)
-        } else {
-            contentEl.setAttribute('data-page', 'home')
-            showInitialView(contentEl)
+            id: 'exit-button'
         }
     })
+    setIcon(exitButton, 'arrow-left')
+    exitButton.addEventListener('click', () => {
+        viewInstance.onOpen()
+    })
+
+    const calendarHead = contentEl.createEl('div', {
+        cls: 'calendar-header'
+    })
+    const calendarTitle = calendarHead.createEl('h1', {
+        text: 'Calendar'
+    })
+
+    const scheduleEl = contentEl.createEl('div', {
+        cls: 'schedule-main'
+    })
+
+    const calendarMain = contentEl.createEl('div', {
+        cls: 'calendar-main'
+    })
+
+    const allMonths = ['❄️ Декабрь', '☔ Ноябрь', '🍂 Октябрь', '🍁 Сентябрь', '🌾 Август', '🌻 Июль', '🌳 Июнь', '☀️ Май', '🌿 Апрель', '🌷 Март', '🌨️ Февраль', '☃️ Январь']
+
+    for (let i = Number(year); i >= 2020; i--) {
+        const calendarUlTitle = calendarMain.createEl('div', {
+            cls: 'calendar-list-title'
+        })
+        calendarUlTitle.createEl('span', {
+            text: i
+        })
+        calendarUlTitle.createEl('span', {
+            text: '-900 000 +900 0000'
+        })
+
+        const calendarUl = calendarMain.createEl('ul', {
+            cls: 'calendar-list',
+            attr: {
+                'data-year': i,
+            }
+        })
+
+        for(let k = allMonths.reverse().length - 1; k >= 0; k--) {
+            const calendarItem = calendarUl.createEl('li')
+            calendarItem.createEl('p', {
+                text: allMonths[k]
+            })
+            const storyMonth = calendarItem.createEl('div', {
+                cls: 'story-month'
+            })
+            storyMonth.createEl('span', {
+                text: '-50 000',
+                cls: 'expense-all-month'
+            })
+            storyMonth.createEl('span', {
+                text: '+900 000',
+                cls: 'income-all-month'
+            })
+        }
+    }
 }
 
 //====================================== Home page ======================================
