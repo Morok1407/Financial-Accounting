@@ -451,6 +451,9 @@
             font-size: 20px;
         }
     }
+    li > * {
+        pointer-events: none;
+    }
 }
 .story-month {
     display: flex;

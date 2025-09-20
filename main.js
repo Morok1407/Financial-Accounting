@@ -44,8 +44,14 @@ module.exports = class mainPlugin extends Plugin {
         workspace.revealLeaf(leaf);
     }
 
+    // Create directory
+
     async createDirectory() {
         defCreateDirectory(this)
+    }
+
+    async createOtherMonthDirectory(numMonth, year) {
+        return await defCreateOtherMonthDirectory(numMonth, year, this)
     }
 
     // search data
@@ -249,6 +255,69 @@ async function defCreateDirectory() {
     if (!await this.app.vault.adapter.exists(billsPath)) {
         await this.app.vault.create(billsPath, '');
         pluginInstance.newMonthBills()
+    }
+}
+
+async function defCreateOtherMonthDirectory(numMonth, year) {
+    const months = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+    ];
+
+    const baseFolder = "My Life/My Finances";
+    // const archiveFolder = `${baseFolder}/Archive`
+    // const archiveExpenditurePlan = `${archiveFolder}/Archive expenditure plan.md`
+    // const archiveIncomePlan = `${archiveFolder}/Archive income plan.md`
+    // const archiveBills = `${archiveFolder}/Archive bills.md`
+    const yearFolder = `${baseFolder}/${year}`;
+    const monthFolder = `${yearFolder}/${months[numMonth]}`;
+    const historyPath = `${monthFolder}/History.md`;
+    const expenditurePlanPath = `${monthFolder}/Expenditure plan.md`;
+    const incomePlanPath = `${monthFolder}/Income plan.md`;
+    const billsPath = `${monthFolder}/Bills.md`;
+
+    try {
+        if (!await this.app.vault.adapter.exists(baseFolder)) {
+            await this.app.vault.createFolder(baseFolder);
+        }
+    
+        if (!await this.app.vault.adapter.exists(yearFolder)) {
+            await this.app.vault.createFolder(yearFolder);
+        }
+    
+        if (!await this.app.vault.adapter.exists(monthFolder)) {
+            await this.app.vault.createFolder(monthFolder);
+        }
+        
+        if (!await this.app.vault.adapter.exists(historyPath)) {
+            await this.app.vault.create(historyPath, '');
+        }
+    
+        if (!await this.app.vault.adapter.exists(expenditurePlanPath)) {
+            await this.app.vault.create(expenditurePlanPath, '');
+        }
+        
+        if (!await this.app.vault.adapter.exists(incomePlanPath)) {
+            await this.app.vault.create(incomePlanPath, '');
+        }
+        
+        if (!await this.app.vault.adapter.exists(billsPath)) {
+            await this.app.vault.create(billsPath, '');
+        }
+
+        return 'success'
+    } catch (error) {
+        return 'Ошибка создания директории'
     }
 }
 
@@ -954,11 +1023,8 @@ async function showInitialView() {
     showAllMonthsButton.addEventListener('click', async () => {
         if(contentEl.dataset.page === 'home') {
             contentEl.setAttribute('data-page', 'months')
-            showAllMonths(contentEl)
-        } else {
-            contentEl.setAttribute('data-page', 'home')
-            showInitialView(contentEl)
-        }
+            await showAllMonths(contentEl)
+        } 
     })
 
     contentEl.setAttribute('data-page', 'home')
@@ -1062,7 +1128,20 @@ async function showAllMonths(contentEl) {
         cls: 'calendar-main'
     })
 
-    const allMonths = ['❄️ Декабрь', '☔ Ноябрь', '🍂 Октябрь', '🍁 Сентябрь', '🌾 Август', '🌻 Июль', '🌳 Июнь', '☀️ Май', '🌿 Апрель', '🌷 Март', '🌨️ Февраль', '☃️ Январь']
+    const allMonths = [
+        '☃️ Январь',
+        '🌨️ Февраль',
+        '🌷 Март',
+        '🌿 Апрель',
+        '☀️ Май',
+        '🌳 Июнь',
+        '🌻 Июль',
+        '🌾 Август',
+        '🍁 Сентябрь',
+        '🍂 Октябрь',
+        '☔ Ноябрь',
+        '❄️ Декабрь'
+    ];
 
     for (let i = Number(year); i >= 2020; i--) {
         const calendarUlTitle = calendarMain.createEl('div', {
@@ -1082,10 +1161,18 @@ async function showAllMonths(contentEl) {
             }
         })
 
-        for(let k = allMonths.reverse().length - 1; k >= 0; k--) {
-            const calendarItem = calendarUl.createEl('li')
+        for(let k = allMonths.length - 1; k >= 0; k--) {
+            const calendarItem = calendarUl.createEl('li', {
+                attr: {
+                    'data-month': `${k + 1}`,
+                    'data-year': `${i}`,
+                },
+            })
+            calendarItem.onclick = async (e) => {
+                await initOtherMonth(e);
+            };
             calendarItem.createEl('p', {
-                text: allMonths[k]
+                text: allMonths[k],
             })
             const storyMonth = calendarItem.createEl('div', {
                 cls: 'story-month'
@@ -1100,6 +1187,90 @@ async function showAllMonths(contentEl) {
             })
         }
     }
+}
+
+async function initOtherMonth(e) {
+    const { now, year, month } = getDate()
+    const months = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+    ];
+
+    if(months[e.target.dataset.month - 1] === month && e.target.dataset.year === year) {
+        return viewInstance.onOpen()
+    }
+
+    const resultCreat = await pluginInstance.createOtherMonthDirectory(e.target.dataset.month - 1, e.target.dataset.year);
+    if(!resultCreat === 'success') {
+        new Notice(resultCreat)
+    }
+
+    await showAnotherMonthView(e)
+}
+
+async function showAnotherMonthView(e) {
+    const months = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+    ];
+
+    const { contentEl } = viewInstance
+    contentEl.empty()
+
+    const exitButton = contentEl.createEl('div', {
+        cls: 'exit-button',
+        attr: {
+            id: 'exit-button'
+        }
+    })
+    setIcon(exitButton, 'arrow-left')
+    exitButton.addEventListener('click', () => {
+        viewInstance.onOpen()
+    })
+
+    const financeHeader = contentEl.createEl('div', {
+        cls: 'finance-header'
+    })
+
+    const showAllMonthsButton = financeHeader.createEl("button", {
+        text: `🗓️ ${months[e.target.dataset.month - 1]}`,
+        attr: {
+            id: 'showAllMonths'
+        }
+    });
+
+    showAllMonthsButton.addEventListener('click', async () => {
+        if(contentEl.dataset.page === 'home') {
+            contentEl.setAttribute('data-page', 'months')
+            showAllMonths(contentEl)
+        }
+    })
+
+    contentEl.setAttribute('data-page', 'home')
+
+    // let billsInfo = await pluginInstance.searchBills();
+    // let expenditurePlanInfo = await pluginInstance.searchExpenditurePlan();
+    // let incomePlanInfo = await pluginInstance.searchIncomePlan();
 }
 
 //====================================== Home page ======================================
