@@ -4,6 +4,8 @@ const { Plugin, ItemView, Notice, setIcon, Platform } = require("obsidian");
 const FINANCIAL_ACCOUNTING_VIEW = "financial-accounting-view";
 let pluginInstance;
 let viewInstance;
+let selectedMonth;
+let selectedYear;
 
 module.exports = class mainPlugin extends Plugin {
     async onload() {
@@ -45,7 +47,6 @@ module.exports = class mainPlugin extends Plugin {
     }
 
     // Create directory
-
     async createDirectory() {
         defCreateDirectory(this)
     }
@@ -102,9 +103,13 @@ module.exports = class mainPlugin extends Plugin {
     async addJsonToBills(data) {
         return defAddJsonToBills(data, this)
     }
+
+    // editing data to file
+    async editingJsonToHistory(data) {
+        return defEditingJsonToHistory(data, this)
+    }
     
     // Duplicating data to archive
-    
     async archiveExpenditurePlan() {
         defArchiveExpenditurePlan(this)
     }
@@ -996,6 +1001,12 @@ async function defAddJsonToBills(data) {
     }
 }
 
+//====================================== Editing data to file ======================================
+
+async function defEditingJsonToHistory(data) {
+    console.log(data)
+}
+
 //====================================== View ======================================
 
 async function showInitialView() {
@@ -1132,10 +1143,10 @@ async function showAllMonths(contentEl) {
         '☃️ Январь',
         '🌨️ Февраль',
         '🌷 Март',
-        '🌿 Апрель',
+        '🌱 Апрель',
         '☀️ Май',
         '🌳 Июнь',
-        '🌻 Июль',
+        '🏖️ Июль',
         '🌾 Август',
         '🍁 Сентябрь',
         '🍂 Октябрь',
@@ -1265,12 +1276,105 @@ async function showAnotherMonthView(e) {
             showAllMonths(contentEl)
         }
     })
-
     contentEl.setAttribute('data-page', 'home')
+
+    const balance = contentEl.createEl("div", {
+        cls: "balance"
+    });
+
+    const balanceBody = balance.createEl('div', {
+        cls: 'balance-body'
+    })
+
+    const balanceExpenses = balanceBody.createEl('div', {
+        cls: 'balance_body-expenses'
+    })
+
+    balanceExpenses.createEl('span', {
+        text: 'Расход'
+    })
+
+    const balanceExpensesСheck = balanceExpenses.createEl('div', {
+        cls: 'balance_expenses-check'
+    })
+
+    setIcon(balanceExpensesСheck, 'upload')
+    balanceExpensesСheck.createEl('p', {
+        text: '0'
+    })
+
+    const balanceIncome = balanceBody.createEl('div', {
+        cls: 'balance_body-income'
+    })
+
+    balanceIncome.createEl('span', {
+        text: 'Доход'
+    })
+
+    const balanceIncomeCheck = balanceIncome.createEl('div', {
+        cls: 'balance_income-check'
+    })
+
+    setIcon(balanceIncomeCheck, 'download')
+    balanceIncomeCheck.createEl('p', {
+        text: '0'
+    })
 
     // let billsInfo = await pluginInstance.searchBills();
     // let expenditurePlanInfo = await pluginInstance.searchExpenditurePlan();
     // let incomePlanInfo = await pluginInstance.searchIncomePlan();
+
+    otherMonthHomeButtons(contentEl)
+}
+
+async function otherMonthHomeButtons(contentEl) {
+    const homeNav = contentEl.createEl('div', {
+        cls: 'main-nav'
+    })
+    const mainContent = contentEl.createEl('div', {
+        cls: 'main-content'
+    })
+    const mainContentBody = mainContent.createEl('div', {
+        cls: 'main-content-body'
+    })
+    const mainContentButton = contentEl.createEl('div', {
+        cls: 'main-content-button'
+    })
+
+    const historyButton = homeNav.createEl('a', {
+        text: 'History',
+        cls: 'home_button--active',
+        attr: {
+            id: 'history-button',
+            href: '#'
+        }
+    })
+    
+    historyButton.addEventListener('click', async () => {
+        planButton.removeClass('home_button--active')
+        historyButton.addClass('home_button--active')
+        mainContentBody.empty()
+        mainContentButton.empty()
+        // showHistory(mainContentBody, mainContentButton)
+    })
+
+    const planButton = homeNav.createEl('a', {
+        text: 'Plan',
+        attr: {
+            id: 'plan-button',
+            href: '#'
+        }
+    })
+    planButton.addEventListener('click', async () => {
+        historyButton.removeClass('home_button--active')
+        planButton.addClass('home_button--active')
+        mainContentBody.empty()
+        mainContentButton.empty()
+        // showPlan(mainContentBody, mainContentButton)
+    })
+
+    historyButton.addClass('home_button--active')
+    // showHistory(mainContentBody, mainContentButton)
 }
 
 //====================================== Home page ======================================
@@ -1403,8 +1507,20 @@ async function showHistory(mainContentBody, mainContentButton) {
             })
             e.forEach((e, i) => {
                 const dataItem = dataList.createEl('li', {
-                    cls: 'data-item'
+                    cls: 'data-item',
+                    attr: {
+                        'data-id': e.id,
+                        'data-amount': e.amount,
+                        'data-bill': e.bill,
+                        'data-category': e.category,
+                        'data-type': e.type,
+                        'data-comment': e.comment,
+                        'data-date': e.date,
+                    }
                 })
+                dataItem.onclick = async (e) => {
+                    await editingHistory(e);
+                };
                 const itemCategory = dataItem.createEl('p', {
                     text: `${e.category}`
                 })
@@ -1799,6 +1915,223 @@ async function defGetDataArchiveFile(fileName) {
     return dataFile
 }
 
+//====================================== Editing data ======================================
+
+async function editingHistory(e) {
+    const { amount, bill, category, comment, date, type, id } = e.target.closest('li').dataset;
+    if(!type && !id) {
+        return 'Element not found'
+    }
+
+    const { contentEl } = viewInstance;
+    contentEl.empty()
+
+    const header = contentEl.createEl('div', {
+        cls: 'main-header'
+    })
+    const headerTitle = header.createEl('h1', {
+        text: 'Операция'
+    })
+
+    const exitButton = contentEl.createEl('div', {
+        cls: 'exit-button',
+        attr: {
+            id: 'exit-button'
+        }
+    })
+    setIcon(exitButton, 'arrow-left')
+    exitButton.addEventListener('click', () => {
+        viewInstance.onOpen()
+    })
+
+    const deleteButton = contentEl.createEl('div', {
+        cls: 'delete-button',
+        attr: {
+            id: 'delete-button'
+        }
+    })
+    setIcon(deleteButton, 'trash-2')
+    deleteButton.addEventListener('click', async () => {
+        await deleteData(e)
+    })
+
+    const mainAddForm = contentEl.createEl('form', {
+        cls: 'main-add-form',
+        attr: {
+            id: 'main-add-form'
+        }
+    })
+
+    // Form input
+    const mainFormInput = mainAddForm.createEl('div', {
+        cls: 'main-form-input'
+    })
+    const inputSum = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Сумма',
+            id: 'input-sum',
+            type: 'number',
+            value: amount,
+        }
+    })
+    // inputSum.focus()
+    
+    const selectBills = mainFormInput.createEl('select', {
+        cls: 'form-selects',
+        attr: {
+            name: 'select-bills',
+            id: 'select-bills'
+        }
+    })
+    const resultBills = await pluginInstance.searchBills()
+    resultBills.sort((a, b) => b.balance - a.balance)
+    resultBills.forEach(arr => {
+        if(arr.name === bill) {
+            selectBills.createEl('option', {
+                text: `${arr.name} • ${arr.balance} ₸`,
+                attr: { value: arr.name, selected: 'selected' }
+            })
+            return
+        }
+        selectBills.createEl('option', {
+            text: `${arr.name} • ${arr.balance} ₸`,
+            attr: { value: arr.name }
+        })
+    })
+    
+    const selectCategory = mainFormInput.createEl('select', {
+        cls: 'form-selects',
+        attr: {
+            name: 'select-category',
+            id: 'select-category'
+        }
+    })
+    createOptionCategory()
+    
+    async function createOptionCategory() {
+        if(type === 'expense'){
+            selectCategory.empty()
+            const resultCategory = await pluginInstance.searchExpenditurePlan()
+            resultCategory.sort((a, b) => b.amount - a.amount)
+            resultCategory.forEach(arr => {
+                if(arr.name === category) {
+                    selectCategory.createEl('option', {
+                        text: `${arr.name} • ${arr.amount} ₸`,
+                        attr: { value: arr.name, selected: 'selected' }
+                    })
+                    return
+                }
+                selectCategory.createEl('option', {
+                    text: `${arr.name} • ${arr.amount} ₸`,
+                    attr: { value: arr.name }
+                })
+            })
+        } else {
+            selectCategory.empty()
+            const resultCategory = await pluginInstance.searchIncomePlan()
+            resultCategory.sort((a, b) => b.amount - a.amount)
+            resultCategory.forEach(plan => {
+                selectCategory.createEl('option', {
+                    text: `${plan.name} • ${plan.amount} ₸`,
+                    attr: { value: plan.name }
+                })
+            })
+        }
+    }
+
+    const commentInput = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Примечание',
+            id: 'input-comment',
+            type: 'text',
+            value: comment,
+        }
+    })
+
+    const selectDate = mainFormInput.createEl('select', {
+        cls: 'form-selects',
+        attr: {
+            name: 'select-date',
+            id: 'select-date'
+        }
+    })
+    fillMonthDates(selectDate, date)
+
+    const selectDateButtonDiv = mainFormInput.createEl('div', {
+        cls: 'form-selects-date-buttons'
+    })
+
+    const selectDateToday = selectDateButtonDiv.createEl('button', {
+        text: 'Сегодня',
+        attr: {
+            type: 'button'
+        }
+    })
+    // selectDateToday.addClass('button-selects-date--active')
+    selectDateToday.addEventListener('click', () => {
+        selectRelativeDate(selectDate, 0)
+    })
+    const selectDateYesterday = selectDateButtonDiv.createEl('button', {
+        text: 'Вчера',
+        attr: {
+            type: 'button'
+        }
+    })
+    selectDateYesterday.addEventListener('click', () => {
+        selectRelativeDate(selectDate, -1)
+    })
+    const selectDateTheDayBefotreYesterday = selectDateButtonDiv.createEl('button', {
+        text: 'Позавчера',
+        attr: {
+            type: 'button'
+        }
+    })
+    selectDateTheDayBefotreYesterday.addEventListener('click', () => {
+        selectRelativeDate(selectDate, -2)
+    })
+
+    const addButton = mainFormInput.createEl('button', {
+        text: 'Safe',
+        cls: 'add-button',
+        attr: {
+            type: 'submit'
+        }
+    })
+
+    addButton.addEventListener('click', async (e) => {
+        e.preventDefault();
+
+        if(!inputSum.value >= 1) {
+            inputSum.focus()
+            return new Notice('Введите сумму')
+        }
+
+        const data = {
+            amount: Number(inputSum.value),
+            bill: selectBills.value,
+            category: selectCategory.value,
+            comment: commentInput.value,
+            date: selectDate.value,
+            type: type,
+        }
+        const resultOfadd = await pluginInstance.editingJsonToHistory(data)
+        if(resultOfadd === "success") {
+            setTimeout(() => {
+                viewInstance.onOpen()
+                new Notice('Операция изменена')
+            }, 100)
+        } else {
+            new Notice(resultOfadd)
+        }
+    })
+}
+
+async function deleteData() {
+    console.log('delete')
+}
+
 //====================================== Other Function ======================================
 
 function getDate() {
@@ -1809,7 +2142,7 @@ function getDate() {
     return { now, year, month }
 }
 
-function fillMonthDates(selectEl) {
+function fillMonthDates(selectEl, oldDate) {
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
@@ -1844,7 +2177,8 @@ function fillMonthDates(selectEl) {
             attr: { value }
         });
 
-        if (diff === -1) option.selected = true;
+        if (value === oldDate) option.selected = true;
+        else if (diff === -1) option.selected = true;
     }
 }
 
