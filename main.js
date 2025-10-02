@@ -4,6 +4,7 @@ const { Plugin, ItemView, Notice, setIcon, Platform } = require("obsidian");
 const FINANCIAL_ACCOUNTING_VIEW = "financial-accounting-view";
 let pluginInstance;
 let viewInstance;
+let baseFolder = "My Life/My Finances";
 let selectedMonth;
 let selectedYear;
 
@@ -108,6 +109,10 @@ module.exports = class mainPlugin extends Plugin {
     async editingJsonToHistory(data) {
         return defEditingJsonToHistory(data, this)
     }
+
+    async editingJsonToPlan(data) {
+        return defEditingJsonToPlan(data, this)
+    }
     
     // Duplicating data to archive
     async archiveExpenditurePlan() {
@@ -146,12 +151,12 @@ module.exports = class mainPlugin extends Plugin {
         return defGetDataArchiveFile(fileName, this)
     }
 
-    async expenditureTransaction(data) {
-        return defExpenditureTransaction(data, this)
+    async expenditureTransaction(data, modifier) {
+        return defExpenditureTransaction(data, modifier, this)
     }
 
-    async incomeTransaction(data) {
-        return defIncomeTransaction(data, this)
+    async incomeTransaction(data, modifier) {
+        return defIncomeTransaction(data, modifier, this)
     }
 
     async updateData(fileName, accountName, targetE, newTargetE) {
@@ -200,7 +205,6 @@ class FinancialAccountingView extends ItemView {
 async function defCreateDirectory() {
     const { now, year, month } = getDate()
 
-    const baseFolder = "My Life/My Finances";
     const archiveFolder = `${baseFolder}/Archive`
     const archiveExpenditurePlan = `${archiveFolder}/Archive expenditure plan.md`
     const archiveIncomePlan = `${archiveFolder}/Archive income plan.md`
@@ -279,11 +283,6 @@ async function defCreateOtherMonthDirectory(numMonth, year) {
         "December"
     ];
 
-    const baseFolder = "My Life/My Finances";
-    // const archiveFolder = `${baseFolder}/Archive`
-    // const archiveExpenditurePlan = `${archiveFolder}/Archive expenditure plan.md`
-    // const archiveIncomePlan = `${archiveFolder}/Archive income plan.md`
-    // const archiveBills = `${archiveFolder}/Archive bills.md`
     const yearFolder = `${baseFolder}/${year}`;
     const monthFolder = `${yearFolder}/${months[numMonth]}`;
     const historyPath = `${monthFolder}/History.md`;
@@ -882,9 +881,9 @@ async function defAddJsonToHistory(data) {
             const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
             await this.app.vault.modify(file, newContent);
             if(data.type === 'expense') {
-                pluginInstance.expenditureTransaction(data)
+                pluginInstance.expenditureTransaction(data, 'add')
             } else if (data.type === 'income') {
-                pluginInstance.incomeTransaction(data)
+                pluginInstance.incomeTransaction(data, 'add')
             } else {
                 return 'Error'
             }
@@ -896,9 +895,9 @@ async function defAddJsonToHistory(data) {
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
             if(data.type === 'expense') {
-                pluginInstance.expenditureTransaction(data)
+                pluginInstance.expenditureTransaction(data, 'add')
             } else if (data.type === 'income') {
-                pluginInstance.incomeTransaction(data)
+                pluginInstance.incomeTransaction(data, 'add')
             } else {
                 return 'Error'
             }
@@ -914,8 +913,10 @@ async function defAddJsonToExpenditurePlan(data) {
     const { jsonMatch, content, file } = await pluginInstance.getDataFile('Expenditure plan')
     try {
         if(jsonMatch[1].length >= 2) {
+            const jsonData = JSON.parse(jsonMatch[1].trim());
+            const lastElementId = jsonData[jsonData.length - 1].id
             const { name, comment, type } = data
-            const dataJson = {name, amount: 0, comment, type}
+            const dataJson = {id: lastElementId + 1, name, amount: 0, comment, type}
             const dataStr = JSON.stringify([dataJson], null, 4) + "]\n```";
 
             const index = content.lastIndexOf("}");
@@ -926,7 +927,7 @@ async function defAddJsonToExpenditurePlan(data) {
             return "success"
         } else {
             const { name, comment, type } = data
-            const dataJson = {name, amount: 0, comment, type}
+            const dataJson = {id: 1, name, amount: 0, comment, type}
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
@@ -943,8 +944,10 @@ async function defAddJsonToIncomePlan(data) {
     const { jsonMatch, content, file } = await pluginInstance.getDataFile('Income plan')
     try {
         if(jsonMatch[1].length >= 2) {
+            const jsonData = JSON.parse(jsonMatch[1].trim());
+            const lastElementId = jsonData[jsonData.length - 1].id
             const { name, comment, type } = data
-            const dataJson = {name, amount: 0, comment, type}
+            const dataJson = {id: lastElementId + 1, name, amount: 0, comment, type}
             const dataStr = JSON.stringify([dataJson], null, 4) + "]\n```";
 
             const index = content.lastIndexOf("}");
@@ -955,7 +958,7 @@ async function defAddJsonToIncomePlan(data) {
             return "success"
         } else {
             const { name, comment, type } = data
-            const dataJson = {name, amount: 0, comment, type}
+            const dataJson = {id: 1, name, amount: 0, comment, type}
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
@@ -976,8 +979,10 @@ async function defAddJsonToBills(data) {
     const { jsonMatch, content, file } = await pluginInstance.getDataFile('Bills')
     try {
         if(jsonMatch[1].length >= 2) {
+            const jsonData = JSON.parse(jsonMatch[1].trim());
+            const lastElementId = jsonData[jsonData.length - 1].id
             const { name, balance, generalBalance, comment } = data
-            const dataJson = {name, balance, generalBalance, comment}
+            const dataJson = {id: lastElementId + 1, name, balance, generalBalance, comment}
             const dataStr = JSON.stringify([dataJson], null, 4) + "]\n```";
 
             const index = content.lastIndexOf("}");
@@ -988,7 +993,7 @@ async function defAddJsonToBills(data) {
             return "success"
         } else {
             const { name, balance, generalBalance, comment } = data
-            const dataJson = {name, balance, generalBalance, comment}
+            const dataJson = {id: 1, name, balance, generalBalance, comment}
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
@@ -1004,6 +1009,10 @@ async function defAddJsonToBills(data) {
 //====================================== Editing data to file ======================================
 
 async function defEditingJsonToHistory(data) {
+    console.log(data)
+}
+
+async function defEditingJsonToPlan(data) {
     console.log(data)
 }
 
@@ -1549,7 +1558,7 @@ async function showPlan(mainContentBody, mainContentButton) {
     let expenditurePlanInfo = await pluginInstance.searchExpenditurePlan();
     let incomePlanInfo = await pluginInstance.searchIncomePlan();
 
-    if(expenditurePlanInfo === null || incomePlanInfo === null) {
+    if(expenditurePlanInfo === null && incomePlanInfo === null) {
         const undefinedContent = mainContentBody.createEl('div', {
             cls: 'undefined-content'
         })
@@ -1563,62 +1572,86 @@ async function showPlan(mainContentBody, mainContentButton) {
             text: 'Вносите любые доходы и расходы, чтобы видеть, сколько средств остаётся на самом деле'
         })
     } else {
-        mainContentBody.removeClass('main-content-body--undefined')
-        const resultExpense = expenditurePlanInfo.sort((a, b) => b.amount - a.amount)
-        const expensePlanBlock = mainContentBody.createEl('div', {
-            cls: 'plan-block'
-        })
-        const expenseDateBlock = expensePlanBlock.createEl('div', {
-            cls: 'full-data-block'
-        })
-        const expenseDateSpan = expenseDateBlock.createEl('span', {
-            text: 'Расходы'
-        })
-        const expenseMatchSpan = expenseDateBlock.createEl('span', {
-            text: SummarizingDataForTheDayExpense(resultExpense)
-        })
-        const expenseDataList = expensePlanBlock.createEl('ul', {
-            cls: 'data-list'
-        })
-        resultExpense.forEach((e, i) => {
-            const dataItem = expenseDataList.createEl('li', {
-                cls: 'data-item'
+        if(expenditurePlanInfo !== null) {
+            mainContentBody.removeClass('main-content-body--undefined')
+            const resultExpense = expenditurePlanInfo.sort((a, b) => b.amount - a.amount)
+            const expensePlanBlock = mainContentBody.createEl('div', {
+                cls: 'plan-block'
             })
-            const itemCategory = dataItem.createEl('p', {
-                text: e.name
+            const expenseDateBlock = expensePlanBlock.createEl('div', {
+                cls: 'full-data-block'
             })
-            const itemAmount = dataItem.createEl('p', {
-                text: e.amount
+            const expenseDateSpan = expenseDateBlock.createEl('span', {
+                text: 'Расходы'
             })
-        })
-
-        const resultIncome = incomePlanInfo.sort((a, b) => b.amount - a.amount)
-        const incomePlanBlock = mainContentBody.createEl('div', {
-            cls: 'plan-block'
-        })
-        const incomeDateBlock = incomePlanBlock.createEl('div', {
-            cls: 'full-data-block'
-        })
-        const incomeDateSpan = incomeDateBlock.createEl('span', {
-            text: 'Доходы'
-        })
-        const incomeMatchSpan = incomeDateBlock.createEl('span', {
-            text: SummarizingDataForTheDayIncome(resultIncome)
-        })
-        const incomeDataList = incomePlanBlock.createEl('ul', {
-            cls: 'data-list'
-        })
-        resultIncome.forEach((e, i) => {
-            const dataItem = incomeDataList.createEl('li', {
-                cls: 'data-item'
+            const expenseMatchSpan = expenseDateBlock.createEl('span', {
+                text: SummarizingDataForTheDayExpense(resultExpense)
             })
-            const itemCategory = dataItem.createEl('p', {
-                text: e.name
+            const expenseDataList = expensePlanBlock.createEl('ul', {
+                cls: 'data-list'
             })
-            const itemAmount = dataItem.createEl('p', {
-                text: e.amount
+            resultExpense.forEach((e, i) => {
+                const dataItem = expenseDataList.createEl('li', {
+                    cls: 'data-item',
+                    attr: {
+                            'data-id': e.id,
+                            'data-name': e.name,
+                            'data-amount': e.amount,
+                            'data-type': e.type,
+                            'data-comment': e.comment
+                        }
+                })
+                dataItem.onclick = async (e) => {
+                    await editingPlan(e);
+                };
+                const itemCategory = dataItem.createEl('p', {
+                    text: e.name
+                })
+                const itemAmount = dataItem.createEl('p', {
+                    text: e.amount
+                })
             })
-        })
+        }
+        if(incomePlanInfo !== null) {
+            mainContentBody.removeClass('main-content-body--undefined')
+            const resultIncome = incomePlanInfo.sort((a, b) => b.amount - a.amount)
+            const incomePlanBlock = mainContentBody.createEl('div', {
+                cls: 'plan-block'
+            })
+            const incomeDateBlock = incomePlanBlock.createEl('div', {
+                cls: 'full-data-block'
+            })
+            const incomeDateSpan = incomeDateBlock.createEl('span', {
+                text: 'Доходы'
+            })
+            const incomeMatchSpan = incomeDateBlock.createEl('span', {
+                text: SummarizingDataForTheDayIncome(resultIncome)
+            })
+            const incomeDataList = incomePlanBlock.createEl('ul', {
+                cls: 'data-list'
+            })
+            resultIncome.forEach((e, i) => {
+                const dataItem = incomeDataList.createEl('li', {
+                    cls: 'data-item',
+                    attr: {
+                            'data-id': e.id,
+                            'data-name': e.name,
+                            'data-amount': e.amount,
+                            'data-type': e.type,
+                            'data-comment': e.comment
+                        }
+                })
+                dataItem.onclick = async (e) => {
+                    await editingPlan(e);
+                };
+                const itemCategory = dataItem.createEl('p', {
+                    text: e.name
+                })
+                const itemAmount = dataItem.createEl('p', {
+                    text: e.amount
+                })
+            })
+        }
     }
 
     const addPlanButton = mainContentButton.createEl('button', {
@@ -1649,62 +1682,78 @@ async function showBills(mainContentBody, mainContentButton) {
             text: 'Вносите любые доходы и расходы, чтобы видеть, сколько средств остаётся на самом деле'
         })
     } else {
-        mainContentBody.removeClass('main-content-body--undefined')
-        const trueBillBlock = mainContentBody.createEl('div', {
-            cls: 'bill-block'
-        })
-        const trueDateBlock = trueBillBlock.createEl('div', {
-            cls: 'full-data-block'
-        })
-        const trueDateSpan = trueDateBlock.createEl('span', {
-            text: 'Основные'
-        })
-        const trueMatchSpan = trueDateBlock.createEl('span', {
-            text: SummarizingDataForTheTrueBills(billsInfo)
-        })
-        const trueDataList = trueBillBlock.createEl('ul', {
-            cls: 'data-list'
-        })
+        if(billsInfo.filter(e => e.generalBalance).length >= 1) {
+            mainContentBody.removeClass('main-content-body--undefined')
+            const trueBillBlock = mainContentBody.createEl('div', {
+                cls: 'bill-block'
+            })
+            const trueDateBlock = trueBillBlock.createEl('div', {
+                cls: 'full-data-block'
+            })
+            const trueDateSpan = trueDateBlock.createEl('span', {
+                text: 'Основные'
+            })
+            const trueMatchSpan = trueDateBlock.createEl('span', {
+                text: SummarizingDataForTheTrueBills(billsInfo)
+            })
+            const trueDataList = trueBillBlock.createEl('ul', {
+                cls: 'data-list'
+            })
 
-        const falseBillBlock = mainContentBody.createEl('div', {
-            cls: 'bill-block'
-        })
-        const falseDateBlock = falseBillBlock.createEl('div', {
-            cls: 'full-data-block'
-        })
-        const falseDateSpan = falseDateBlock.createEl('span', {
-            text: 'Дополнительные'
-        })
-        const falseMatchSpan = falseDateBlock.createEl('span', {
-            text: SummarizingDataForTheFalseBills(billsInfo)
-        })
-        const falseDataList = falseBillBlock.createEl('ul', {
-            cls: 'data-list'
-        })
+            billsInfo.forEach((e, i) => {
+                if(e.generalBalance) {
+                    const dataItem = trueDataList.createEl('li', {
+                        cls: 'data-item',
+                        attr: {
+                                'data-id': e.id,
+                                'data-name': e.name,
+                                'data-balance': e.balance,
+                                'data-generalBalance': e.generalBalance,
+                                'data-comment': e.comment
+                            }
+                    })
+                    const itemCategory = dataItem.createEl('p', {
+                        text: e.name
+                    })
+                    const itemAmount = dataItem.createEl('p', {
+                        text: e.balance
+                    })
+                }
+            })
+        }
         
-        billsInfo.forEach((e, i) => {
-            if(e.generalBalance) {
-                const dataItem = trueDataList.createEl('li', {
-                    cls: 'data-item'
-                })
-                const itemCategory = dataItem.createEl('p', {
-                    text: e.name
-                })
-                const itemAmount = dataItem.createEl('p', {
-                    text: e.balance
-                })
-            } else {
-                const dataItem = falseDataList.createEl('li', {
-                    cls: 'data-item'
-                })
-                const itemCategory = dataItem.createEl('p', {
-                    text: e.name
-                })
-                const itemAmount = dataItem.createEl('p', {
-                    text: e.balance
-                })
-            }
-        })
+        if(billsInfo.filter(e => !e.generalBalance).length >= 1) {
+            mainContentBody.removeClass('main-content-body--undefined')
+            const falseBillBlock = mainContentBody.createEl('div', {
+                cls: 'bill-block'
+            })
+            const falseDateBlock = falseBillBlock.createEl('div', {
+                cls: 'full-data-block'
+            })
+            const falseDateSpan = falseDateBlock.createEl('span', {
+                text: 'Дополнительные'
+            })
+            const falseMatchSpan = falseDateBlock.createEl('span', {
+                text: SummarizingDataForTheFalseBills(billsInfo)
+            })
+            const falseDataList = falseBillBlock.createEl('ul', {
+                cls: 'data-list'
+            })
+            
+            billsInfo.forEach((e, i) => {
+                if(!e.generalBalance) {
+                    const dataItem = falseDataList.createEl('li', {
+                        cls: 'data-item'
+                    })
+                    const itemCategory = dataItem.createEl('p', {
+                        text: e.name
+                    })
+                    const itemAmount = dataItem.createEl('p', {
+                        text: e.balance
+                    })
+                }
+            })
+        }
     }
 
     const addBillButton = mainContentButton.createEl('button', {
@@ -1786,7 +1835,7 @@ async function defNewMonthBills() {
 
 //====================================== Middleware Function ======================================
 
-async function defExpenditureTransaction(data) {
+async function defExpenditureTransaction(data, modifier) {
     let billName;
     let billBalace;
 
@@ -1795,7 +1844,6 @@ async function defExpenditureTransaction(data) {
 
     const { jsonMatch: billsJsonMatch } = await pluginInstance.getDataFile("Bills")
     const billsJsonData = JSON.parse(billsJsonMatch[1].trim());
-    
     billsJsonData.forEach((e, i) => {
         if(e.name === data.bill) {
             billBalace = billsJsonData[i].balance;
@@ -1812,15 +1860,34 @@ async function defExpenditureTransaction(data) {
         }
     })
 
-    billBalace -= data.amount
-    planAmount += data.amount
+    if(modifier === 'add') {
+        try {        
+            billBalace -= Number(data.amount)
+            planAmount += Number(data.amount)
+        
+            await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
+            await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
+            await pluginInstance.archiveBills()
+        } catch (error) {
+            return error
+        }
+    } else if (modifier === 'edit') {
+        try {
+            billBalace += Number(data.amount)
+            planAmount -= Number(data.amount)
 
-    await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
-    await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
-    await pluginInstance.archiveBills()
+            await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
+            await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
+            await pluginInstance.archiveBills()
+        } catch (error) {
+            return error
+        }
+    } else {
+        return 'Error modifier'
+    }
 }
 
-async function defIncomeTransaction(data) {
+async function defIncomeTransaction(data, modifier) {
     let billName;
     let billBalace;
 
@@ -1845,13 +1912,31 @@ async function defIncomeTransaction(data) {
             planName = planJsonData[i].name
         }
     })
-
-    billBalace += data.amount
-    planAmount += data.amount
-
-    await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
-    await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
-    await pluginInstance.archiveBills()
+    if(modifier === 'add') {
+        try {
+            billBalace += Number(data.amount)
+            planAmount += Number(data.amount)
+        
+            await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
+            await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
+            await pluginInstance.archiveBills()
+        } catch (error) {
+            return error
+        }
+    } else if (modifier === 'edit') {
+        try {
+            billBalace -= data.amount
+            planAmount -= data.amount
+        
+            await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
+            await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
+            await pluginInstance.archiveBills()
+        } catch (error) {
+            return error
+        }
+    } else {
+        return 'Error modifier'
+    }
 }
 
 async function defUpdateData(fileName, accountName, targetE, newTargetE) {
@@ -1952,7 +2037,15 @@ async function editingHistory(e) {
     })
     setIcon(deleteButton, 'trash-2')
     deleteButton.addEventListener('click', async () => {
-        await deleteData(e)
+        const redultOfDelete = await deleteHistory(e)
+        if(redultOfDelete === "success") {
+            setTimeout(() => {
+                viewInstance.onOpen()
+                new Notice('Операция удаленна')
+            }, 100)
+        } else {
+            new Notice(redultOfDelete)
+        }
     })
 
     const mainAddForm = contentEl.createEl('form', {
@@ -2116,11 +2209,117 @@ async function editingHistory(e) {
             date: selectDate.value,
             type: type,
         }
-        const resultOfadd = await pluginInstance.editingJsonToHistory(data)
-        if(resultOfadd === "success") {
+        const resultOfEditing = await pluginInstance.editingJsonToHistory(data)
+        if(resultOfEditing === "success") {
             setTimeout(() => {
                 viewInstance.onOpen()
                 new Notice('Операция изменена')
+            }, 100)
+        } else {
+            new Notice(resultOfEditing)
+        }
+    })
+}
+
+async function editingPlan(e) {
+    const { name, type, comment } = e.target.closest('li').dataset;
+    const { contentEl } = viewInstance;
+    contentEl.empty()
+
+    const exitButton = contentEl.createEl('div', {
+        cls: 'exit-button',
+        attr: {
+            id: 'exit-button'
+        }
+    })
+    setIcon(exitButton, 'arrow-left')
+    exitButton.addEventListener('click', () => {
+        viewInstance.onOpen()
+    })
+
+    const deleteButton = contentEl.createEl('div', {
+        cls: 'delete-button',
+        attr: {
+            id: 'delete-button'
+        }
+    })
+    setIcon(deleteButton, 'trash-2')
+    deleteButton.addEventListener('click', async () => {
+        const redultOfDelete = await deletePlan(e)
+        if(redultOfDelete === "success") {
+            setTimeout(() => {
+                viewInstance.onOpen()
+                new Notice('План удален')
+            }, 100)
+        } else {
+            new Notice(redultOfDelete)
+        }
+    })
+
+    const header = contentEl.createEl('div', {
+        cls: 'main-header'
+    })
+    const headerTitle = header.createEl('h1', {
+        text: 'Категории'
+    })
+
+    const mainAddForm = contentEl.createEl('form', {
+        cls: 'main-add-form',
+        attr: {
+            id: 'main-add-form'
+        }
+    })
+    
+    // Form input
+    const mainFormInput = mainAddForm.createEl('div', {
+        cls: 'main-form-input'
+    })
+    const inputName = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Название',
+            id: 'input-name',
+            type: 'text',
+            value: name,
+        }
+    })
+
+    const commentInput = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Примечание',
+            id: 'input-comment',
+            type: 'text',
+            value: comment,
+        }
+    })
+
+    const addButton = mainFormInput.createEl('button', {
+        text: 'Добавить',
+        cls: 'add-button',
+        attr: {
+            type: 'submit'
+        }
+    })
+
+    addButton.addEventListener('click', async (e) => {
+        e.preventDefault();
+
+        if(!inputName.value >= 1) {
+            inputName.focus()
+            return new Notice('Введите название')
+        }
+
+        const data = {
+            name: inputName.value,
+            comment: commentInput.value,
+            type: type,
+        }
+        const resultOfadd = await pluginInstance.editingJsonToPlan(data)
+        if(resultOfadd === "success") {
+            setTimeout(() => {
+                viewInstance.onOpen()
+                new Notice('План добавлен')
             }, 100)
         } else {
             new Notice(resultOfadd)
@@ -2128,8 +2327,56 @@ async function editingHistory(e) {
     })
 }
 
-async function deleteData() {
-    console.log('delete')
+//====================================== Delete data ======================================
+
+async function deleteHistory(e) {
+    const { id, type } = e.target.closest('li').dataset;
+    if(!id) {
+        return 'Element not found'
+    }
+
+    const { jsonMatch, content, file } = await pluginInstance.getDataFile('History')
+    let data = JSON.parse(jsonMatch[1]);
+    if(data.length === 1) {
+        try {
+            const newContent = content.replace(/```json[\s\S]*?```/, "```json\n```");
+            await this.app.vault.modify(file, newContent);
+            if(type === 'expense') {
+                pluginInstance.expenditureTransaction(e.target.closest('li').dataset, 'edit')
+            } else if (type === 'income') {
+                pluginInstance.incomeTransaction(e.target.closest('li').dataset, 'edit')
+            } else {
+                return 'Error'
+            }
+            
+                return "success"
+        } catch (error) {
+            return (`Ошибка при удалении элемента: ${error}`)
+        }
+    } else {
+        try {
+            data = data.filter(item => item.id !== Number(id));
+            const dataStr = JSON.stringify(data, null, 4);
+            const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
+            await this.app.vault.modify(file, newContent);
+            if(type === 'expense') {
+                pluginInstance.expenditureTransaction(e.target.closest('li').dataset, 'edit')
+            } else if (type === 'income') {
+                pluginInstance.incomeTransaction(e.target.closest('li').dataset, 'edit')
+            } else {
+                return 'Error'
+            }
+        
+            return "success"
+    
+        } catch (error) {
+            return (`Ошибка при удалении элемента: ${error}`)
+        }
+    }
+}
+
+async function deletePlan(e) {
+    const { id, name, type, comment } = e.target.closest('li').dataset;
 }
 
 //====================================== Other Function ======================================
@@ -2203,6 +2450,9 @@ function checkExpenceOrIncome(amount, type) {
 }
 
 function SummarizingDataForTheDayExpense(obj) {
+    if(!obj) {
+        return 0
+    }
     let expense = 0;
     obj.forEach((e, i) => {
         if(e.type === 'expense'){
@@ -2212,6 +2462,9 @@ function SummarizingDataForTheDayExpense(obj) {
     return expense
 }
 function SummarizingDataForTheDayIncome(obj) {
+    if(!obj) {
+        return 0
+    }
     let income = 0;
     obj.forEach((e, i) => {
         if(e.type === 'income'){
@@ -2221,6 +2474,9 @@ function SummarizingDataForTheDayIncome(obj) {
     return income
 }
 function SummarizingDataForTheTrueBills(obj) {
+    if(!obj) {
+        return 0
+    }
     let balance = 0;
     obj.forEach((e, i) => {
         if(e.generalBalance) {
