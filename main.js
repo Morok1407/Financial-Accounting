@@ -116,8 +116,8 @@ module.exports = class mainPlugin extends Plugin {
     
     // Check for deletion data
 
-    async checkForDeletionData(data) {
-        return defCheckForDeletionData(data, this)
+    async checkForDeletionData(data, modifier) {
+        return defCheckForDeletionData(data, modifier, this)
     }
     
     // Duplicating data to archive
@@ -1714,10 +1714,13 @@ async function showBills(mainContentBody, mainContentButton) {
                                 'data-id': e.id,
                                 'data-name': e.name,
                                 'data-balance': e.balance,
-                                'data-generalBalance': e.generalBalance,
+                                'data-generalbalance': e.generalBalance,
                                 'data-comment': e.comment
                             }
                     })
+                    dataItem.onclick = async (e) => {
+                        await editingBill(e);
+                    }
                     const itemCategory = dataItem.createEl('p', {
                         text: e.name
                     })
@@ -1749,8 +1752,18 @@ async function showBills(mainContentBody, mainContentButton) {
             billsInfo.forEach((e, i) => {
                 if(!e.generalBalance) {
                     const dataItem = falseDataList.createEl('li', {
-                        cls: 'data-item'
+                        cls: 'data-item',
+                        attr: {
+                                'data-id': e.id,
+                                'data-name': e.name,
+                                'data-balance': e.balance,
+                                'data-generalbalance': e.generalBalance,
+                                'data-comment': e.comment
+                            }
                     })
+                    dataItem.onclick = async (e) => {
+                        await editingBill(e);
+                    }
                     const itemCategory = dataItem.createEl('p', {
                         text: e.name
                     })
@@ -2006,7 +2019,7 @@ async function defGetDataArchiveFile(fileName) {
     return dataFile
 }
 
-async function defCheckForDeletionData(data) {
+async function defCheckForDeletionData(data, modifier) {
     const { name: categoryToFind } = data
     
     const financeFolder = app.vault.getAbstractFileByPath(baseFolder);
@@ -2042,7 +2055,12 @@ async function defCheckForDeletionData(data) {
             }
             const jsonData = JSON.parse(jsonMatch[1].trim());
             if (Array.isArray(jsonData)) {
-                const found = jsonData.some(item => item.category === categoryToFind);
+                let found;
+                if(modifier === 'plan') {
+                    found = jsonData.some(item => item.category === categoryToFind);
+                } else if (modifier === 'bill') {
+                    found = jsonData.some(item => item.bill === categoryToFind);
+                }
                 if (found) {
                     return true;
                 }
@@ -2382,6 +2400,150 @@ async function editingPlan(e) {
     })
 }
 
+async function editingBill(e) {
+    const { id, name, balance, generalbalance, comment } = e.target.closest('li').dataset;
+
+    const { contentEl } = viewInstance;
+    contentEl.empty()
+
+    const exitButton = contentEl.createEl('div', {
+        cls: 'exit-button',
+        attr: {
+            id: 'exit-button'
+        }
+    })
+    setIcon(exitButton, 'arrow-left')
+    exitButton.addEventListener('click', () => {
+        viewInstance.onOpen()
+    })
+
+    const deleteButton = contentEl.createEl('div', {
+        cls: 'delete-button',
+        attr: {
+            id: 'delete-button'
+        }
+    })
+    setIcon(deleteButton, 'trash-2')
+    deleteButton.addEventListener('click', async () => {
+        const redultOfDelete = await deleteBill(e);
+        if(redultOfDelete === "success") {
+            setTimeout(() => {
+                viewInstance.onOpen()
+                new Notice('План удален')
+            }, 100)
+        } else {
+            new Notice(redultOfDelete)
+        }
+    })
+
+    const header = contentEl.createEl('div', {
+        cls: 'main-header'
+    })
+    const headerTitle = header.createEl('h1', {
+        text: 'Категории'
+    })
+
+    const mainAddForm = contentEl.createEl('form', {
+        cls: 'main-add-form',
+        attr: {
+            id: 'main-add-form'
+        }
+    })
+
+    // Form input
+    const mainFormInput = mainAddForm.createEl('div', {
+        cls: 'main-form-input'
+    })
+    const inputName = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Название',
+            id: 'input-name',
+            type: 'text',
+            value: name,
+        }
+    })
+
+    const currencyInput = mainFormInput.createEl('select', {
+        cls: 'form-selects',
+        attr: {
+            name: 'select-currency',
+            id: 'select-currency'
+        }
+    })
+
+    const currentBalance = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Текущий баланс',
+            id: 'input-current-balance',
+            type: 'number',
+            value: balance,
+        }
+    })
+
+    const commentInput = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Примечание',
+            id: 'input-comment',
+            type: 'text',
+            value: comment,
+        }
+    })
+
+    const chechboxDiv = mainFormInput.createEl('div', {
+        cls: 'form-checkbox-div'
+    })
+
+    const checkboxInput = chechboxDiv.createEl('input', {
+        cls: 'form-checkbox',
+        attr: {
+            id: 'input-checkbox',
+            type: 'checkbox',
+            checked: generalbalance === "true" ? true : null
+        }
+    })
+
+    const chechboxText = chechboxDiv.createEl('span', {
+        text: 'Учитывать в общем балансе',
+        cls: 'form-text',
+    })
+
+    const addButton = mainFormInput.createEl('button', {
+        text: 'Добавить',
+        cls: 'add-button',
+        attr: {
+            type: 'submit'
+        }
+    })
+
+    addButton.addEventListener('click', async (e) => {
+        e.preventDefault();
+
+        if(!inputName.value >= 1) {
+            inputName.focus()
+            return new Notice('Введите название')
+        }
+
+        // const data = {
+        //     name: inputName.value,
+        //     balance: currentBalance.value,
+        //     generalBalance: checkboxInput.checked,
+        //     comment: commentInput.value,
+        // }
+        // const resultOfadd = await pluginInstance.addJsonToBills(data)
+        // if(resultOfadd === "success") {
+        //     setTimeout(() => {
+        //         viewInstance.onOpen()
+        //         new Notice('Счёт добавлен')
+        //     }, 100)
+        // } else {
+        //     new Notice(resultOfadd)
+        // }
+    })
+}
+
 //====================================== Delete data ======================================
 
 async function deleteHistory(e) {
@@ -2449,7 +2611,7 @@ async function deletePlan(e) {
     let data = JSON.parse(jsonMatch[1]);
     if(data.length <= 1) {
         try {
-            if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset)) {
+            if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset, 'plan')) {
                 return 'Невозможно удалить категорию, так как она используется в истории'
             }
             
@@ -2462,7 +2624,47 @@ async function deletePlan(e) {
         }
     } else {
         try {
-            if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset)) {
+            if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset, 'plan')) {
+                return 'Невозможно удалить категорию, так как она используется в истории'
+            }
+
+            data = data.filter(item => item.id !== Number(id));
+            const dataStr = JSON.stringify(data, null, 4);
+            const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
+            await this.app.vault.modify(file, newContent);
+        
+            return "success"
+    
+        } catch (error) {
+            return (`Ошибка при удалении элемента: ${error}`)
+        }
+    }
+}
+
+async function deleteBill(e) {
+    const { id } = e.target.closest('li').dataset;
+    if(!id) {
+        return 'Element not found'
+    }
+
+    const { jsonMatch, content, file } = await pluginInstance.getDataFile('Bills')
+    let data = JSON.parse(jsonMatch[1]);
+    if(data.length <= 1) {
+        try {
+            if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset, 'bill')) {
+                return 'Невозможно удалить категорию, так как она используется в истории'
+            }
+            
+            const newContent = content.replace(/```json[\s\S]*?```/, "```json\n```");
+            await this.app.vault.modify(file, newContent);
+
+            return "success"
+        } catch (error) {
+            return (`Ошибка при удалении элемента: ${error}`)
+        }
+    } else {
+        try {
+            if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset, 'bill')) {
                 return 'Невозможно удалить категорию, так как она используется в истории'
             }
 
