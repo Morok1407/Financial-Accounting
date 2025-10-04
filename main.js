@@ -114,6 +114,12 @@ module.exports = class mainPlugin extends Plugin {
         return defEditingJsonToPlan(data, this)
     }
     
+    // Check for deletion data
+
+    async checkForDeletionData(data) {
+        return defCheckForDeletionData(data, this)
+    }
+    
     // Duplicating data to archive
     async archiveExpenditurePlan() {
         defArchiveExpenditurePlan(this)
@@ -2000,6 +2006,55 @@ async function defGetDataArchiveFile(fileName) {
     return dataFile
 }
 
+async function defCheckForDeletionData(data) {
+    const { name: categoryToFind } = data
+    
+    const financeFolder = app.vault.getAbstractFileByPath(baseFolder);
+    let allFiles = [];
+
+    let yearFolders = [];
+    for (const child of financeFolder.children) {
+        yearFolders.push(child);
+    }
+    yearFolders.pop(); // Remove "Archive" folder
+
+    let monthFolders = [];
+    for (let i = 0; i < yearFolders.length; i++) {
+        for (const child of yearFolders[i].children) {
+            monthFolders.push(child);
+        }
+    }
+
+    for (let i = 0; i < monthFolders.length; i++) {
+        for (const child of monthFolders[i].children) {
+            allFiles.push(child);
+        }
+    }
+
+    const historyFiles = allFiles.filter(f => f.name === "History.md");
+
+    for (const file of historyFiles) {
+        try {
+            const content = await app.vault.read(file);
+            const jsonMatch = content.match(/```json([\s\S]*?)```/);
+            if (jsonMatch[1].length <= 2) {
+                return false;
+            }
+            const jsonData = JSON.parse(jsonMatch[1].trim());
+            if (Array.isArray(jsonData)) {
+                const found = jsonData.some(item => item.category === categoryToFind);
+                if (found) {
+                    return true;
+                }
+            }
+        } catch (e) {
+            console.error("Ошибка чтения/парсинга файла:", file.path, e);
+        }
+    }
+
+    return false;
+}
+
 //====================================== Editing data ======================================
 
 async function editingHistory(e) {
@@ -2037,7 +2092,7 @@ async function editingHistory(e) {
     })
     setIcon(deleteButton, 'trash-2')
     deleteButton.addEventListener('click', async () => {
-        const redultOfDelete = await deleteHistory(e)
+        const redultOfDelete = await deleteHistory(e);
         if(redultOfDelete === "success") {
             setTimeout(() => {
                 viewInstance.onOpen()
@@ -2245,7 +2300,7 @@ async function editingPlan(e) {
     })
     setIcon(deleteButton, 'trash-2')
     deleteButton.addEventListener('click', async () => {
-        const redultOfDelete = await deletePlan(e)
+        const redultOfDelete = await deletePlan(e);
         if(redultOfDelete === "success") {
             setTimeout(() => {
                 viewInstance.onOpen()
@@ -2337,7 +2392,7 @@ async function deleteHistory(e) {
 
     const { jsonMatch, content, file } = await pluginInstance.getDataFile('History')
     let data = JSON.parse(jsonMatch[1]);
-    if(data.length === 1) {
+    if(data.length <= 1) {
         try {
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n```");
             await this.app.vault.modify(file, newContent);
@@ -2347,9 +2402,8 @@ async function deleteHistory(e) {
                 pluginInstance.incomeTransaction(e.target.closest('li').dataset, 'edit')
             } else {
                 return 'Error'
-            }
-            
-                return "success"
+            }           
+            return "success"
         } catch (error) {
             return (`Ошибка при удалении элемента: ${error}`)
         }
@@ -2376,7 +2430,53 @@ async function deleteHistory(e) {
 }
 
 async function deletePlan(e) {
-    const { id, name, type, comment } = e.target.closest('li').dataset;
+    const { id, type } = e.target.closest('li').dataset;
+    if(!id) {
+        return 'Element not found'
+    }
+
+    let modifier;
+
+    if(type === 'expense') {
+        modifier = 'Expenditure plan'
+    } else if (type === 'income') {
+        modifier = 'Income plan'
+    } else {
+        return 'Error'
+    }
+
+    const { jsonMatch, content, file } = await pluginInstance.getDataFile(modifier)
+    let data = JSON.parse(jsonMatch[1]);
+    if(data.length <= 1) {
+        try {
+            if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset)) {
+                return 'Невозможно удалить категорию, так как она используется в истории'
+            }
+            
+            const newContent = content.replace(/```json[\s\S]*?```/, "```json\n```");
+            await this.app.vault.modify(file, newContent);
+
+            return "success"
+        } catch (error) {
+            return (`Ошибка при удалении элемента: ${error}`)
+        }
+    } else {
+        try {
+            if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset)) {
+                return 'Невозможно удалить категорию, так как она используется в истории'
+            }
+
+            data = data.filter(item => item.id !== Number(id));
+            const dataStr = JSON.stringify(data, null, 4);
+            const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
+            await this.app.vault.modify(file, newContent);
+        
+            return "success"
+    
+        } catch (error) {
+            return (`Ошибка при удалении элемента: ${error}`)
+        }
+    }
 }
 
 //====================================== Other Function ======================================
