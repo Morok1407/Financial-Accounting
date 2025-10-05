@@ -1789,30 +1789,23 @@ async function showBills(mainContentBody, mainContentButton) {
 //====================================== Duplicating data to archive ======================================
 
 async function defArchiveExpenditurePlan() {
-    const { jsonMatch } = await pluginInstance.getDataFile('Expenditure plan')
+    const { file } = await pluginInstance.getDataFile('Expenditure plan')
     const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive expenditure plan')
 
-    jsonData = JSON.parse(jsonMatch[1].trim())
-    const data = jsonData.map(({ amount, ...rest }) => rest);
-    const content = `---\ntags:\n- Finances\n---\n\`\`\`json\n${JSON.stringify(data, null, 4)}\n\`\`\``
-
+    const content = await app.vault.read(file);
     await this.app.vault.modify(archiveFile, content);
 }
 
 async function defArchiveIncomePlan() {
-    const { jsonMatch } = await pluginInstance.getDataFile('Income plan')
+    const { file } = await pluginInstance.getDataFile('Income plan')
     const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive income plan')
 
-    jsonData = JSON.parse(jsonMatch[1].trim())
-    const data = jsonData.map(({ amount, ...rest }) => rest);
-    const content = `---\ntags:\n- Finances\n---\n\`\`\`json\n${JSON.stringify(data, null, 4)}\n\`\`\``
-
+    const content = await app.vault.read(file);
     await this.app.vault.modify(archiveFile, content);
 }
 
 async function defArchiveBills() {
     const { file } = await pluginInstance.getDataFile('Bills')
-
     const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive bills')
 
     const content = await app.vault.read(file);
@@ -1822,30 +1815,23 @@ async function defArchiveBills() {
 //====================================== Transferring data to a new month ======================================
 
 async function defNewMonthExpenditurePlan() {
-    const { jsonMatch } = await pluginInstance.getDataArchiveFile('Archive expenditure plan')
+    const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive expenditure plan')
     const { file } = await pluginInstance.getDataFile('Expenditure plan')
 
-    jsonData = JSON.parse(jsonMatch[1].trim())
-    const data = jsonData.map(obj => ({ ...obj, amount: 0 }));
-    const content = `---\ntags:\n- Finances\n---\n\`\`\`json\n${JSON.stringify(data, null, 4)}\n\`\`\``
-
+    const content = await app.vault.read(archiveFile);
     await this.app.vault.modify(file, content);
 }
 
 async function defNewMonthIncomePlan() {
-    const { jsonMatch } = await pluginInstance.getDataArchiveFile('Archive income plan')
+    const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive income plan')
     const { file } = await pluginInstance.getDataFile('Income plan')
     
-    jsonData = JSON.parse(jsonMatch[1].trim())
-    const data = jsonData.map(obj => ({ ...obj, amount: 0 }));
-    const content = `---\ntags:\n- Finances\n---\n\`\`\`json\n${JSON.stringify(data, null, 4)}\n\`\`\``
-
+    const content = await app.vault.read(archiveFile);
     await this.app.vault.modify(file, content);
 }
 
 async function defNewMonthBills() {
     const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive bills')
-    
     const { file } = await pluginInstance.getDataFile('Bills')
 
     const content = await app.vault.read(archiveFile);
@@ -2606,7 +2592,7 @@ async function deletePlan(e) {
     } else {
         return 'Error'
     }
-
+    
     const { jsonMatch, content, file } = await pluginInstance.getDataFile(modifier)
     let data = JSON.parse(jsonMatch[1]);
     if(data.length <= 1) {
@@ -2617,7 +2603,14 @@ async function deletePlan(e) {
             
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n```");
             await this.app.vault.modify(file, newContent);
-
+            if(type === 'expense') {
+                pluginInstance.archiveExpenditurePlan()
+            } else if (type === 'income') {
+                pluginInstance.archiveIncomePlan()
+            } else {
+                return 'Error'
+            }
+            
             return "success"
         } catch (error) {
             return (`Ошибка при удалении элемента: ${error}`)
@@ -2627,12 +2620,19 @@ async function deletePlan(e) {
             if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset, 'plan')) {
                 return 'Невозможно удалить категорию, так как она используется в истории'
             }
-
+            
             data = data.filter(item => item.id !== Number(id));
             const dataStr = JSON.stringify(data, null, 4);
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await this.app.vault.modify(file, newContent);
-        
+            if(type === 'expense') {
+                pluginInstance.archiveExpenditurePlan()
+            } else if (type === 'income') {
+                pluginInstance.archiveIncomePlan()
+            } else {
+                return 'Error'
+            }
+            
             return "success"
     
         } catch (error) {
@@ -2657,6 +2657,7 @@ async function deleteBill(e) {
             
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n```");
             await this.app.vault.modify(file, newContent);
+            pluginInstance.archiveBills()
 
             return "success"
         } catch (error) {
@@ -2672,6 +2673,7 @@ async function deleteBill(e) {
             const dataStr = JSON.stringify(data, null, 4);
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await this.app.vault.modify(file, newContent);
+            pluginInstance.archiveBills()
         
             return "success"
     
