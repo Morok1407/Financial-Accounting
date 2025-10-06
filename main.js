@@ -1,12 +1,9 @@
 // @ts-ignore
-const { Plugin, ItemView, Notice, setIcon, Platform } = require("obsidian");
+const { Plugin, ItemView, Notice, setIcon, Platform, PluginSettingTab, TFolder, Setting } = require("obsidian");
 
 const FINANCIAL_ACCOUNTING_VIEW = "financial-accounting-view";
 let pluginInstance;
 let viewInstance;
-let baseFolder = "My Life/My Finances";
-let selectedMonth;
-let selectedYear;
 
 module.exports = class mainPlugin extends Plugin {
     async onload() {
@@ -16,16 +13,21 @@ module.exports = class mainPlugin extends Plugin {
         );
         pluginInstance = this;
 
-        this.addRibbonIcon("badge-dollar-sign", "Add operation", async () => {
-            this.activateView()
+        this.app.workspace.onLayoutReady(async () => {
+            await this.loadSettings();
 
-            await this.createDirectory();
-        });
+            this.addSettingTab(new SettingsTab(this.app, this));
 
-        this.addCommand({
-            id: "financial-accounting-view",
-            name: "Открыть панель финансов",
-            callback: () => this.activateView(),
+            this.addRibbonIcon("badge-dollar-sign", "Add operation", async () => {
+                this.activateView();
+                await this.createDirectory();
+            });
+
+            this.addCommand({
+                id: "financial-accounting-view",
+                name: "Открыть панель финансов",
+                callback: () => this.activateView(),
+            });
         });
     }
 
@@ -45,6 +47,16 @@ module.exports = class mainPlugin extends Plugin {
             });
         }
         workspace.revealLeaf(leaf);
+    }
+
+    async loadSettings() {
+        const loaded = await this.loadData();
+        const defaults = new DefaultSettings();
+        this.settings = Object.assign({}, defaults, loaded || {});
+    }
+
+    async saveSettings() {
+        await this.saveData(this.settings);
     }
 
     // Create directory
@@ -206,24 +218,72 @@ class FinancialAccountingView extends ItemView {
     }
 }
 
+class DefaultSettings {
+    constructor() {
+        this.targetFolder = 'Finances';
+    }
+}
+
+class SettingsTab extends PluginSettingTab {
+    constructor(app, plugin) {
+        super(app, plugin);
+        this.plugin = plugin;
+    }
+
+    display() {
+        const { containerEl } = this;
+        containerEl.empty();
+
+        containerEl.createEl('h1', { text: 'Настройки плагина' });
+
+        const folders = this.app.vault.getAllLoadedFiles()
+            .filter(f => f instanceof TFolder)
+            .map(f => f.path);
+
+        const defaultFolder = this.plugin.settings.targetFolder || 'Finances/';
+        const hasDefault = folders.includes(defaultFolder);
+
+        new Setting(containerEl)
+            .setName('Рабочая директория')
+            .setDesc('Выберите папку, с которой будет работать плагин')
+            .addDropdown(drop => {
+            for (const path of folders) {
+                drop.addOption(path, path);
+            }
+
+            if (!hasDefault) {
+                drop.addOption(defaultFolder, `${defaultFolder} (не существует)`);
+            }
+
+            drop.setValue(defaultFolder);
+
+            drop.onChange(async (value) => {
+                this.plugin.settings.targetFolder = value;
+                await this.plugin.saveSettings();
+                new Notice(`Выбрана папка: ${value}`);
+            });
+        });
+    }
+}
+
 //====================================== Create directory ======================================
 
 async function defCreateDirectory() {
     const { now, year, month } = getDate()
 
-    const archiveFolder = `${baseFolder}/Archive`
+    const archiveFolder = `${pluginInstance.settings.targetFolder}/Archive`
     const archiveExpenditurePlan = `${archiveFolder}/Archive expenditure plan.md`
     const archiveIncomePlan = `${archiveFolder}/Archive income plan.md`
     const archiveBills = `${archiveFolder}/Archive bills.md`
-    const yearFolder = `${baseFolder}/${year}`;
+    const yearFolder = `${pluginInstance.settings.targetFolder}/${year}`;
     const monthFolder = `${yearFolder}/${month}`;
     const historyPath = `${monthFolder}/History.md`;
     const expenditurePlanPath = `${monthFolder}/Expenditure plan.md`;
     const incomePlanPath = `${monthFolder}/Income plan.md`;
     const billsPath = `${monthFolder}/Bills.md`;
     
-    if (!await this.app.vault.adapter.exists(baseFolder)) {
-        await this.app.vault.createFolder(baseFolder);
+    if (!await this.app.vault.adapter.exists(pluginInstance.settings.targetFolder)) {
+        await this.app.vault.createFolder(pluginInstance.settings.targetFolder);
     }
 
     if (!await this.app.vault.adapter.exists(archiveFolder)) {
@@ -289,7 +349,7 @@ async function defCreateOtherMonthDirectory(numMonth, year) {
         "December"
     ];
 
-    const yearFolder = `${baseFolder}/${year}`;
+    const yearFolder = `${pluginInstance.settings.targetFolder}/${year}`;
     const monthFolder = `${yearFolder}/${months[numMonth]}`;
     const historyPath = `${monthFolder}/History.md`;
     const expenditurePlanPath = `${monthFolder}/Expenditure plan.md`;
@@ -297,8 +357,8 @@ async function defCreateOtherMonthDirectory(numMonth, year) {
     const billsPath = `${monthFolder}/Bills.md`;
 
     try {
-        if (!await this.app.vault.adapter.exists(baseFolder)) {
-            await this.app.vault.createFolder(baseFolder);
+        if (!await this.app.vault.adapter.exists(pluginInstance.settings.targetFolder)) {
+            await this.app.vault.createFolder(pluginInstance.settings.targetFolder);
         }
     
         if (!await this.app.vault.adapter.exists(yearFolder)) {
@@ -2008,7 +2068,7 @@ async function defGetDataArchiveFile(fileName) {
 async function defCheckForDeletionData(data, modifier) {
     const { name: categoryToFind } = data
     
-    const financeFolder = app.vault.getAbstractFileByPath(baseFolder);
+    const financeFolder = app.vault.getAbstractFileByPath(pluginInstance.settings.targetFolder);
     let allFiles = [];
 
     let yearFolders = [];
