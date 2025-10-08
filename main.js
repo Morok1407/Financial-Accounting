@@ -7,6 +7,8 @@ let viewInstance;
 
 module.exports = class mainPlugin extends Plugin {
     async onload() {
+        await this.loadSettings();
+
         this.registerView(
             FINANCIAL_ACCOUNTING_VIEW,
             (leaf) => new FinancialAccountingView(leaf)
@@ -14,8 +16,6 @@ module.exports = class mainPlugin extends Plugin {
         pluginInstance = this;
 
         this.app.workspace.onLayoutReady(async () => {
-            await this.loadSettings();
-
             this.addSettingTab(new SettingsTab(this.app, this));
 
             this.addRibbonIcon("badge-dollar-sign", "Add operation", async () => {
@@ -28,13 +28,13 @@ module.exports = class mainPlugin extends Plugin {
                 name: "Открыть панель финансов",
                 callback: () => this.activateView(),
             });
-        });
+    });
     }
 
     async activateView() {
-    const { workspace } = this.app;
+        const { workspace } = this.app;
 
-    let leaf = workspace.getLeavesOfType(FINANCIAL_ACCOUNTING_VIEW)[0];
+        let leaf = workspace.getLeavesOfType(FINANCIAL_ACCOUNTING_VIEW)[0];
         if (!leaf) {
             if (Platform.isDesktop) {
                 leaf = workspace.getRightLeaf(false);
@@ -125,6 +125,10 @@ module.exports = class mainPlugin extends Plugin {
     async editingJsonToPlan(data) {
         return defEditingJsonToPlan(data, this)
     }
+
+    async editingJsonToBill(data) {
+        return defEditingJsonToBill(data, this)
+    }
     
     // Check for deletion data
 
@@ -169,20 +173,20 @@ module.exports = class mainPlugin extends Plugin {
         return defGetDataArchiveFile(fileName, this)
     }
 
-    async expenditureTransaction(data, modifier) {
-        return defExpenditureTransaction(data, modifier, this)
+    async expenditureTransaction(data, modifier, oldData) {
+        return defExpenditureTransaction(data, modifier, oldData, this)
     }
 
-    async incomeTransaction(data, modifier) {
-        return defIncomeTransaction(data, modifier, this)
+    async incomeTransaction(data, modifier, oldData) {
+        return defIncomeTransaction(data, modifier, oldData, this)
     }
 
     async updateData(fileName, accountName, targetE, newTargetE) {
         return defUpdateData(fileName, accountName, targetE, newTargetE, this)
     }
 
-    async checkBill(data) {
-        return defCheckBill(data, this)
+    async checkBill(data, oldData) {
+        return defCheckBill(data, oldData, this)
     }
 
     onunload() {
@@ -221,6 +225,7 @@ class FinancialAccountingView extends ItemView {
 class DefaultSettings {
     constructor() {
         this.targetFolder = 'Finances';
+        this.startYear = 2020;
     }
 }
 
@@ -261,6 +266,25 @@ class SettingsTab extends PluginSettingTab {
                 this.plugin.settings.targetFolder = value;
                 await this.plugin.saveSettings();
                 new Notice(`Выбрана папка: ${value}`);
+            });
+        });
+
+        new Setting(containerEl)
+        .setName('Начальный год учёта')
+        .setDesc('Выберите, с какого года ведётся финансовый учёт')
+        .addDropdown(drop => {
+            const currentYear = new Date().getFullYear();
+            for (let year = currentYear - 100; year <= currentYear; year++) {
+                drop.addOption(String(year), String(year));
+            }
+
+            // устанавливаем текущее значение из настроек
+            drop.setValue(String(this.plugin.settings.startYear));
+
+            drop.onChange(async (value) => {
+                this.plugin.settings.startYear = Number(value);
+                await this.plugin.saveSettings();
+                new Notice(`Начальный год изменён на ${value}`);
             });
         });
     }
@@ -661,7 +685,7 @@ async function defAddHistory() {
             amount: Number(inputSum.value),
             bill: selectBills.value,
             category: selectCategory.value,
-            comment: commentInput.value,
+            comment: commentInput.value.trim(),
             date: selectDate.value,
             type: resultRadio,
         }
@@ -784,8 +808,8 @@ async function defAddPlan() {
         }
 
         const data = {
-            name: inputName.value,
-            comment: commentInput.value,
+            name: inputName.value.trim(),
+            comment: commentInput.value.trim(),
             type: resultRadio,
         }
         const resultOfadd = await pluginInstance.addJsonToPlan(data)
@@ -904,10 +928,10 @@ async function defAddBills() {
         }
 
         const data = {
-            name: inputName.value,
-            balance: currentBalance.value,
+            name: inputName.value.trim(),
+            balance: Number(currentBalance.value),
             generalBalance: checkboxInput.checked,
-            comment: commentInput.value,
+            comment: commentInput.value.trim(),
         }
         const resultOfadd = await pluginInstance.addJsonToBills(data)
         if(resultOfadd === "success") {
@@ -1075,10 +1099,46 @@ async function defAddJsonToBills(data) {
 //====================================== Editing data to file ======================================
 
 async function defEditingJsonToHistory(data) {
-    console.log(data)
+    if(data.amount === 0) {
+        return 'Нельзя исправить на 0'
+    }
+
+    const { jsonMatch, content, file } = await pluginInstance.getDataFile('History')
+    try {
+        const jsonData = JSON.parse(jsonMatch[1].trim());
+        const newData = jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
+        const oldData = jsonData.find(item => item.id === data.id);
+        
+        if(data.type === 'expense') {
+            const resultCheckBill  = await pluginInstance.checkBill(data, oldData)
+            if(!(resultCheckBill === 'success')) {
+                return resultCheckBill
+            }
+        }
+
+        const dataStr = JSON.stringify(newData, null, 4) + "\n```";
+        const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr);
+        await this.app.vault.modify(file, newContent)
+
+        if(data.type === 'expense') {
+            pluginInstance.expenditureTransaction(data, 'edit', oldData)
+        } else if (data.type === 'income') {
+            pluginInstance.incomeTransaction(data, 'edit', oldData)
+        } else {
+            return 'Error'
+        }
+
+        return "success"
+    } catch (err) {
+        return err
+    }
 }
 
 async function defEditingJsonToPlan(data) {
+    console.log(data)
+}
+
+async function defEditingJsonToBill(data) {
     console.log(data)
 }
 
@@ -1229,7 +1289,7 @@ async function showAllMonths(contentEl) {
         '❄️ Декабрь'
     ];
 
-    for (let i = Number(year); i >= 2020; i--) {
+    for (let i = Number(year); i >= pluginInstance.settings.startYear; i--) {
         const calendarUlTitle = calendarMain.createEl('div', {
             cls: 'calendar-list-title'
         })
@@ -1900,7 +1960,7 @@ async function defNewMonthBills() {
 
 //====================================== Middleware Function ======================================
 
-async function defExpenditureTransaction(data, modifier) {
+async function defExpenditureTransaction(data, modifier, oldData) {
     let billName;
     let billBalace;
 
@@ -1936,10 +1996,27 @@ async function defExpenditureTransaction(data, modifier) {
         } catch (error) {
             return error
         }
-    } else if (modifier === 'edit') {
+    } else if (modifier === 'remove') {
         try {
             billBalace += Number(data.amount)
             planAmount -= Number(data.amount)
+
+            await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
+            await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
+            await pluginInstance.archiveBills()
+        } catch (error) {
+            return error
+        }
+    } else if (modifier === 'edit') {
+        try {
+            billBalace += Number(oldData.amount)
+            planAmount -= Number(oldData.amount)
+            
+            await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
+            await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
+            
+            billBalace -= Number(data.amount)
+            planAmount += Number(data.amount)
 
             await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
             await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
@@ -1952,7 +2029,7 @@ async function defExpenditureTransaction(data, modifier) {
     }
 }
 
-async function defIncomeTransaction(data, modifier) {
+async function defIncomeTransaction(data, modifier, oldData) {
     let billName;
     let billBalace;
 
@@ -1988,11 +2065,28 @@ async function defIncomeTransaction(data, modifier) {
         } catch (error) {
             return error
         }
-    } else if (modifier === 'edit') {
+    } else if (modifier === 'remove') {
         try {
             billBalace -= data.amount
             planAmount -= data.amount
         
+            await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
+            await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
+            await pluginInstance.archiveBills()
+        } catch (error) {
+            return error
+        }
+    } else if (modifier === 'edit') {
+        try {
+            billBalace -= Number(oldData.amount)
+            planAmount -= Number(oldData.amount)
+            
+            await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
+            await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
+            
+            billBalace += Number(data.amount)
+            planAmount += Number(data.amount)
+
             await pluginInstance.updateData('Bills', billName, 'balance', billBalace)
             await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
             await pluginInstance.archiveBills()
@@ -2021,7 +2115,7 @@ async function defUpdateData(fileName, accountName, targetE, newTargetE) {
 }
 
 
-async function defCheckBill(data) {
+async function defCheckBill(data, oldData) {
     const { year, month } = getDate()
     const filePath = `My Life/My Finances/${year}/${month}/Bills.md`
     const file = app.vault.getAbstractFileByPath(filePath);
@@ -2032,15 +2126,32 @@ async function defCheckBill(data) {
 
     let result;
 
-    jsonData.forEach((e, i) => {
-        if(e.name === data.bill) {
-            if(data.amount > jsonData[i].balance) {
-                result = `На счету ${jsonData[i].name} недостаточно средств`
+    if(oldData) {
+        jsonData.forEach((e, i) => {
+            if(e.name === data.bill) {
+                const oldBalance = jsonData[i].balance + oldData.amount
+                if(data.amount > oldBalance) {
+                    result = `На счету ${jsonData[i].name} недостаточно средств`
+                } else {
+                    result = "success"
+                }
             } else {
-                result = "success"
+                result = `Счёт ${data.bill} не найден`
             }
-        }
-    })
+        })
+    } else {
+        jsonData.forEach((e, i) => {
+            if(e.name === data.bill) {
+                if(data.amount > jsonData[i].balance) {
+                    result = `На счету ${jsonData[i].name} недостаточно средств`
+                } else {
+                    result = "success"
+                }
+            } else {
+                result = `Счёт ${data.bill} не найден`
+            }
+        })
+    }
 
     return result
 }
@@ -2321,6 +2432,7 @@ async function editingHistory(e) {
         }
 
         const data = {
+            id: Number(id),
             amount: Number(inputSum.value),
             bill: selectBills.value,
             category: selectCategory.value,
@@ -2572,21 +2684,21 @@ async function editingBill(e) {
             return new Notice('Введите название')
         }
 
-        // const data = {
-        //     name: inputName.value,
-        //     balance: currentBalance.value,
-        //     generalBalance: checkboxInput.checked,
-        //     comment: commentInput.value,
-        // }
-        // const resultOfadd = await pluginInstance.addJsonToBills(data)
-        // if(resultOfadd === "success") {
-        //     setTimeout(() => {
-        //         viewInstance.onOpen()
-        //         new Notice('Счёт добавлен')
-        //     }, 100)
-        // } else {
-        //     new Notice(resultOfadd)
-        // }
+        const data = {
+            name: inputName.value,
+            balance: currentBalance.value,
+            generalBalance: checkboxInput.checked,
+            comment: commentInput.value,
+        }
+        const resultOfadd = await pluginInstance.editingJsonToBill(data)
+        if(resultOfadd === "success") {
+            setTimeout(() => {
+                viewInstance.onOpen()
+                new Notice('Счёт добавлен')
+            }, 100)
+        } else {
+            new Notice(resultOfadd)
+        }
     })
 }
 
@@ -2605,9 +2717,9 @@ async function deleteHistory(e) {
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n```");
             await this.app.vault.modify(file, newContent);
             if(type === 'expense') {
-                pluginInstance.expenditureTransaction(e.target.closest('li').dataset, 'edit')
+                pluginInstance.expenditureTransaction(e.target.closest('li').dataset, 'remove')
             } else if (type === 'income') {
-                pluginInstance.incomeTransaction(e.target.closest('li').dataset, 'edit')
+                pluginInstance.incomeTransaction(e.target.closest('li').dataset, 'remove')
             } else {
                 return 'Error'
             }           
@@ -2622,9 +2734,9 @@ async function deleteHistory(e) {
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await this.app.vault.modify(file, newContent);
             if(type === 'expense') {
-                pluginInstance.expenditureTransaction(e.target.closest('li').dataset, 'edit')
+                pluginInstance.expenditureTransaction(e.target.closest('li').dataset, 'remove')
             } else if (type === 'income') {
-                pluginInstance.incomeTransaction(e.target.closest('li').dataset, 'edit')
+                pluginInstance.incomeTransaction(e.target.closest('li').dataset, 'remove')
             } else {
                 return 'Error'
             }
@@ -2820,7 +2932,7 @@ function SummarizingDataForTheDayExpense(obj) {
     let expense = 0;
     obj.forEach((e, i) => {
         if(e.type === 'expense'){
-            expense += e.amount
+            expense += Number(e.amount)
         } 
     })
     return expense
@@ -2832,7 +2944,7 @@ function SummarizingDataForTheDayIncome(obj) {
     let income = 0;
     obj.forEach((e, i) => {
         if(e.type === 'income'){
-            income += e.amount
+            income += Number(e.amount)
         } 
     })
     return income
@@ -2844,7 +2956,7 @@ function SummarizingDataForTheTrueBills(obj) {
     let balance = 0;
     obj.forEach((e, i) => {
         if(e.generalBalance) {
-            balance += e.balance
+            balance += Number(e.balance)
         }
     })
     return balance
@@ -2853,7 +2965,7 @@ function SummarizingDataForTheFalseBills(obj) {
     let balance = 0;
     obj.forEach((e, i) => {
         if(!e.generalBalance) {
-            balance += e.balance
+            balance += Number(e.balance)
         }
     })
     return balance
