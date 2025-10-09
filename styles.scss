@@ -227,7 +227,7 @@
     color: white !important;
     width: 100% !important;
     height: 50px !important;
-    margin: 0 12px 0px 0;
+    margin: 0 11px 12px 0;
 }
 
 .exit-button {
@@ -482,4 +482,16 @@
 }
 .income-all-month {
     color: #abafb3
+}
+
+// ===========================================
+
+.history-plan {
+    width: 100%;
+    background-color: #232e3c;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    border-radius: 12px;
+    padding: 16px;
 }

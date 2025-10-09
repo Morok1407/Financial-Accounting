@@ -2623,14 +2623,82 @@ async function editingPlan(e) {
         }
     })
 
-    const historyPlan = contentEl.createEl('div', {
-        cls: 'history-plan'
-    })
+    let historyInfo = await pluginInstance.searchHistory();
+    const filterHistoryInfo = historyInfo.filter(item => item.category === name)
+    if(filterHistoryInfo.length >= 1) {
+        const grouped = Object.values(
+            filterHistoryInfo.reduce((acc, item) => {
+                if (!acc[item.date]) {
+                    acc[item.date] = [];
+                }
+                acc[item.date].push(item);
+                return acc;
+            }, {})
+        );
+        const result = grouped.sort((a, b) => {
+            const dateA = new Date(a[0].date.split("-").reverse().join("-"));
+            const dateB = new Date(b[0].date.split("-").reverse().join("-"));
+            return dateB - dateA;
+        });
+
+        const historyPlanTitle = contentEl.createEl('h1', {
+            text: 'История плана'
+        })
+
+        const historyPlan = contentEl.createEl('div', {
+            cls: 'history-plan'
+        })
+
+        result.forEach((e, i) => {
+            const historyBlock = historyPlan.createEl('div', {
+                cls: 'history-block'
+            })
+            
+            const dateBlock = historyBlock.createEl('div', {
+                cls: 'full-data-block'
+            })
+            const dateSpan = dateBlock.createEl('span', {
+                text: `${e[0].date}`
+            })
+            const matchSpan = dateBlock.createEl('span', {
+                text: `- ${SummarizingDataForTheDayExpense(e)} + ${SummarizingDataForTheDayIncome(e)}`
+            })
+            const dataList = historyBlock.createEl('ul', {
+                cls: 'data-list'
+            })
+            e.forEach((e, i) => {
+                const dataItem = dataList.createEl('li', {
+                    cls: 'data-item',
+                    attr: {
+                        'data-id': e.id,
+                        'data-amount': e.amount,
+                        'data-bill': e.bill,
+                        'data-category': e.category,
+                        'data-type': e.type,
+                        'data-comment': e.comment,
+                        'data-date': e.date,
+                    }
+                })
+                dataItem.onclick = async (e) => {
+                    await editingHistory(e);
+                };
+                const itemCategory = dataItem.createEl('p', {
+                    text: `${e.category}`
+                })
+                const itemBill = dataItem.createEl('span', {
+                    text: e.bill
+                })
+                const itemAmount = dataItem.createEl('p', {
+                    text: checkExpenceOrIncome(e.amount, e.type)
+                })
+            })
+        })
+    }
 }
 
 async function editingBill(e) {
     const { id, name, balance, generalbalance, comment } = e.target.closest('li').dataset;
-
+    
     const { contentEl } = viewInstance;
     contentEl.empty()
 
