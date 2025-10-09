@@ -138,11 +138,11 @@ module.exports = class mainPlugin extends Plugin {
     
     // Duplicating data to archive
     async archiveExpenditurePlan() {
-        defArchiveExpenditurePlan(this)
+        return defArchiveExpenditurePlan(this)
     }
     
     async archiveIncomePlan() {
-        defArchiveIncomePlan(this)
+        return defArchiveIncomePlan(this)
     }
 
     async archiveBills() {
@@ -761,11 +761,13 @@ async function defAddPlan() {
         radioExpense.removeClass('main-radion-button--active')
         radioIncome.addClass('main-radion-button--active')
         resultRadio = radioIncome.dataset.radio
+        inputName.focus()
     })
     radioExpense.addEventListener('click', () => {
         radioIncome.removeClass('main-radion-button--active')
         radioExpense.addClass('main-radion-button--active')
         resultRadio = radioExpense.dataset.radio
+        inputName.focus()
     })
     
     // Form input
@@ -1012,7 +1014,11 @@ async function defAddJsonToExpenditurePlan(data) {
             const index = content.lastIndexOf("}");
             const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
             await this.app.vault.modify(file, newContent);
-            pluginInstance.archiveExpenditurePlan()
+
+            const resultArchive = await pluginInstance.archiveExpenditurePlan()
+            if(!(resultArchive === 'success')) {
+                return 'Ошибка архивации плана'
+            }
 
             return "success"
         } else {
@@ -1021,7 +1027,11 @@ async function defAddJsonToExpenditurePlan(data) {
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
-            pluginInstance.archiveExpenditurePlan()
+            
+            const resultArchive = await pluginInstance.archiveExpenditurePlan()
+            if(!(resultArchive === 'success')) {
+                return 'Ошибка архивации плана'
+            }
 
             return "success"
         }
@@ -1043,8 +1053,12 @@ async function defAddJsonToIncomePlan(data) {
             const index = content.lastIndexOf("}");
             const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
             await this.app.vault.modify(file, newContent);
-            pluginInstance.archiveIncomePlan()
-            
+
+            const resultArchive = await pluginInstance.archiveIncomePlan()
+            if(!(resultArchive === 'success')) {
+                return 'Ошибка архивации плана'
+            }
+
             return "success"
         } else {
             const { name, comment, type } = data
@@ -1052,7 +1066,11 @@ async function defAddJsonToIncomePlan(data) {
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
-            pluginInstance.archiveIncomePlan()
+
+            const resultArchive = await pluginInstance.archiveIncomePlan()
+            if(!(resultArchive === 'success')) {
+                return 'Ошибка архивации плана'
+            }
 
             return "success"
         }
@@ -1136,6 +1154,14 @@ async function defEditingJsonToHistory(data) {
 
 async function defEditingJsonToPlan(data) {
     console.log(data)
+
+    if(data.type === 'expense') {
+
+    } else if (data.type === 'income') {
+
+    } else {
+        return 'Ошибка категории у счета'
+    }
 }
 
 async function defEditingJsonToBill(data) {
@@ -1909,19 +1935,59 @@ async function showBills(mainContentBody, mainContentButton) {
 //====================================== Duplicating data to archive ======================================
 
 async function defArchiveExpenditurePlan() {
-    const { file } = await pluginInstance.getDataFile('Expenditure plan')
+    const { file, jsonMatch, content } = await pluginInstance.getDataFile('Expenditure plan')
     const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive expenditure plan')
 
-    const content = await app.vault.read(file);
-    await this.app.vault.modify(archiveFile, content);
+    if(jsonMatch[1].length <= 1) {
+        try {
+            const content = await app.vault.read(file);
+            await this.app.vault.modify(archiveFile, content);
+
+            return 'success'
+        } catch (error) {
+            return error
+        }
+    } else {
+        try {
+            const jsonData = JSON.parse(jsonMatch[1].trim())
+            const data = jsonData.map(({ amount, ...rest }) => rest)
+            const dataStr = JSON.stringify(data, null, 4);
+            const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
+            await this.app.vault.modify(archiveFile, newContent);
+
+            return 'success'
+        } catch (error) {
+            return error
+        }
+    }
 }
 
 async function defArchiveIncomePlan() {
-    const { file } = await pluginInstance.getDataFile('Income plan')
+    const { file, jsonMatch, content } = await pluginInstance.getDataFile('Income plan')
     const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive income plan')
 
-    const content = await app.vault.read(file);
-    await this.app.vault.modify(archiveFile, content);
+    if(jsonMatch[1].length <= 1) {
+        try {
+            const content = await app.vault.read(file);
+            await this.app.vault.modify(archiveFile, content);
+
+            return 'success'
+        } catch (error) {
+            return error
+        }
+    } else {
+        try {
+            const jsonData = JSON.parse(jsonMatch[1].trim())
+            const data = jsonData.map(({ amount, ...rest }) => rest)
+            const dataStr = JSON.stringify(data, null, 4);
+            const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
+            await this.app.vault.modify(archiveFile, newContent);
+
+            return 'success'
+        } catch (error) {
+            return error
+        }
+    }
 }
 
 async function defArchiveBills() {
@@ -2556,6 +2622,10 @@ async function editingPlan(e) {
             new Notice(resultOfadd)
         }
     })
+
+    const historyPlan = contentEl.createEl('div', {
+        cls: 'history-plan'
+    })
 }
 
 async function editingBill(e) {
@@ -2776,9 +2846,15 @@ async function deletePlan(e) {
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n```");
             await this.app.vault.modify(file, newContent);
             if(type === 'expense') {
-                pluginInstance.archiveExpenditurePlan()
+                const resultArchive = await pluginInstance.archiveExpenditurePlan()
+                if(!(resultArchive === 'success')) {
+                    return 'Ошибка удаления плана в архиве'
+                }
             } else if (type === 'income') {
-                pluginInstance.archiveIncomePlan()
+                const resultArchive = await pluginInstance.archiveIncomePlan()
+                if(!(resultArchive === 'success')) {
+                    return 'Ошибка архивации плана'
+                }
             } else {
                 return 'Error'
             }
@@ -2824,7 +2900,7 @@ async function deleteBill(e) {
     if(data.length <= 1) {
         try {
             if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset, 'bill')) {
-                return 'Невозможно удалить категорию, так как она используется в истории'
+                return 'Невозможно удалить счет, так как он используется в истории'
             }
             
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n```");
@@ -2838,7 +2914,7 @@ async function deleteBill(e) {
     } else {
         try {
             if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset, 'bill')) {
-                return 'Невозможно удалить категорию, так как она используется в истории'
+                return 'Невозможно удалить счет, так как он используется в истории'
             }
 
             data = data.filter(item => item.id !== Number(id));
