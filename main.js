@@ -465,7 +465,11 @@ async function defCreateOtherMonthDirectory(numMonth, year) {
 async function defSearchHistory() {
     await pluginInstance.createDirectory()
     // Этот пидор на getDataFile запускается раньше чем успевает завершиться createDirectory
-    const { jsonMatch } = await pluginInstance.getDataFile('History')
+    const { jsonMatch, status } = await pluginInstance.getDataFile('History')
+    if(!(status === 'success')) {
+        console.error(status);
+        return status
+    }
     if(jsonMatch[1].length >= 2) {
         const jsonData = JSON.parse(jsonMatch[1].trim());
         return jsonData
@@ -476,7 +480,11 @@ async function defSearchHistory() {
 
 async function defSearchExpenditurePlan() {
     await pluginInstance.createDirectory()
-    const { jsonMatch } = await pluginInstance.getDataFile('Expenditure plan')
+    const { jsonMatch, status } = await pluginInstance.getDataFile('Expenditure plan')
+    if(!(status === 'success')) {
+        console.error(status);
+        return status
+    }
     if(jsonMatch[1].length >= 2) {
         const jsonData = JSON.parse(jsonMatch[1].trim())
         return jsonData
@@ -487,7 +495,11 @@ async function defSearchExpenditurePlan() {
 
 async function defSearchIncomePlan() {
     await pluginInstance.createDirectory()
-    const { jsonMatch } = await pluginInstance.getDataFile('Income plan')
+    const { jsonMatch, status } = await pluginInstance.getDataFile('Income plan')
+    if(!(status === 'success')) {
+        console.error(status);
+        return status
+    }
     if(jsonMatch[1].length >= 2) {
         const jsonData = JSON.parse(jsonMatch[1].trim());
         return jsonData 
@@ -499,7 +511,11 @@ async function defSearchIncomePlan() {
 
 async function defSearchBills() {
     await pluginInstance.createDirectory()
-    const { jsonMatch } = await pluginInstance.getDataArchiveFile('Archive bills')
+    const { jsonMatch, status } = await pluginInstance.getDataArchiveFile('Archive bills')
+    if(!(status === 'success')) {
+        console.error(status);
+        return status
+    }
     if(jsonMatch[1].length >= 2) {
         const jsonData = JSON.parse(jsonMatch[1].trim());
         return jsonData
@@ -511,17 +527,26 @@ async function defSearchBills() {
 //====================================== Add Data ======================================
 
 async function defAddHistory() {
-    const { jsonMatch: billsJsonMatch } = await pluginInstance.getDataArchiveFile('Archive bills')
+    const { jsonMatch: billsJsonMatch, status: archiveStatus } = await pluginInstance.getDataArchiveFile('Archive bills')
+    if(!(archiveStatus === 'success')) {
+        return archiveStatus
+    }
     if(billsJsonMatch[1].length < 3) {
         return new Notice('Add bills')
     }
     
-    const { jsonMatch: incomePlanJsonMatch } = await pluginInstance.getDataFile('Income plan')
+    const { jsonMatch: incomePlanJsonMatch, status: incomeStatus } = await pluginInstance.getDataFile('Income plan')
+    if(!(incomeStatus === 'success')) {
+        return incomeStatus
+    }
     if(incomePlanJsonMatch[1].length < 3) {
         return new Notice('Add an income category')
     }
     
-    const { jsonMatch: ExpenditurePlanJsonMatch } = await pluginInstance.getDataFile('Expenditure plan')
+    const { jsonMatch: ExpenditurePlanJsonMatch, status: expenseStatus } = await pluginInstance.getDataFile('Expenditure plan')
+    if(!(expenseStatus === 'success')) {
+        return expenseStatus
+    }
     if(ExpenditurePlanJsonMatch[1].length < 3) {
         return new Notice('Add an expense category')
     }
@@ -621,7 +646,7 @@ async function defAddHistory() {
     resultBills.sort((a, b) => b.balance - a.balance)
     resultBills.forEach(bill => {
         selectBills.createEl('option', {
-            text: `${bill.name} • ${bill.balance} ₸`,
+            text: `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
             attr: { value: bill.name }
         })
     })
@@ -642,7 +667,7 @@ async function defAddHistory() {
             resultCategory.sort((a, b) => b.amount - a.amount)
             resultCategory.forEach(plan => {
                 selectCategory.createEl('option', {
-                    text: `${plan.name} • ${plan.amount} ₸`,
+                    text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
                     attr: { value: plan.name }
                 })
             })
@@ -652,7 +677,7 @@ async function defAddHistory() {
             resultCategory.sort((a, b) => b.amount - a.amount)
             resultCategory.forEach(plan => {
                 selectCategory.createEl('option', {
-                    text: `${plan.name} • ${plan.amount} ₸`,
+                    text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
                     attr: { value: plan.name }
                 })
             })
@@ -922,6 +947,35 @@ async function defAddBills() {
         }
     })
 
+    const { popularCurrencies, allCurrencies } = getCurrencyGroups();
+
+    // --- Popular ---
+    const popularGroup = document.createElement("optgroup");
+    popularGroup.label = "Popular";
+
+    popularCurrencies.forEach(cur => {
+        const option = document.createElement("option");
+        option.value = cur.code;
+        option.textContent = `${cur.code} • ${cur.name} • ${cur.symbol}`;
+        popularGroup.appendChild(option);
+    });
+
+    // --- All ---
+    const allGroup = document.createElement("optgroup");
+    allGroup.label = "All currencies";
+
+    allCurrencies.forEach(cur => {
+        const option = document.createElement("option");
+        option.value = cur.code;
+        option.textContent = `${cur.code} ${cur.name} • ${cur.symbol}`;
+        allGroup.appendChild(option);
+    });
+
+    currencyInput.appendChild(popularGroup);
+    currencyInput.appendChild(allGroup);
+
+    currencyInput.value = pluginInstance.settings.baseCurrency;
+
     const currentBalance = mainFormInput.createEl('input', {
         cls: 'form-inputs',
         attr: {
@@ -977,6 +1031,7 @@ async function defAddBills() {
         const data = {
             name: inputName.value.trim(),
             balance: Number(currentBalance.value),
+            currency: currencyInput.value,
             generalBalance: checkboxInput.checked,
             comment: commentInput.value.trim(),
         }
@@ -996,7 +1051,7 @@ async function defAddBills() {
 
 async function defAddJsonToHistory(data) {
     if(data.amount === 0) {
-        return 'You can\'t add 0'
+        return 'You cannot add 0'
     }
     
     const resultCheckBill  = await pluginInstance.checkBill(data)
@@ -1005,39 +1060,42 @@ async function defAddJsonToHistory(data) {
             return resultCheckBill
         }
     }
-    
-    const { jsonMatch, content, file } = await pluginInstance.getDataFile('History')
+
+    const { jsonMatch, content, file, status } = await pluginInstance.getDataFile('History')
+    if(!(status === 'success')) {
+        return status
+    }
+
+    if(data.type === 'expense') {
+        const result = await pluginInstance.expenditureTransaction(data, 'add')
+        if(!(result === 'success')) {
+            return result
+        }
+    } else if (data.type === 'income') {
+        const result = await pluginInstance.incomeTransaction(data, 'add')
+        if(!(result === 'success')) {
+            return result
+        }
+    } else {
+        return 'Error'
+    }  
     try {
         if(jsonMatch[1].length >= 2) {
             const jsonData = JSON.parse(jsonMatch[1].trim());
             const lastElementId = jsonData[jsonData.length - 1].id
             const dataJson = {id: lastElementId + 1, ...data}
             const dataStr = JSON.stringify([dataJson], null, 4) + "]\n```";
-
+            
             const index = content.lastIndexOf("}");
             const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
             await this.app.vault.modify(file, newContent);
-            if(data.type === 'expense') {
-                pluginInstance.expenditureTransaction(data, 'add')
-            } else if (data.type === 'income') {
-                pluginInstance.incomeTransaction(data, 'add')
-            } else {
-                return 'Error'
-            }
-            
+
             return "success"
-        } else {
+        } else {            
             const dataJson = {id: 1, ...data}
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
-            if(data.type === 'expense') {
-                pluginInstance.expenditureTransaction(data, 'add')
-            } else if (data.type === 'income') {
-                pluginInstance.incomeTransaction(data, 'add')
-            } else {
-                return 'Error'
-            }
 
             return "success"
         }
@@ -1047,7 +1105,10 @@ async function defAddJsonToHistory(data) {
 }
 
 async function defAddJsonToExpenditurePlan(data) {
-    const { jsonMatch, content, file } = await pluginInstance.getDataFile('Expenditure plan')
+    const { jsonMatch, content, file, status } = await pluginInstance.getDataFile('Expenditure plan')
+    if(!(status === 'success')) {
+        return status
+    }
     try {
         if(jsonMatch[1].length >= 2) {
             const jsonData = JSON.parse(jsonMatch[1].trim());
@@ -1086,7 +1147,10 @@ async function defAddJsonToExpenditurePlan(data) {
 }
 
 async function defAddJsonToIncomePlan(data) {
-    const { jsonMatch, content, file } = await pluginInstance.getDataFile('Income plan')
+    const { jsonMatch, content, file, status } = await pluginInstance.getDataFile('Income plan')
+    if(!(status === 'success')) {
+        return status
+    }
     try {
         if(jsonMatch[1].length >= 2) {
             const jsonData = JSON.parse(jsonMatch[1].trim());
@@ -1129,13 +1193,17 @@ async function defAddJsonToBills(data) {
         data.balance = 0
     }
 
-    const { jsonMatch, content, file } = await pluginInstance.getDataArchiveFile('Archive bills')
+    const { name, balance, currency, generalBalance, comment } = data
+    
+    const { jsonMatch, content, file, status } = await pluginInstance.getDataArchiveFile('Archive bills')
+    if(!(status === 'success')) {
+        return status
+    }
     try {
         if(jsonMatch[1].length >= 2) {
             const jsonData = JSON.parse(jsonMatch[1].trim());
             const lastElementId = jsonData[jsonData.length - 1].id
-            const { name, balance, generalBalance, comment } = data
-            const dataJson = {id: lastElementId + 1, name, balance, generalBalance, comment}
+            const dataJson = {id: lastElementId + 1, name, balance, currency, generalBalance, comment}
             const dataStr = JSON.stringify([dataJson], null, 4) + "]\n```";
 
             const index = content.lastIndexOf("}");
@@ -1144,8 +1212,7 @@ async function defAddJsonToBills(data) {
             
             return "success"
         } else {
-            const { name, balance, generalBalance, comment } = data
-            const dataJson = {id: 1, name, balance, generalBalance, comment}
+            const dataJson = {id: 1, name, balance, currency, generalBalance, comment}
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
@@ -1164,30 +1231,39 @@ async function defEditingJsonToHistory(data) {
         return 'Cannot be corrected to 0'
     }
 
-    const { jsonMatch, content, file } = await pluginInstance.getDataFile('History')
+    const { jsonMatch, content, file, status } = await pluginInstance.getDataFile('History')
+    if(!(status === 'success')) {
+        return status
+    }
+
+    if(data.type === 'expense') {
+        const resultCheckBill  = await pluginInstance.checkBill(data, oldData)
+        if(!(resultCheckBill === 'success')) {
+            return resultCheckBill
+        }
+    }
+
+    if(data.type === 'expense') {
+        const result = await pluginInstance.expenditureTransaction(data, 'edit', oldData)
+        if(result !== 'success') {
+            return result
+        }
+    } else if (data.type === 'income') {
+        const result = await pluginInstance.incomeTransaction(data, 'edit', oldData)
+        if(result !== 'success') {
+            return result
+        }
+    } else {
+        return 'Error'
+    }
     try {
         const jsonData = JSON.parse(jsonMatch[1].trim());
         const newData = jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
         const oldData = jsonData.find(item => item.id === data.id);
-        
-        if(data.type === 'expense') {
-            const resultCheckBill  = await pluginInstance.checkBill(data, oldData)
-            if(!(resultCheckBill === 'success')) {
-                return resultCheckBill
-            }
-        }
 
         const dataStr = JSON.stringify(newData, null, 4) + "\n```";
         const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr);
         await this.app.vault.modify(file, newContent)
-
-        if(data.type === 'expense') {
-            pluginInstance.expenditureTransaction(data, 'edit', oldData)
-        } else if (data.type === 'income') {
-            pluginInstance.incomeTransaction(data, 'edit', oldData)
-        } else {
-            return 'Error'
-        }
 
         return "success"
     } catch (err) {
@@ -1260,7 +1336,7 @@ async function showInitialView() {
     })
 
     balanceTop.createEl('p', {
-        text: `${SummarizingDataForTheTrueBills(billsInfo)} ₸`
+        text: `${SummarizingDataForTheTrueBills(billsInfo)} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`
     })
 
     balanceTop.createEl('span', {
@@ -1290,7 +1366,7 @@ async function showInitialView() {
 
     setIcon(balanceExpensesСheck, 'upload')
     balanceExpensesСheck.createEl('p', {
-        text: SummarizingDataForTheDayExpense(expenditurePlanInfo)
+        text: String(SummarizingDataForTheDayExpense(expenditurePlanInfo))
     })
 
     const balanceIncome = balanceBody.createEl('div', {
@@ -1307,7 +1383,7 @@ async function showInitialView() {
 
     setIcon(balanceIncomeCheck, 'download')
     balanceIncomeCheck.createEl('p', {
-        text: SummarizingDataForTheDayIncome(incomePlanInfo)
+        text: String(SummarizingDataForTheDayIncome(incomePlanInfo))
     })
 
     homeButtons(contentEl)
@@ -1787,7 +1863,7 @@ async function showPlan(mainContentBody, mainContentButton) {
                     text: e.name
                 })
                 const itemAmount = dataItem.createEl('p', {
-                    text: e.amount
+                    text: String(e.amount)
                 })
             })
         }
@@ -1828,7 +1904,7 @@ async function showPlan(mainContentBody, mainContentButton) {
                     text: e.name
                 })
                 const itemAmount = dataItem.createEl('p', {
-                    text: e.amount
+                    text: String(e.amount)
                 })
             })
         }
@@ -1851,10 +1927,6 @@ async function showPlan(mainContentBody, mainContentButton) {
 
 async function showBills(mainContentBody, mainContentButton) {
     let billsInfo = await pluginInstance.searchBills();
-    
-    if(billsInfo.length > 5) {
-        mainContentBody.addClass('main-content-body--padding')
-    }
 
     if(billsInfo === null) {
         const undefinedContent = mainContentBody.createEl('div', {
@@ -1870,6 +1942,9 @@ async function showBills(mainContentBody, mainContentButton) {
             text: 'Enter any income and expenses to see how much money is actually left.'
         })
     } else {
+        if(billsInfo.length > 5) {
+            mainContentBody.addClass('main-content-body--padding')
+        }
         if(billsInfo.filter(e => e.generalBalance).length >= 1) {
             mainContentBody.removeClass('main-content-body--undefined')
             const trueBillBlock = mainContentBody.createEl('div', {
@@ -1907,7 +1982,7 @@ async function showBills(mainContentBody, mainContentButton) {
                         text: e.name
                     })
                     const itemAmount = dataItem.createEl('p', {
-                        text: e.balance
+                        text: String(e.balance)
                     })
                 }
             })
@@ -1950,7 +2025,7 @@ async function showBills(mainContentBody, mainContentButton) {
                         text: e.name
                     })
                     const itemAmount = dataItem.createEl('p', {
-                        text: e.balance
+                        text: String(e.balance)
                     })
                 }
             })
@@ -1971,8 +2046,14 @@ async function showBills(mainContentBody, mainContentButton) {
 //====================================== Duplicating data to archive ======================================
 
 async function defArchiveExpenditurePlan() {
-    const { file, jsonMatch, content } = await pluginInstance.getDataFile('Expenditure plan')
-    const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive expenditure plan')
+    const { file, jsonMatch, content, status } = await pluginInstance.getDataFile('Expenditure plan')
+    if(!(status === 'success')) {
+        return status
+    }
+    const { file: archiveFile, status: archiveStatus } = await pluginInstance.getDataArchiveFile('Archive expenditure plan')
+    if(!(archiveStatus === 'success')) {
+        return archiveStatus
+    }
 
     if(jsonMatch[1].length <= 1) {
         try {
@@ -1999,8 +2080,14 @@ async function defArchiveExpenditurePlan() {
 }
 
 async function defArchiveIncomePlan() {
-    const { file, jsonMatch, content } = await pluginInstance.getDataFile('Income plan')
-    const { file: archiveFile } = await pluginInstance.getDataArchiveFile('Archive income plan')
+    const { file, jsonMatch, content, status } = await pluginInstance.getDataFile('Income plan')
+    if(!(status === 'success')) {
+        return status
+    }
+    const { file: archiveFile, status: archiveStatus } = await pluginInstance.getDataArchiveFile('Archive income plan')
+    if(!(archiveStatus === 'success')) {
+        return archiveStatus
+    }
 
     if(jsonMatch[1].length <= 1) {
         try {
@@ -2029,8 +2116,14 @@ async function defArchiveIncomePlan() {
 //====================================== Transferring data to a new month ======================================
 
 async function defNewMonthExpenditurePlan() {
-    const { content, jsonMatch } = await pluginInstance.getDataArchiveFile('Archive expenditure plan')
-    const { file } = await pluginInstance.getDataFile('Expenditure plan')
+    const { content, jsonMatch, status: archiveStatus } = await pluginInstance.getDataArchiveFile('Archive expenditure plan')
+    if(!(archiveStatus === 'success')) {
+        return archiveStatus
+    }
+    const { file, status } = await pluginInstance.getDataFile('Expenditure plan')
+    if(!(status === 'success')) {
+        return status
+    }
 
     if(jsonMatch[1].length >= 1) {
         try {
@@ -2048,8 +2141,14 @@ async function defNewMonthExpenditurePlan() {
 }
 
 async function defNewMonthIncomePlan() {
-    const { content, jsonMatch } = await pluginInstance.getDataArchiveFile('Archive income plan')
-    const { file } = await pluginInstance.getDataFile('Income plan')
+    const { content, jsonMatch, status: achiveStatus } = await pluginInstance.getDataArchiveFile('Archive income plan')
+    if(!(achiveStatus === 'success')) {
+        return achiveStatus
+    }
+    const { file, status } = await pluginInstance.getDataFile('Income plan')
+    if(!(status === 'success')) {
+        return status
+    }
     
     if(jsonMatch[1].length >= 1) {
         try {
@@ -2075,7 +2174,10 @@ async function defExpenditureTransaction(data, modifier, oldData) {
     let planName;
     let planAmount;
 
-    const { jsonMatch: billsJsonMatch } = await pluginInstance.getDataArchiveFile("Archive bills")
+    const { jsonMatch: billsJsonMatch, status: archiveStatus } = await pluginInstance.getDataArchiveFile("Archive bills")
+    if(!(archiveStatus === 'success')) {
+        return archiveStatus
+    }
     const billsJsonData = JSON.parse(billsJsonMatch[1].trim());
     billsJsonData.forEach((e, i) => {
         if(e.name === data.bill) {
@@ -2084,7 +2186,10 @@ async function defExpenditureTransaction(data, modifier, oldData) {
         }
     })
 
-    const { jsonMatch: planJsonMatch } = await pluginInstance.getDataFile("Expenditure plan")
+    const { jsonMatch: planJsonMatch, status } = await pluginInstance.getDataFile("Expenditure plan")
+    if(!(status === 'success')) {
+        return status
+    }
     const planJsonData = JSON.parse(planJsonMatch[1].trim());
     planJsonData.forEach((e, i) => {
         if(e.name === data.category) {
@@ -2103,6 +2208,8 @@ async function defExpenditureTransaction(data, modifier, oldData) {
             if(!(resultBills === 'success') || !(resultPlan === 'success')) {
                 return 'Error update data'
             }
+
+            return 'success'
         } catch (error) {
             return error
         }
@@ -2116,6 +2223,8 @@ async function defExpenditureTransaction(data, modifier, oldData) {
             if(!(resultBills === 'success') || !(resultPlan === 'success')) {
                 return 'Error update data'
             }
+
+            return 'success'
         } catch (error) {
             return error
         }
@@ -2138,6 +2247,8 @@ async function defExpenditureTransaction(data, modifier, oldData) {
             if(!(resultBills === 'success') || !(resultPlan === 'success')) {
                 return 'Error update data'
             }
+
+            return 'success'
         } catch (error) {
             return error
         }
@@ -2153,7 +2264,10 @@ async function defIncomeTransaction(data, modifier, oldData) {
     let planName;
     let planAmount;
 
-    const { jsonMatch: billsJsonMatch } = await pluginInstance.getDataArchiveFile("Archive bills")
+    const { jsonMatch: billsJsonMatch, status: archiveStatus } = await pluginInstance.getDataArchiveFile("Archive bills")
+    if(!(archiveStatus === 'success')) {
+        return archiveStatus
+    }
     const billsJsonData = JSON.parse(billsJsonMatch[1].trim());
     
     billsJsonData.forEach((e, i) => {
@@ -2163,7 +2277,10 @@ async function defIncomeTransaction(data, modifier, oldData) {
         }
     })
 
-    const { jsonMatch: planJsonMatch } = await pluginInstance.getDataFile("Income plan")
+    const { jsonMatch: planJsonMatch, status } = await pluginInstance.getDataFile("Income plan")
+    if(!(status === 'success')) {
+        return status
+    }
     const planJsonData = JSON.parse(planJsonMatch[1].trim());
     planJsonData.forEach((e, i) => {
         if(e.name === data.category) {
@@ -2177,10 +2294,12 @@ async function defIncomeTransaction(data, modifier, oldData) {
             planAmount += Number(data.amount)
         
             const resultBills = await pluginInstance.updateData('Archive bills', billName, 'balance', billBalace)
-            const resultPlan = await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
+            const resultPlan = await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
             if(!(resultBills === 'success') || !(resultPlan === 'success')) {
                 return 'Error update data'
             }
+
+            return 'success'
         } catch (error) {
             return error
         }
@@ -2188,12 +2307,18 @@ async function defIncomeTransaction(data, modifier, oldData) {
         try {
             billBalace -= data.amount
             planAmount -= data.amount
+
+            if(billBalace < 0) {
+                return `On bill ${billName} insufficient funds`
+            }
         
             const resultBills = await pluginInstance.updateData('Archive bills', billName, 'balance', billBalace)
-            const resultPlan = await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
+            const resultPlan = await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
             if(!(resultBills === 'success') || !(resultPlan === 'success')) {
                 return 'Error update data'
             }
+
+            return 'success'
         } catch (error) {
             return error
         }
@@ -2203,7 +2328,7 @@ async function defIncomeTransaction(data, modifier, oldData) {
             planAmount -= Number(oldData.amount)
             
             const resultBillsReset = await pluginInstance.updateData('Archive bills', billName, 'balance', billBalace)
-            const resultPlanReset = await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
+            const resultPlanReset = await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
             if(!(resultBillsReset === 'success') || !(resultPlanReset === 'success')) {
                 return 'Error update data'
             }
@@ -2212,10 +2337,12 @@ async function defIncomeTransaction(data, modifier, oldData) {
             planAmount += Number(data.amount)
 
             const resultBills = await pluginInstance.updateData('Archive bills', billName, 'balance', billBalace)
-            const resultPlan = await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
+            const resultPlan = await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
             if(!(resultBills === 'success') || !(resultPlan === 'success')) {
                 return 'Error update data'
             }
+
+            return 'success'
         } catch (error) {
             return error
         }
@@ -2226,7 +2353,10 @@ async function defIncomeTransaction(data, modifier, oldData) {
 
 async function defUpdateData(fileName, accountName, targetE, newTargetE) {
     if(fileName === 'Archive bills') {
-        const { jsonMatch, content, file } = await pluginInstance.getDataArchiveFile(fileName)
+        const { jsonMatch, content, file, status: archiveStatus } = await pluginInstance.getDataArchiveFile(fileName)
+        if(!(archiveStatus === 'success')) {
+            return archiveStatus
+        }
 
         try {
             let data = JSON.parse(jsonMatch[1]);
@@ -2246,7 +2376,10 @@ async function defUpdateData(fileName, accountName, targetE, newTargetE) {
             return error
         }
     } else {
-        const { jsonMatch, content, file } = await pluginInstance.getDataFile(fileName)
+        const { jsonMatch, content, file, status } = await pluginInstance.getDataFile(fileName)
+        if(!(status === 'success')) {
+            return status
+        }
 
         try {
             let data = JSON.parse(jsonMatch[1]);
@@ -2310,27 +2443,44 @@ async function defGetDataFile(fileName) {
         const { year, month } = getDate()
         const filePath = `My Life/My Finances/${year}/${month}/${fileName}.md`
         const file = app.vault.getAbstractFileByPath(filePath);
+        if(!file) {
+            return { status: `File not found: ${filePath}` }
+        }
         const content = await app.vault.read(file);
+        if(!content) {
+            return { status: `File is empty: ${filePath}` }
+        }
         const jsonMatch = content.match(/```json([\s\S]*?)```/);
-        const dataFile = { jsonMatch, content, file }
+        const dataFile = { jsonMatch, content, file, status: 'success' }
         return dataFile
     } else {
         const filePath = `My Life/My Finances/${selectedYear}/${months[selectedMonth - 1]}/${fileName}.md`
         const file = app.vault.getAbstractFileByPath(filePath);
+        if(!file) {
+            return { status: `File not found: ${filePath}` }
+        }
         const content = await app.vault.read(file);
+        if(!content) {
+            return { status: `File is empty: ${filePath}` }
+        }
         const jsonMatch = content.match(/```json([\s\S]*?)```/);
-        const dataFile = { jsonMatch, content, file }
+        const dataFile = { jsonMatch, content, file, status: 'success' }
         return dataFile
     }
 }
 
 async function defGetDataArchiveFile(fileName) {
-    const { year, month } = getDate()
     const filePath = `My Life/My Finances/Archive/${fileName}.md`
     const file = app.vault.getAbstractFileByPath(filePath);
+    if(!file) {
+        return { status: `File not found: ${filePath}` }
+    }
     const content = await app.vault.read(file);
+    if(!content) {
+        return { status: `File is empty: ${filePath}` }
+    }
     const jsonMatch = content.match(/```json([\s\S]*?)```/);
-    const dataFile = { jsonMatch, content, file }
+    const dataFile = { jsonMatch, content, file, status: 'success' }
     return dataFile
 }
 
@@ -2470,13 +2620,13 @@ async function editingHistory(e) {
     resultBills.forEach(arr => {
         if(arr.name === bill) {
             selectBills.createEl('option', {
-                text: `${arr.name} • ${arr.balance} ₸`,
+                text: `${arr.name} • ${arr.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
                 attr: { value: arr.name, selected: 'selected' }
             })
             return
         }
         selectBills.createEl('option', {
-            text: `${arr.name} • ${arr.balance} ₸`,
+            text: `${arr.name} • ${arr.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
             attr: { value: arr.name }
         })
     })
@@ -2498,13 +2648,13 @@ async function editingHistory(e) {
             resultCategory.forEach(arr => {
                 if(arr.name === category) {
                     selectCategory.createEl('option', {
-                        text: `${arr.name} • ${arr.amount} ₸`,
+                        text: `${arr.name} • ${arr.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
                         attr: { value: arr.name, selected: 'selected' }
                     })
                     return
                 }
                 selectCategory.createEl('option', {
-                    text: `${arr.name} • ${arr.amount} ₸`,
+                    text: `${arr.name} • ${arr.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
                     attr: { value: arr.name }
                 })
             })
@@ -2514,7 +2664,7 @@ async function editingHistory(e) {
             resultCategory.sort((a, b) => b.amount - a.amount)
             resultCategory.forEach(plan => {
                 selectCategory.createEl('option', {
-                    text: `${plan.name} • ${plan.amount} ₸`,
+                    text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
                     attr: { value: plan.name }
                 })
             })
@@ -2852,14 +3002,6 @@ async function editingBill(e) {
         }
     })
 
-    const currencyInput = mainFormInput.createEl('select', {
-        cls: 'form-selects',
-        attr: {
-            name: 'select-currency',
-            id: 'select-currency'
-        }
-    })
-
     const currentBalance = mainFormInput.createEl('input', {
         cls: 'form-inputs',
         attr: {
@@ -2940,19 +3082,31 @@ async function deleteHistory(e) {
         return 'Element not found'
     }
 
-    const { jsonMatch, content, file } = await pluginInstance.getDataFile('History')
+    const { jsonMatch, content, file, status } = await pluginInstance.getDataFile('History')
+    if(status !== 'success') {
+        return status
+    }
+
+    if(type === 'expense') {
+        const result = await pluginInstance.expenditureTransaction(e.target.closest('li').dataset, 'remove')
+        if(result !== 'success') {
+            return result
+        }
+    } else if (type === 'income') {
+        const result = await pluginInstance.incomeTransaction(e.target.closest('li').dataset, 'remove')
+        if(result !== 'success') {
+            return result
+        }
+    } else {
+        return 'Error'
+    }
+
     let data = JSON.parse(jsonMatch[1]);
     if(data.length <= 1) {
         try {
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n```");
-            await this.app.vault.modify(file, newContent);
-            if(type === 'expense') {
-                pluginInstance.expenditureTransaction(e.target.closest('li').dataset, 'remove')
-            } else if (type === 'income') {
-                pluginInstance.incomeTransaction(e.target.closest('li').dataset, 'remove')
-            } else {
-                return 'Error'
-            }           
+            await this.app.vault.modify(file, newContent);        
+            
             return "success"
         } catch (error) {
             return (`Error deleting item: ${error}`)
@@ -2963,16 +3117,8 @@ async function deleteHistory(e) {
             const dataStr = JSON.stringify(data, null, 4);
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await this.app.vault.modify(file, newContent);
-            if(type === 'expense') {
-                pluginInstance.expenditureTransaction(e.target.closest('li').dataset, 'remove')
-            } else if (type === 'income') {
-                pluginInstance.incomeTransaction(e.target.closest('li').dataset, 'remove')
-            } else {
-                return 'Error'
-            }
         
             return "success"
-    
         } catch (error) {
             return (`Error deleting item: ${error}`)
         }
@@ -2995,7 +3141,10 @@ async function deletePlan(e) {
         return 'Error'
     }
     
-    const { jsonMatch, content, file } = await pluginInstance.getDataFile(modifier)
+    const { jsonMatch, content, file, status } = await pluginInstance.getDataFile(modifier)
+    if(status !== 'success') {
+        return status
+    }
     let data = JSON.parse(jsonMatch[1]);
     if(data.length <= 1) {
         try {
@@ -3055,7 +3204,10 @@ async function deleteBill(e) {
         return 'Element not found'
     }
 
-    const { jsonMatch, content, file } = await pluginInstance.getDataArchiveFile('Archive bills')
+    const { jsonMatch, content, file, status: archiveStatus } = await pluginInstance.getDataArchiveFile('Archive bills')
+    if(archiveStatus !== 'success') {
+        return archiveStatus
+    }
     let data = JSON.parse(jsonMatch[1]);
     if(data.length <= 1) {
         try {
@@ -3240,4 +3392,8 @@ function getCurrencyGroups() {
 	const otherCurrencies = all.filter(cur => !popularCodes.includes(cur.code));
 
 	return { popularCurrencies, allCurrencies: otherCurrencies };
+}
+function getCurrencySymbol(code) {
+    const currency = pluginInstance.currenciesData[code];
+    return currency ? (currency.symbol || currency.symbolNative || code) : code;
 }
