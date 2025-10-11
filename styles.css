@@ -468,4 +468,8 @@
   padding: 16px;
 }
 
+.currency-optgroup[label] {
+  display: flex;
+}
+
 /*# sourceMappingURL=styles.css.map */

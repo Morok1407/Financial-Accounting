@@ -499,3 +499,7 @@
     border-radius: 12px;
     padding: 16px;
 }
+
+.currency-optgroup[label] {
+    display: flex;
+}

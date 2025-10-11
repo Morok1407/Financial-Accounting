@@ -4,27 +4,33 @@ const { Plugin, ItemView, Notice, setIcon, Platform, PluginSettingTab, TFolder, 
 const FINANCIAL_ACCOUNTING_VIEW = "financial-accounting-view";
 let pluginInstance;
 let viewInstance;
+
 let selectedYear = null;
 let selectedMonth = null;
 
 const months = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December"
-    ];
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+];
+
+const popularCodes = ["USD", "EUR", "RUB", "KZT", "UZS"];
 
 module.exports = class mainPlugin extends Plugin {
+    currenciesData = null;
+
     async onload() {
         await this.loadSettings();
+        await this.loadCurrenciesData();
 
         this.registerView(
             FINANCIAL_ACCOUNTING_VIEW,
@@ -45,7 +51,20 @@ module.exports = class mainPlugin extends Plugin {
                 name: "Open the finance panel",
                 callback: () => this.activateView(),
             });
-    });
+        });
+    }
+
+    async loadCurrenciesData() {
+        const pluginPath = this.app.vault.configDir + "/plugins/" + this.manifest.id;
+        const filePath = pluginPath + "/currencies.json";
+
+        try {
+            const fileContent = await this.app.vault.adapter.read(filePath);
+            this.currenciesData = JSON.parse(fileContent);
+
+        } catch (error) {
+            console.error("Error reading file currencies.json:", error);
+        }
     }
 
     async activateView() {
@@ -235,6 +254,7 @@ class DefaultSettings {
     constructor() {
         this.targetFolder = 'Finances';
         this.startYear = 2020;
+        this.baseCurrency = "USD";
     }
 }
 
@@ -243,7 +263,6 @@ class SettingsTab extends PluginSettingTab {
         super(app, plugin);
         this.plugin = plugin;
     }
-
     display() {
         const { containerEl } = this;
         containerEl.empty();
@@ -257,6 +276,7 @@ class SettingsTab extends PluginSettingTab {
         const defaultFolder = this.plugin.settings.targetFolder || 'Finances/';
         const hasDefault = folders.includes(defaultFolder);
 
+        // Selecting a directory
         new Setting(containerEl)
             .setName('Working directory')
             .setDesc('Select the folder the plugin will work with.')
@@ -278,6 +298,7 @@ class SettingsTab extends PluginSettingTab {
             });
         });
 
+        // Selecting the initial year of accounting
         new Setting(containerEl)
         .setName('Initial year of accounting')
         .setDesc('Select the year from which financial accounting has been conducted')
@@ -287,7 +308,6 @@ class SettingsTab extends PluginSettingTab {
                 drop.addOption(String(year), String(year));
             }
 
-            // устанавливаем текущее значение из настроек
             drop.setValue(String(this.plugin.settings.startYear));
 
             drop.onChange(async (value) => {
@@ -296,6 +316,49 @@ class SettingsTab extends PluginSettingTab {
                 new Notice(`The starting year has been changed to ${value}`);
             });
         });
+
+        // Selecting the base currency
+        const settingEl = new Setting(containerEl)
+			.setName("Main currency")
+			.setDesc("Select the currency from which the conversion will be performed")
+			.settingEl;
+
+		const selectEl = settingEl.createEl("select", { cls: "currency-select" });
+
+        const { popularCurrencies, allCurrencies } = getCurrencyGroups();
+
+		// --- Popular ---
+		const popularGroup = document.createElement("optgroup");
+        popularGroup.label = "Popular";
+
+        popularCurrencies.forEach(cur => {
+            const option = document.createElement("option");
+            option.value = cur.code;
+            option.textContent = `${cur.code} • ${cur.name} • ${cur.symbol}`;
+            popularGroup.appendChild(option);
+        });
+
+        // --- All ---
+        const allGroup = document.createElement("optgroup");
+        allGroup.label = "All currencies";
+
+        allCurrencies.forEach(cur => {
+            const option = document.createElement("option");
+            option.value = cur.code;
+            option.textContent = `${cur.code} ${cur.name} • ${cur.symbol}`;
+            allGroup.appendChild(option);
+        });
+
+        selectEl.appendChild(popularGroup);
+        selectEl.appendChild(allGroup);
+
+		selectEl.value = this.plugin.settings.baseCurrency;
+
+		selectEl.addEventListener("change", async (event) => {
+			this.plugin.settings.baseCurrency = event.target.value;
+			await this.plugin.saveSettings();
+			new Notice(`The main currency has been changed to ${event.target.value}`);
+		});
     }
 }
 
@@ -3162,4 +3225,19 @@ function switchBalanceLine(billsInfo, expenditurePlanInfo) {
     } else {
         return percent
     }
+}
+function getAllCurrencies() {
+    return Object.entries(pluginInstance.currenciesData).map(([code, info]) => ({
+        code,
+        name: info.name || code,
+        symbol: info.symbol || info.symbolNative
+    }));
+}
+function getCurrencyGroups() {
+	const all = getAllCurrencies();
+
+	const popularCurrencies = all.filter(cur => popularCodes.includes(cur.code));
+	const otherCurrencies = all.filter(cur => !popularCodes.includes(cur.code));
+
+	return { popularCurrencies, allCurrencies: otherCurrencies };
 }
