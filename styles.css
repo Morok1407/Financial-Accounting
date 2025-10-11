@@ -169,7 +169,11 @@
 .main-content-body--undefined {
   flex-direction: row;
   justify-content: center;
-  padding: 45% 0;
+  padding: 43% 0;
+}
+
+.main-content-body--padding {
+  padding-bottom: 60px;
 }
 
 .input-search {
@@ -317,6 +321,7 @@
 
 .form-selects-date-buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 .form-selects-date-buttons button {
