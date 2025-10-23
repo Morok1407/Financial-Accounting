@@ -167,9 +167,12 @@ module.exports = class mainPlugin extends Plugin {
     }
     
     // Check for deletion data
-
     async checkForDeletionData(data, modifier) {
         return defCheckForDeletionData(data, modifier, this)
+    }
+
+    async changeAllRelatedFiles(data, modifier) {
+        return defChangeAllRelatedFiles(data, modifier, this)
     }
     
     // Duplicating data to archive
@@ -192,7 +195,6 @@ module.exports = class mainPlugin extends Plugin {
     }
 
     // Middleware function
-
     async getDataFile(fileName) {
         return defGetDataFile(fileName, this)
     }
@@ -1081,9 +1083,7 @@ async function defAddJsonToHistory(data) {
     }  
     try {
         if(jsonMatch[1].length >= 2) {
-            const jsonData = JSON.parse(jsonMatch[1].trim());
-            const lastElementId = jsonData[jsonData.length - 1].id
-            const dataJson = {id: lastElementId + 1, ...data}
+            const dataJson = {id: String(generateUUID()), ...data}
             const dataStr = JSON.stringify([dataJson], null, 4) + "]\n```";
             
             const index = content.lastIndexOf("}");
@@ -1092,7 +1092,7 @@ async function defAddJsonToHistory(data) {
 
             return "success"
         } else {            
-            const dataJson = {id: 1, ...data}
+            const dataJson = {id: String(generateUUID()), ...data}
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
@@ -1111,10 +1111,8 @@ async function defAddJsonToExpenditurePlan(data) {
     }
     try {
         if(jsonMatch[1].length >= 2) {
-            const jsonData = JSON.parse(jsonMatch[1].trim());
-            const lastElementId = jsonData[jsonData.length - 1].id
             const { name, comment, type } = data
-            const dataJson = {id: lastElementId + 1, name, amount: 0, comment, type}
+            const dataJson = {id: String(generateUUID()), name, amount: 0, comment, type}
             const dataStr = JSON.stringify([dataJson], null, 4) + "]\n```";
 
             const index = content.lastIndexOf("}");
@@ -1129,7 +1127,7 @@ async function defAddJsonToExpenditurePlan(data) {
             return "success"
         } else {
             const { name, comment, type } = data
-            const dataJson = {id: 1, name, amount: 0, comment, type}
+            const dataJson = {id: String(generateUUID()), name, amount: 0, comment, type}
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
@@ -1153,10 +1151,8 @@ async function defAddJsonToIncomePlan(data) {
     }
     try {
         if(jsonMatch[1].length >= 2) {
-            const jsonData = JSON.parse(jsonMatch[1].trim());
-            const lastElementId = jsonData[jsonData.length - 1].id
             const { name, comment, type } = data
-            const dataJson = {id: lastElementId + 1, name, amount: 0, comment, type}
+            const dataJson = {id: String(generateUUID()), name, amount: 0, comment, type}
             const dataStr = JSON.stringify([dataJson], null, 4) + "]\n```";
 
             const index = content.lastIndexOf("}");
@@ -1171,7 +1167,7 @@ async function defAddJsonToIncomePlan(data) {
             return "success"
         } else {
             const { name, comment, type } = data
-            const dataJson = {id: 1, name, amount: 0, comment, type}
+            const dataJson = {id: String(generateUUID()), name, amount: 0, comment, type}
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
@@ -1201,9 +1197,7 @@ async function defAddJsonToBills(data) {
     }
     try {
         if(jsonMatch[1].length >= 2) {
-            const jsonData = JSON.parse(jsonMatch[1].trim());
-            const lastElementId = jsonData[jsonData.length - 1].id
-            const dataJson = {id: lastElementId + 1, name, balance, currency, generalBalance, comment}
+            const dataJson = {id: String(generateUUID()), name, balance, currency, generalBalance, comment}
             const dataStr = JSON.stringify([dataJson], null, 4) + "]\n```";
 
             const index = content.lastIndexOf("}");
@@ -1212,7 +1206,7 @@ async function defAddJsonToBills(data) {
             
             return "success"
         } else {
-            const dataJson = {id: 1, name, balance, currency, generalBalance, comment}
+            const dataJson = {id: String(generateUUID()), name, balance, currency, generalBalance, comment}
             const dataStr = JSON.stringify([dataJson], null, 4) + "\n```";
             const newContent = content.replace(/\```$/, dataStr);
             await this.app.vault.modify(file, newContent)
@@ -1259,8 +1253,6 @@ async function defEditingJsonToHistory(data) {
     try {
         const jsonData = JSON.parse(jsonMatch[1].trim());
         const newData = jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
-        const oldData = jsonData.find(item => item.id === data.id);
-
         const dataStr = JSON.stringify(newData, null, 4) + "\n```";
         const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr);
         await this.app.vault.modify(file, newContent)
@@ -1272,7 +1264,8 @@ async function defEditingJsonToHistory(data) {
 }
 
 async function defEditingJsonToPlan(data) {
-    console.log(data)
+    console.log(generateUUID())
+    pluginInstance.changeAllRelatedFiles(data, 'plan')
 
     if(data.type === 'expense') {
 
@@ -2538,6 +2531,54 @@ async function defCheckForDeletionData(data, modifier) {
     return false;
 }
 
+async function defChangeAllRelatedFiles(data, modifier) {
+    const { name: categoryToFind } = data
+    
+    const financeFolder = app.vault.getAbstractFileByPath(pluginInstance.settings.targetFolder);
+    let allFiles = [];
+
+    let yearFolders = [];
+    for (const child of financeFolder.children) {
+        yearFolders.push(child);
+    }
+    yearFolders.pop(); // Remove "Archive" folder
+
+    let monthFolders = [];
+    for (let i = 0; i < yearFolders.length; i++) {
+        for (const child of yearFolders[i].children) {
+            monthFolders.push(child);
+        }
+    }
+
+    for (let i = 0; i < monthFolders.length; i++) {
+        for (const child of monthFolders[i].children) {
+            allFiles.push(child);
+        }
+    }
+
+    const historyFiles = allFiles.filter(f => f.name === "History.md");
+    const expenditurePlanFiles = allFiles.filter(f => f.name === "Expenditure plan.md");
+    const incomePlanFiles = allFiles.filter(f => f.name === "Income plan.md");
+
+    const filesToCheck = modifier === 'plan' ? [...historyFiles, ...expenditurePlanFiles, ...incomePlanFiles] : historyFiles;
+    filesToCheck.forEach(async (file) => {
+        try {
+            const content = await app.vault.read(file);
+            const jsonMatch = content.match(/```json([\s\S]*?)```/);
+            if (jsonMatch[1].length <= 2) {
+                return;
+            }
+            const jsonData = JSON.parse(jsonMatch[1].trim());
+            const newData = jsonData.map(item => item.name === categoryToFind ? {...item, ...data} : item)
+            console.log(newData);
+            // const dataStr = JSON.stringify(newData, null, 4) + "\n```";
+            // const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr);
+        } catch (e) {
+            console.error("Error reading/parsing file:", file.path, e);
+        }
+    })
+}
+
 //====================================== Editing data ======================================
 
 async function editingHistory(e) {
@@ -2740,7 +2781,7 @@ async function editingHistory(e) {
         }
 
         const data = {
-            id: Number(id),
+            id: id,
             amount: Number(inputSum.value),
             bill: selectBills.value,
             category: selectCategory.value,
@@ -3113,7 +3154,7 @@ async function deleteHistory(e) {
         }
     } else {
         try {
-            data = data.filter(item => item.id !== Number(id));
+            data = data.filter(item => item.id !== id);
             const dataStr = JSON.stringify(data, null, 4);
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await this.app.vault.modify(file, newContent);
@@ -3178,7 +3219,7 @@ async function deletePlan(e) {
                 return 'The category cannot be deleted because it is used in history.'
             }
             
-            data = data.filter(item => item.id !== Number(id));
+            data = data.filter(item => item.id !== id);
             const dataStr = JSON.stringify(data, null, 4);
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await this.app.vault.modify(file, newContent);
@@ -3228,13 +3269,12 @@ async function deleteBill(e) {
                 return 'The bill cannot be deleted because it is in use in history.'
             }
 
-            data = data.filter(item => item.id !== Number(id));
+            data = data.filter(item => item.id !== id);
             const dataStr = JSON.stringify(data, null, 4);
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await this.app.vault.modify(file, newContent);
         
             return "success"
-    
         } catch (error) {
             return (`Error deleting item: ${error}`)
         }
@@ -3242,6 +3282,10 @@ async function deleteBill(e) {
 }
 
 //====================================== Other Function ======================================
+
+function generateUUID() {
+    return crypto.randomUUID()
+}
 
 function getDate() {
     moment.locale('en');
