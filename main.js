@@ -8,6 +8,8 @@ let viewInstance;
 let selectedYear = null;
 let selectedMonth = null;
 
+let openPageNow;
+
 const months = [
     "January",
     "February",
@@ -612,7 +614,7 @@ async function homeButtons(contentEl) {
         planButton.addClass('home_button--active')
         mainContentBody.empty()
         mainContentButton.empty()
-        showPlan(mainContentBody, mainContentButton)
+        showPlans(mainContentBody, mainContentButton)
     })
     
     const billsButton = homeNav.createEl('a', {
@@ -631,7 +633,27 @@ async function homeButtons(contentEl) {
         showBills(mainContentBody, mainContentButton)
     })
 
-    showHistory(mainContentBody, mainContentButton)
+    if(!openPageNow || openPageNow === 'History') {
+        showHistory(mainContentBody, mainContentButton)
+        historyButton.addClass('home_button--active')
+        billsButton.removeClass('home_button--active')
+        planButton.removeClass('home_button--active')
+    } else if(openPageNow === 'Plans') {
+        showPlans(mainContentBody, mainContentButton)
+        historyButton.removeClass('home_button--active')
+        planButton.addClass('home_button--active')
+        billsButton.removeClass('home_button--active')
+    } else if(openPageNow === 'Bills') {
+        showBills(mainContentBody, mainContentButton)
+        historyButton.removeClass('home_button--active')
+        planButton.removeClass('home_button--active')
+        billsButton.addClass('home_button--active')
+    } else {
+        showHistory(mainContentBody, mainContentButton)
+        historyButton.addClass('home_button--active')
+        billsButton.removeClass('home_button--active')
+        planButton.removeClass('home_button--active')
+    }
 }
 
 //====================================== Month ======================================
@@ -875,7 +897,7 @@ async function otherMonthHomeButtons(contentEl) {
         planButton.addClass('home_button--active')
         mainContentBody.empty()
         mainContentButton.empty()
-        // showPlan(mainContentBody, mainContentButton)
+        // showPlans(mainContentBody, mainContentButton)
     })
 
     historyButton.addClass('home_button--active')
@@ -937,6 +959,7 @@ async function defNewMonthIncomePlan() {
 //====================================== ShowInfo ======================================
 
 async function showHistory(mainContentBody, mainContentButton) {
+    openPageNow = 'History'
     const { jsonData: historyInfo, status } = await pluginInstance.getDataFile('History');
     if(status !== 'success') {
         new Notice(status)
@@ -1035,7 +1058,8 @@ async function showHistory(mainContentBody, mainContentButton) {
     })
 }
 
-async function showPlan(mainContentBody, mainContentButton) {
+async function showPlans(mainContentBody, mainContentButton) {
+    openPageNow = 'Plans'
     const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await pluginInstance.getDataFile('Expenditure plan');
     if(expenditurePlanStatus !== 'success') {
         new Notice(expenditurePlanStatus)
@@ -1157,6 +1181,7 @@ async function showPlan(mainContentBody, mainContentButton) {
 }
 
 async function showBills(mainContentBody, mainContentButton) {
+    openPageNow = 'Bills'
     const { jsonData: billsInfo, status } = await pluginInstance.getDataArchiveFile('Archive bills');
     if(status !== 'success') {
         new Notice(status)
