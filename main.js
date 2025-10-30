@@ -159,8 +159,8 @@ module.exports = class mainPlugin extends Plugin {
     }
     
     // Check for deletion data
-    async checkForDeletionData(data, modifier) {
-        return defCheckForDeletionData(data, modifier, this)
+    async checkForDeletionData(id, modifier) {
+        return defCheckForDeletionData(id, modifier, this)
     }
 
     async changeAllRelatedFiles(data, modifier) {
@@ -459,40 +459,22 @@ async function showInitialView() {
     selectedYear = null
     selectedMonth = null
 
-    const { jsonMatch: billJsonMatch, status: billStatus } = await pluginInstance.getDataArchiveFile('Archive bills');
-    let billsInfo;
+    const { jsonData: billsInfo, status: billStatus } = await pluginInstance.getDataArchiveFile('Archive bills');
     if(billStatus !== 'success') {
         new Notice(billStatus)
         console.error(billStatus)
     }
-    if(billJsonMatch[1].length > 1) {
-        billsInfo = JSON.parse(billJsonMatch[1].trim())
-    } else {
-        billsInfo = null
-    }
 
-    const { jsonMatch: expenditurePlanJsonMatch, status: expenditurePlanStatus } = await pluginInstance.getDataFile('Expenditure plan');
-    let expenditurePlanInfo;
+    const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await pluginInstance.getDataFile('Expenditure plan');
     if(expenditurePlanStatus !== 'success') {
         new Notice(expenditurePlanStatus)
         console.error(expenditurePlanStatus)
     }
-    if(expenditurePlanJsonMatch[1].length > 1) {
-        expenditurePlanInfo = JSON.parse(expenditurePlanJsonMatch[1].trim())
-    } else {
-        expenditurePlanInfo = null
-    }
 
-    const { jsonMatch: incomePlanJsonMatch, status: incomePlanStatus } = await pluginInstance.getDataFile('Income plan');
-    let incomePlanInfo
+    const { jsonData: incomePlanInfo, status: incomePlanStatus } = await pluginInstance.getDataFile('Income plan');
     if(incomePlanStatus !== 'success') {
         new Notice(incomePlanStatus)
         console.error(incomePlanStatus)
-    }
-    if(incomePlanJsonMatch[1].length > 1) {
-        incomePlanInfo = JSON.parse(incomePlanJsonMatch[1].trim())
-    } else {
-        incomePlanInfo = null
     }
 
     contentEl.empty()
@@ -955,16 +937,10 @@ async function defNewMonthIncomePlan() {
 //====================================== ShowInfo ======================================
 
 async function showHistory(mainContentBody, mainContentButton) {
-    const { jsonMatch, status } = await pluginInstance.getDataFile('History');
-    let historyInfo;
+    const { jsonData: historyInfo, status } = await pluginInstance.getDataFile('History');
     if(status !== 'success') {
         new Notice(status)
         console.error(status)
-    }
-    if(jsonMatch[1].length > 1) {
-        historyInfo = JSON.parse(jsonMatch[1].trim())
-    } else {
-        historyInfo = null
     }
 
     if(historyInfo === null) {
@@ -1060,28 +1036,16 @@ async function showHistory(mainContentBody, mainContentButton) {
 }
 
 async function showPlan(mainContentBody, mainContentButton) {
-    const { jsonMatch: expenditurePlanJsonMatch, status: expenditurePlanStatus } = await pluginInstance.getDataFile('Expenditure plan');
-    let expenditurePlanInfo;
+    const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await pluginInstance.getDataFile('Expenditure plan');
     if(expenditurePlanStatus !== 'success') {
         new Notice(expenditurePlanStatus)
         console.error(expenditurePlanStatus)
     }
-    if(expenditurePlanJsonMatch[1].length > 1) {
-        expenditurePlanInfo = JSON.parse(expenditurePlanJsonMatch[1].trim())
-    } else {
-        expenditurePlanInfo = null
-    }
 
-    const { jsonMatch: incomePlanJsonMatch, status: incomePlanStatus } = await pluginInstance.getDataFile('Income plan');
-    let incomePlanInfo
+    const { jsonData: incomePlanInfo, status: incomePlanStatus } = await pluginInstance.getDataFile('Income plan');
     if(incomePlanStatus !== 'success') {
         new Notice(incomePlanStatus)
         console.error(incomePlanStatus)
-    }
-    if(incomePlanJsonMatch[1].length > 1) {
-        incomePlanInfo = JSON.parse(incomePlanJsonMatch[1].trim())
-    } else {
-        incomePlanInfo = null
     }
 
     let allResult = [];
@@ -1122,7 +1086,8 @@ async function showPlan(mainContentBody, mainContentButton) {
                 const dataItem = expenseDataList.createEl('li', {
                     cls: 'data-item',
                     attr: {
-                            'data-id': e.id
+                            'data-id': e.id,
+                            'data-type': e.type
                         }
                 })
                 dataItem.onclick = async (e) => {
@@ -1159,7 +1124,8 @@ async function showPlan(mainContentBody, mainContentButton) {
                 const dataItem = incomeDataList.createEl('li', {
                     cls: 'data-item',
                     attr: {
-                            'data-id': e.id
+                            'data-id': e.id,
+                            'data-type': e.type
                         }
                 })
                 dataItem.onclick = async (e) => {
@@ -1191,16 +1157,10 @@ async function showPlan(mainContentBody, mainContentButton) {
 }
 
 async function showBills(mainContentBody, mainContentButton) {
-    const { jsonMatch, status } = await pluginInstance.getDataArchiveFile('Archive bills');
-    let billsInfo;
+    const { jsonData: billsInfo, status } = await pluginInstance.getDataArchiveFile('Archive bills');
     if(status !== 'success') {
         new Notice(status)
         console.error(status)
-    }
-    if(jsonMatch[1].length > 1) {
-        billsInfo = JSON.parse(jsonMatch[1].trim())
-    } else {
-        billsInfo = null
     }
 
     if(billsInfo === null) {
@@ -1243,11 +1203,7 @@ async function showBills(mainContentBody, mainContentButton) {
                     const dataItem = trueDataList.createEl('li', {
                         cls: 'data-item',
                         attr: {
-                                'data-id': e.id,
-                                'data-name': e.name,
-                                'data-balance': e.balance,
-                                'data-generalbalance': e.generalBalance,
-                                'data-comment': e.comment
+                                'data-id': e.id
                             }
                     })
                     dataItem.onclick = async (e) => {
@@ -1317,38 +1273,13 @@ async function showBills(mainContentBody, mainContentButton) {
 //====================================== Add Data ======================================
 
 async function defAddHistory() {
-    const { jsonMatch: billsJsonMatch, status: archiveStatus } = await pluginInstance.getDataArchiveFile('Archive bills')
-    let resultBills;
+    const { jsonData: resultBills, status: archiveStatus } = await pluginInstance.getDataArchiveFile('Archive bills')
     if(!(archiveStatus === 'success')) {
         return archiveStatus
     }
-    if(billsJsonMatch[1].length < 3) {
+    if(resultBills === null) {
         return new Notice('Add bills')
-    } else {
-        resultBills = JSON.parse(billsJsonMatch[1].trim())
-    }
-    
-    const { jsonMatch: incomePlanJsonMatch, status: incomeStatus } = await pluginInstance.getDataFile('Income plan')
-    let resultIncomeCategory;
-    if(!(incomeStatus === 'success')) {
-        return incomeStatus
-    }
-    if(incomePlanJsonMatch[1].length < 3) {
-        return new Notice('Add an income category')
-    } else {
-        resultIncomeCategory = JSON.parse(incomePlanJsonMatch[1].trim())
-    }
-    
-    const { jsonMatch: ExpenditurePlanJsonMatch, status: expenseStatus } = await pluginInstance.getDataFile('Expenditure plan')
-    let resultExpenseCategory;
-    if(!(expenseStatus === 'success')) {
-        return expenseStatus
-    }
-    if(ExpenditurePlanJsonMatch[1].length < 3) {
-        return new Notice('Add an expense category')
-    } else {
-        resultExpenseCategory = JSON.parse(ExpenditurePlanJsonMatch[1].trim())
-    }
+    } 
 
     const { contentEl } = viewInstance;
     contentEl.empty()
@@ -1464,6 +1395,10 @@ async function defAddHistory() {
     async function createOptionCategory() {
         if(resultRadio === 'expense'){
             selectCategory.empty()
+            const { jsonData: resultExpenseCategory, status: expenseStatus } = await pluginInstance.getDataFile('Expenditure plan')
+            if(!(expenseStatus === 'success')) {
+                return expenseStatus
+            }
             resultExpenseCategory.sort((a, b) => b.amount - a.amount)
             resultExpenseCategory.forEach(plan => {
                 selectCategory.createEl('option', {
@@ -1476,6 +1411,10 @@ async function defAddHistory() {
             })
         } else {
             selectCategory.empty()
+            const { jsonData: resultIncomeCategory, status: incomeStatus } = await pluginInstance.getDataFile('Income plan')
+            if(!(incomeStatus === 'success')) {
+                return incomeStatus
+            }
             resultIncomeCategory.sort((a, b) => b.amount - a.amount)
             resultIncomeCategory.forEach(plan => {
                 selectCategory.createEl('option', {
@@ -2109,13 +2048,9 @@ async function editingHistory(e) {
         }
     })
     
-    const { jsonMatch: billsJsonMatch, status: archiveStatus } = await pluginInstance.getDataArchiveFile('Archive bills')
-    let resultBills;
+    const { jsonData: resultBills, status: archiveStatus } = await pluginInstance.getDataArchiveFile('Archive bills')
     if(!(archiveStatus === 'success')) {
         return archiveStatus
-    }
-    if(billsJsonMatch[1].length > 1) {
-        resultBills = JSON.parse(billsJsonMatch[1].trim())
     }
 
     resultBills.sort((a, b) => b.balance - a.balance)
@@ -2146,13 +2081,9 @@ async function editingHistory(e) {
         if(item.type === 'expense'){
             selectCategory.empty()
             
-            const { jsonMatch, status } = await pluginInstance.getDataFile('Expenditure plan')
-            let resultCategory;
+            const { jsonData: resultCategory, status } = await pluginInstance.getDataFile('Expenditure plan');
             if(!(status === 'success')) {
                 return status
-            }
-            if(jsonMatch[1].length > 1) {
-                resultCategory = JSON.parse(jsonMatch[1].trim())
             }
 
             resultCategory.sort((a, b) => b.amount - a.amount)
@@ -2171,14 +2102,11 @@ async function editingHistory(e) {
             })
         } else if (item.type === 'income') {
             selectCategory.empty()
-            const { jsonMatch, status } = await pluginInstance.getDataFile('Income plan')
-            let resultCategory;
+            const { jsonData: resultCategory, status } = await pluginInstance.getDataFile('Income plan');
             if(!(status === 'success')) {
                 return status
             }
-            if(jsonMatch[1].length > 1) {
-                resultCategory = JSON.parse(jsonMatch[1].trim())
-            }
+
             resultCategory.sort((a, b) => b.amount - a.amount)
             resultCategory.forEach(plan => {
                 if(plan.id === item.category.id && plan.name === item.category.name) {
@@ -2294,7 +2222,16 @@ async function editingHistory(e) {
 }
 
 async function editingPlan(e) {
-    const { name, type, comment } = e.target.closest('li').dataset;
+    const { id, type } = e.target.closest('li').dataset;
+    if(!id) {
+        return 'Element not found'
+    }
+    
+    const { item, status } = await pluginInstance.searchElementById(id, type)
+    if(!(status === 'success')) {
+        return status
+    }
+    
     const { contentEl } = viewInstance;
     contentEl.empty()
 
@@ -2317,7 +2254,7 @@ async function editingPlan(e) {
     })
     setIcon(deleteButton, 'trash-2')
     deleteButton.addEventListener('click', async () => {
-        const redultOfDelete = await deletePlan(e);
+        const redultOfDelete = await deletePlan(item);
         if(redultOfDelete === "success") {
             setTimeout(() => {
                 viewInstance.onOpen()
@@ -2352,7 +2289,7 @@ async function editingPlan(e) {
             placeholder: 'Name',
             id: 'input-name',
             type: 'text',
-            value: name,
+            value: item.name,
         }
     })
 
@@ -2362,7 +2299,7 @@ async function editingPlan(e) {
             placeholder: 'Note',
             id: 'input-comment',
             type: 'text',
-            value: comment,
+            value: item.comment,
         }
     })
 
@@ -2385,7 +2322,7 @@ async function editingPlan(e) {
         const data = {
             name: inputName.value,
             comment: commentInput.value,
-            type: type,
+            type: item.type,
         }
         const resultOfadd = await pluginInstance.editingJsonToPlan(data)
         if(resultOfadd === "success") {
@@ -2398,9 +2335,12 @@ async function editingPlan(e) {
         }
     })
 
-    let historyInfo = await pluginInstance.searchHistory();
+    let { jsonData: historyInfo } = await pluginInstance.getDataFile('History');
     if(historyInfo !== null) {
-        const filterHistoryInfo = historyInfo.filter(item => item.category.name === name)
+        const filterHistoryInfo = historyInfo.filter(item => item.category.id === id)
+        if(filterHistoryInfo.length < 1) {
+            return
+        }
         const grouped = Object.values(
             filterHistoryInfo.reduce((acc, item) => {
                 if (!acc[item.date]) {
@@ -2472,9 +2412,17 @@ async function editingPlan(e) {
 }
 
 async function editingBill(e) {
-    const { id, name, balance, generalbalance, comment } = e.target.closest('li').dataset;
-    
-    const { contentEl } = viewInstance;
+    const { id } = e.target.closest('li').dataset;
+    if(!id) {
+        return 'Element not found'
+    }
+
+    const { item, status } = await pluginInstance.searchElementById(id, 'Archive bills')
+    if(!status) {
+        return status
+    }
+
+    const { contentEl } = viewInstance
     contentEl.empty()
 
     const exitButton = contentEl.createEl('div', {
@@ -2482,7 +2430,7 @@ async function editingBill(e) {
         attr: {
             id: 'exit-button'
         }
-    })
+    });
     setIcon(exitButton, 'arrow-left')
     exitButton.addEventListener('click', () => {
         viewInstance.onOpen()
@@ -2496,7 +2444,7 @@ async function editingBill(e) {
     })
     setIcon(deleteButton, 'trash-2')
     deleteButton.addEventListener('click', async () => {
-        const redultOfDelete = await deleteBill(e);
+        const redultOfDelete = await deleteBill(item);
         if(redultOfDelete === "success") {
             setTimeout(() => {
                 viewInstance.onOpen()
@@ -2513,7 +2461,6 @@ async function editingBill(e) {
     const headerTitle = header.createEl('h1', {
         text: 'Categories'
     })
-
     const mainAddForm = contentEl.createEl('form', {
         cls: 'main-add-form',
         attr: {
@@ -2531,7 +2478,7 @@ async function editingBill(e) {
             placeholder: 'Name',
             id: 'input-name',
             type: 'text',
-            value: name,
+            value: item.name,
         }
     })
 
@@ -2541,7 +2488,7 @@ async function editingBill(e) {
             placeholder: 'Current balance',
             id: 'input-current-balance',
             type: 'number',
-            value: balance,
+            value: item.balance,
         }
     })
 
@@ -2551,7 +2498,7 @@ async function editingBill(e) {
             placeholder: 'Note',
             id: 'input-comment',
             type: 'text',
-            value: comment,
+            value: item.comment,
         }
     })
 
@@ -2564,10 +2511,9 @@ async function editingBill(e) {
         attr: {
             id: 'input-checkbox',
             type: 'checkbox',
-            checked: generalbalance === "true" ? true : null
+            checked: item.generalbalance
         }
     })
-
     const chechboxText = chechboxDiv.createEl('span', {
         text: 'Take into account in the general balance',
         cls: 'form-text',
@@ -2580,16 +2526,15 @@ async function editingBill(e) {
             type: 'submit'
         }
     })
-
-    addButton.addEventListener('click', async (e) => {
+    addButton.addEventListener('click', async () => {
         e.preventDefault();
 
         if(!inputName.value >= 1) {
             inputName.focus()
             return new Notice('Enter the name')
         }
-
         const data = {
+            id: item.id,
             name: inputName.value,
             balance: currentBalance.value,
             generalBalance: checkboxInput.checked,
@@ -2614,7 +2559,7 @@ async function defEditingJsonToHistory(data, oldData) {
         return 'Cannot be corrected to 0'
     }
 
-    const { jsonMatch, content, file, status } = await pluginInstance.getDataFile('History')
+    const { jsonData, content, file, status } = await pluginInstance.getDataFile('History')
     if(!(status === 'success')) {
         return status
     }
@@ -2640,7 +2585,6 @@ async function defEditingJsonToHistory(data, oldData) {
         return 'Error'
     }
     try {
-        const jsonData = JSON.parse(jsonMatch[1].trim());
         const newData = jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
         const dataStr = JSON.stringify(newData, null, 4) + "\n```";
         const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr);
@@ -2667,7 +2611,7 @@ async function deleteHistory(element) {
         return 'Element not found'
     }
 
-    const { jsonMatch, content, file, status } = await pluginInstance.getDataFile('History')
+    const { jsonData: data, content, file, status } = await pluginInstance.getDataFile('History')
     if(status !== 'success') {
         return status
     }
@@ -2686,7 +2630,6 @@ async function deleteHistory(element) {
         return 'Error'
     }
 
-    let data = JSON.parse(jsonMatch[1]);
     if(data.length <= 1) {
         try {
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n```");
@@ -2698,8 +2641,8 @@ async function deleteHistory(element) {
         }
     } else {
         try {
-            data = data.filter(item => item.id !== element.id);
-            const dataStr = JSON.stringify(data, null, 4);
+            const newData = data.filter(item => item.id !== element.id);
+            const dataStr = JSON.stringify(newData, null, 4);
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await this.app.vault.modify(file, newContent);
         
@@ -2710,8 +2653,8 @@ async function deleteHistory(element) {
     }
 }
 
-async function deletePlan(e) {
-    const { id, type } = e.target.closest('li').dataset;
+async function deletePlan(item) {
+    const { id, type } = item;
     if(!id) {
         return 'Element not found'
     }
@@ -2726,14 +2669,13 @@ async function deletePlan(e) {
         return 'Error'
     }
     
-    const { jsonMatch, content, file, status } = await pluginInstance.getDataFile(modifier)
+    const { jsonData: data, content, file, status } = await pluginInstance.getDataFile(modifier)
     if(status !== 'success') {
         return status
     }
-    let data = JSON.parse(jsonMatch[1]);
     if(data.length <= 1) {
         try {
-            if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset, 'plan')) {
+            if(await pluginInstance.checkForDeletionData(id, 'plan')) {
                 return 'The category cannot be deleted because it is used in history.'
             }
             
@@ -2759,12 +2701,12 @@ async function deletePlan(e) {
         }
     } else {
         try {
-            if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset, 'plan')) {
+            if(await pluginInstance.checkForDeletionData(id, 'plan')) {
                 return 'The category cannot be deleted because it is used in history.'
             }
             
-            data = data.filter(item => item.id !== id);
-            const dataStr = JSON.stringify(data, null, 4);
+            const newData = data.filter(item => item.id !== id);
+            const dataStr = JSON.stringify(newData, null, 4);
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await this.app.vault.modify(file, newContent);
             if(type === 'expense') {
@@ -2783,20 +2725,20 @@ async function deletePlan(e) {
     }
 }
 
-async function deleteBill(e) {
-    const { id } = e.target.closest('li').dataset;
+async function deleteBill(item) {
+    const { id } = item;
     if(!id) {
         return 'Element not found'
     }
 
-    const { jsonMatch, content, file, status: archiveStatus } = await pluginInstance.getDataArchiveFile('Archive bills')
+    const { jsonData: data, content, file, status: archiveStatus } = await pluginInstance.getDataArchiveFile('Archive bills')
     if(archiveStatus !== 'success') {
         return archiveStatus
     }
-    let data = JSON.parse(jsonMatch[1]);
+
     if(data.length <= 1) {
         try {
-            if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset, 'bill')) {
+            if(await pluginInstance.checkForDeletionData(id, 'bill')) {
                 return 'The bill cannot be deleted because it is in use in history.'
             }
             
@@ -2809,12 +2751,12 @@ async function deleteBill(e) {
         }
     } else {
         try {
-            if(await pluginInstance.checkForDeletionData(e.target.closest('li').dataset, 'bill')) {
+            if(await pluginInstance.checkForDeletionData(id, 'bill')) {
                 return 'The bill cannot be deleted because it is in use in history.'
             }
 
-            data = data.filter(item => item.id !== id);
-            const dataStr = JSON.stringify(data, null, 4);
+            const newData = data.filter(item => item.id !== id);
+            const dataStr = JSON.stringify(newData, null, 4);
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await this.app.vault.modify(file, newContent);
         
@@ -2904,11 +2846,10 @@ async function defExpenditureTransaction(data, modifier, oldData) {
     let planName;
     let planAmount;
 
-    const { jsonMatch: billsJsonMatch, status: archiveStatus } = await pluginInstance.getDataArchiveFile("Archive bills")
+    const { jsonData: billsJsonData, status: archiveStatus } = await pluginInstance.getDataArchiveFile("Archive bills")
     if(!(archiveStatus === 'success')) {
         return archiveStatus
     }
-    const billsJsonData = JSON.parse(billsJsonMatch[1].trim());
     billsJsonData.forEach((e, i) => {
         if(e.name === data.bill.name && e.id === data.bill.id) {
             billBalace = billsJsonData[i].balance;
@@ -2916,11 +2857,10 @@ async function defExpenditureTransaction(data, modifier, oldData) {
         }
     })
 
-    const { jsonMatch: planJsonMatch, status } = await pluginInstance.getDataFile("Expenditure plan")
+    const { jsonData: planJsonData, status } = await pluginInstance.getDataFile("Expenditure plan")
     if(!(status === 'success')) {
         return status
     }
-    const planJsonData = JSON.parse(planJsonMatch[1].trim());
     planJsonData.forEach((e, i) => {
         if(e.name === data.category.name && e.id === data.category.id) {
             planAmount = planJsonData[i].amount
@@ -2994,12 +2934,11 @@ async function defIncomeTransaction(data, modifier, oldData) {
     let planName;
     let planAmount;
 
-    const { jsonMatch: billsJsonMatch, status: archiveStatus } = await pluginInstance.getDataArchiveFile("Archive bills")
+    const { jsonData: billsJsonData, status: archiveStatus } = await pluginInstance.getDataArchiveFile("Archive bills")
     if(!(archiveStatus === 'success')) {
         return archiveStatus
     }
-    const billsJsonData = JSON.parse(billsJsonMatch[1].trim());
-    
+
     billsJsonData.forEach((e, i) => {
         if(e.name === data.bill.name && e.id === data.bill.id) {
             billBalace = billsJsonData[i].balance;
@@ -3007,11 +2946,10 @@ async function defIncomeTransaction(data, modifier, oldData) {
         }
     })
 
-    const { jsonMatch: planJsonMatch, status } = await pluginInstance.getDataFile("Income plan")
+    const { jsonData: planJsonData, status } = await pluginInstance.getDataFile("Income plan")
     if(!(status === 'success')) {
         return status
     }
-    const planJsonData = JSON.parse(planJsonMatch[1].trim());
     planJsonData.forEach((e, i) => {
         if(e.name === data.category.name && e.id === data.category.id) {
             planAmount = planJsonData[i].amount
@@ -3083,13 +3021,12 @@ async function defIncomeTransaction(data, modifier, oldData) {
 
 async function defUpdateData(fileName, accountName, targetE, newTargetE) {
     if(fileName === 'Archive bills') {
-        const { jsonMatch, content, file, status: archiveStatus } = await pluginInstance.getDataArchiveFile(fileName)
+        const { jsonData: data, content, file, status: archiveStatus } = await pluginInstance.getDataArchiveFile(fileName)
         if(!(archiveStatus === 'success')) {
             return archiveStatus
         }
 
         try {
-            let data = JSON.parse(jsonMatch[1]);
             const target = data.find(acc => acc.name === accountName);
             if (target) {
                 target[targetE] = newTargetE;
@@ -3106,13 +3043,12 @@ async function defUpdateData(fileName, accountName, targetE, newTargetE) {
             return error
         }
     } else {
-        const { jsonMatch, content, file, status } = await pluginInstance.getDataFile(fileName)
+        const { jsonData: data, content, file, status } = await pluginInstance.getDataFile(fileName)
         if(!(status === 'success')) {
             return status
         }
 
         try {
-            let data = JSON.parse(jsonMatch[1]);
             const target = data.find(acc => acc.name === accountName);
             if (target) {
                 target[targetE] = newTargetE;
@@ -3132,8 +3068,7 @@ async function defUpdateData(fileName, accountName, targetE, newTargetE) {
 }
 
 async function defCheckBill(data, oldData) {
-    const { jsonMatch } = await pluginInstance.getDataArchiveFile("Archive bills")
-    const jsonData = JSON.parse(jsonMatch[1].trim());
+    const { jsonData } = await pluginInstance.getDataArchiveFile("Archive bills")
 
     let result;
 
@@ -3182,7 +3117,13 @@ async function defGetDataFile(fileName) {
             return { status: `File is empty: ${filePath}` }
         }
         const jsonMatch = content.match(/```json([\s\S]*?)```/);
-        const dataFile = { jsonMatch, content, file, status: 'success' }
+        let jsonData;
+        if(jsonMatch[1].length > 3) {
+            jsonData = JSON.parse(jsonMatch[1].trim());
+        } else {
+            jsonData = null;
+        }
+        const dataFile = { jsonMatch, content, file, jsonData, status: 'success' }
         return dataFile
     } else {
         const filePath = `${pluginInstance.settings.targetFolder}/${selectedYear}/${months[selectedMonth - 1]}/${fileName}.md`
@@ -3195,7 +3136,13 @@ async function defGetDataFile(fileName) {
             return { status: `File is empty: ${filePath}` }
         }
         const jsonMatch = content.match(/```json([\s\S]*?)```/);
-        const dataFile = { jsonMatch, content, file, status: 'success' }
+        let jsonData;
+        if(jsonMatch[1].length > 3) {
+            jsonData = JSON.parse(jsonMatch[1].trim());
+        } else {
+            jsonData = null;
+        }
+        const dataFile = { jsonMatch, content, file, jsonData, status: 'success' }
         return dataFile
     }
 }
@@ -3211,13 +3158,17 @@ async function defGetDataArchiveFile(fileName) {
         return { status: `File is empty: ${filePath}` }
     }
     const jsonMatch = content.match(/```json([\s\S]*?)```/);
-    const dataFile = { jsonMatch, content, file, status: 'success' }
+    let jsonData;
+    if(jsonMatch[1].length > 3) {
+        jsonData = JSON.parse(jsonMatch[1].trim());
+    } else {
+        jsonData = null;
+    }
+    const dataFile = { jsonMatch, content, file, jsonData, status: 'success' }
     return dataFile
 }
 
-async function defCheckForDeletionData(data, modifier) {
-    const { name: categoryToFind } = data
-    
+async function defCheckForDeletionData(id, modifier) {
     const financeFolder = app.vault.getAbstractFileByPath(pluginInstance.settings.targetFolder);
     let allFiles = [];
 
@@ -3253,13 +3204,11 @@ async function defCheckForDeletionData(data, modifier) {
             if (Array.isArray(jsonData)) {
                 let found;
                 if(modifier === 'plan') {
-                    found = jsonData.some(item => item.category === categoryToFind);
+                    found = jsonData.some(item => item.category.id === id);
                 } else if (modifier === 'bill') {
-                    found = jsonData.some(item => item.bill === categoryToFind);
+                    found = jsonData.some(item => item.bill.id === id);
                 }
-                if (found) {
-                    return true;
-                }
+                return found
             }
         } catch (e) {
             console.error("Error reading/parsing file:", file.path, e);
@@ -3318,22 +3267,41 @@ async function defChangeAllRelatedFiles(data, modifier) {
 }
 
 async function defSearchElementById(id, modifier) {
-    const { jsonMatch, status } = await pluginInstance.getDataFile(modifier === 'History' ? 'History' : modifier === 'Expenditure plan' ? 'Expenditure plan' : modifier === 'Income plan' ? 'Income plan' : 'Error')
-    if(!(status === 'success')) {
-        return { status }
-    }
-
-    try {
-        const jsonData = JSON.parse(jsonMatch[1].trim());
-        const foundItem = jsonData.find(item => item.id === id);
-        if (foundItem) {
-            return { status: 'success', item: foundItem }
-        } else {
-            return { status: 'Item not found' }
+    if(modifier === 'History' || modifier === 'expense' || modifier === 'income') {
+        const { jsonData, status } = await pluginInstance.getDataFile(modifier === 'History' ? 'History' : modifier === 'expense' ? 'Expenditure plan' : modifier === 'income' ? 'Income plan' : 'Error')
+        if(!(status === 'success')) {
+            return status
         }
-    } catch (err) {
-        return { status: err }
-    } 
+        
+        try {
+            const foundItem = jsonData.find(item => item.id === id);
+            if (foundItem) {
+                return { status: 'success', item: foundItem }
+            } else {
+                return { status: 'Item not found' }
+            }
+        } catch (err) {
+            return { status: err }
+        } 
+    } else if (modifier === 'Archive bills') {
+        const { jsonData, status } = await pluginInstance.getDataArchiveFile(modifier)
+        if(!(status === 'success')) {
+            return status
+        }
+        
+        try {
+            const foundItem = jsonData.find(item => item.id === id);
+            if (foundItem) {
+                return { status: 'success', item: foundItem }
+            } else {
+                return { status: 'Item not found' }
+            }
+        } catch (err) {
+            return { status: err }
+        } 
+    } else {
+        return 'Element not found'
+    }
 }
 
 //====================================== Other Function ======================================
