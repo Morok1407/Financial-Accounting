@@ -164,10 +164,6 @@ module.exports = class mainPlugin extends Plugin {
     async checkForDeletionData(id, modifier) {
         return defCheckForDeletionData(id, modifier, this)
     }
-
-    async changeAllRelatedFiles(data, modifier) {
-        return defChangeAllRelatedFiles(data, modifier, this)
-    }
     
     // Duplicating data to archive
     async archiveExpenditurePlan() {
@@ -847,10 +843,6 @@ async function showAnotherMonthView(e) {
         text: '0'
     })
 
-    // let billsInfo = await pluginInstance.searchBills();
-    // let expenditurePlanInfo = await pluginInstance.searchExpenditurePlan();
-    // let incomePlanInfo = await pluginInstance.searchIncomePlan();
-
     otherMonthHomeButtons(contentEl)
 }
 
@@ -1024,7 +1016,7 @@ async function showHistory(mainContentBody, mainContentButton) {
             const dataList = historyBlock.createEl('ul', {
                 cls: 'data-list'
             })
-            e.forEach((e, i) => {
+            e.forEach(async (e, i) => {
                 const dataItem = dataList.createEl('li', {
                     cls: 'data-item',
                     attr: {
@@ -1034,12 +1026,26 @@ async function showHistory(mainContentBody, mainContentButton) {
                 dataItem.onclick = async (e) => {
                     await editingHistory(e);
                 };
-                const itemCategory = dataItem.createEl('p', {
-                    text: `${e.category.name}`
-                })
-                const itemBill = dataItem.createEl('span', {
-                    text: e.bill.name
-                })
+                const { item: itemCategory, status: statusPlan } = await pluginInstance.searchElementById(e.category.id, e.type)
+                if(statusPlan === 'success') {
+                    dataItem.createEl('p', {
+                        text: `${itemCategory.name}`
+                    })
+                } else {
+                    dataItem.createEl('p', {
+                        text: `Error: Plan not found by id`
+                    })
+                }
+                const { item: itemBill, status: statusBill } = await pluginInstance.searchElementById(e.bill.id, 'Archive bills')
+                if(statusBill === 'success') {
+                    dataItem.createEl('span', {
+                        text: itemBill.name
+                    })
+                } else {
+                    dataItem.createEl('span', {
+                        text: 'Error: Bill not found by id'
+                    })
+                }
                 const itemAmount = dataItem.createEl('p', {
                     text: checkExpenceOrIncome(e.amount, e.type)
                 })
@@ -1523,11 +1529,9 @@ async function defAddHistory() {
         const data = {
             amount: Number(inputSum.value),
             bill: {
-                name: selectBills.value,
                 id: selectBills.selectedOptions[0].dataset.billId
             },
             category: {
-                name: selectCategory.value,
                 id: selectCategory.selectedOptions[0].dataset.planId
             }, 
             comment: commentInput.value.trim(),
@@ -1998,7 +2002,7 @@ async function editingHistory(e) {
         return 'Element not found'
     }
 
-    const { item, status} = await pluginInstance.searchElementById(id, 'History')
+    const { item, status } = await pluginInstance.searchElementById(id, 'History')
     if(!(status === 'success')) {
         return status
     }
@@ -2080,7 +2084,7 @@ async function editingHistory(e) {
 
     resultBills.sort((a, b) => b.balance - a.balance)
     resultBills.forEach(arr => {
-        if(arr.id === item.bill.id && arr.name === item.bill.name) {
+        if(arr.id === item.bill.id) {
             selectBills.createEl('option', {
                 text: `${arr.name} • ${arr.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
                 attr: { value: arr.name, 'data-bill-id': arr.id, selected: 'selected' }
@@ -2113,7 +2117,7 @@ async function editingHistory(e) {
 
             resultCategory.sort((a, b) => b.amount - a.amount)
             resultCategory.forEach(arr => {
-                if(arr.id === item.category.id && arr.name === item.category.name) {
+                if(arr.id === item.category.id) {
                     selectCategory.createEl('option', {
                         text: `${arr.name} • ${arr.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
                         attr: { value: arr.name, 'data-plan-id': arr.id, selected: 'selected' }
@@ -2134,7 +2138,7 @@ async function editingHistory(e) {
 
             resultCategory.sort((a, b) => b.amount - a.amount)
             resultCategory.forEach(plan => {
-                if(plan.id === item.category.id && plan.name === item.category.name) {
+                if(plan.id === item.category.id) {
                     selectCategory.createEl('option', {
                         text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
                         attr: { value: plan.name, 'data-plan-id': plan.id, selected: 'selected' }
@@ -2345,15 +2349,16 @@ async function editingPlan(e) {
         }
 
         const data = {
-            name: inputName.value,
-            comment: commentInput.value,
+            id: item.id,
+            name: inputName.value.trim(),
+            comment: commentInput.value.trim(),
             type: item.type,
         }
         const resultOfadd = await pluginInstance.editingJsonToPlan(data)
         if(resultOfadd === "success") {
             setTimeout(() => {
                 viewInstance.onOpen()
-                new Notice('The plan has been added.')
+                new Notice('The plan has been edited.')
             }, 100)
         } else {
             new Notice(resultOfadd)
@@ -2406,28 +2411,36 @@ async function editingPlan(e) {
             const dataList = historyBlock.createEl('ul', {
                 cls: 'data-list'
             })
-            e.forEach((e, i) => {
+            e.forEach(async (e, i) => {
                 const dataItem = dataList.createEl('li', {
                     cls: 'data-item',
                     attr: {
                         'data-id': e.id,
-                        'data-amount': e.amount,
-                        'data-bill': e.bill.name,
-                        'data-category': e.category.name,
-                        'data-type': e.type,
-                        'data-comment': e.comment,
-                        'data-date': e.date,
                     }
                 })
                 dataItem.onclick = async (e) => {
                     await editingHistory(e);
                 };
-                const itemCategory = dataItem.createEl('p', {
-                    text: `${e.category.name}`
-                })
-                const itemBill = dataItem.createEl('span', {
-                    text: e.bill.name
-                })
+                const { item: itemCategory, status: statusPlan } = await pluginInstance.searchElementById(e.category.id, e.type)
+                if(statusPlan === 'success') {
+                    dataItem.createEl('p', {
+                        text: `${itemCategory.name}`
+                    })
+                } else {
+                    dataItem.createEl('p', {
+                        text: `Error: Plan not found by id`
+                    })
+                }
+                const { item: itemBill, status: statusBill } = await pluginInstance.searchElementById(e.bill.id, 'Archive bills')
+                if(statusBill === 'success') {
+                    dataItem.createEl('span', {
+                        text: itemBill.name
+                    })
+                } else {
+                    dataItem.createEl('span', {
+                        text: 'Error: Bill not found by id'
+                    })
+                }
                 const itemAmount = dataItem.createEl('p', {
                     text: checkExpenceOrIncome(e.amount, e.type)
                 })
@@ -2560,16 +2573,16 @@ async function editingBill(e) {
         }
         const data = {
             id: item.id,
-            name: inputName.value,
-            balance: currentBalance.value,
+            name: inputName.value.trim(),
+            balance: currentBalance.value.trim(),
             generalBalance: checkboxInput.checked,
-            comment: commentInput.value,
+            comment: commentInput.value.trim(),
         }
         const resultOfadd = await pluginInstance.editingJsonToBill(data)
         if(resultOfadd === "success") {
             setTimeout(() => {
                 viewInstance.onOpen()
-                new Notice('The bill has been added.')
+                new Notice('The bill has been edited.')
             }, 100)
         } else {
             new Notice(resultOfadd)
@@ -2622,11 +2635,47 @@ async function defEditingJsonToHistory(data, oldData) {
 }
 
 async function defEditingJsonToPlan(data) {
-    pluginInstance.changeAllRelatedFiles(data, 'plan')
+    const { jsonData, content, file, status } = await pluginInstance.getDataFile(data.type === 'expense' ? 'Expenditure plan' : data.type === 'income' ? 'Income plan' : 'Error')
+    if(!(status === 'success')) {
+        return status
+    }
+    
+    try {
+        const newData = jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
+        const dataStr = JSON.stringify(newData, null, 4) + "\n```";
+        const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr);
+        await this.app.vault.modify(file, newContent)
+
+        if(data.type === 'expense') {
+            await pluginInstance.archiveExpenditurePlan()
+        } else if (data.type === 'income') {
+            await pluginInstance.archiveIncomePlan()
+        } else {
+            return 'Error: Plan archiving error'
+        }
+
+        return "success"
+    } catch (err) {
+        return err
+    }
 }
 
 async function defEditingJsonToBill(data) {
-    console.log(data)
+    const { jsonData, content, file, status } = await pluginInstance.getDataArchiveFile('Archive bills')
+    if(!(status === 'success')) {
+        return status
+    }
+    
+    try {
+        const newData = jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
+        const dataStr = JSON.stringify(newData, null, 4) + "\n```";
+        const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr);
+        await this.app.vault.modify(file, newContent)
+
+        return "success"
+    } catch (err) {
+        return err
+    }
 }
 
 //====================================== Delete data ======================================
@@ -2876,7 +2925,7 @@ async function defExpenditureTransaction(data, modifier, oldData) {
         return archiveStatus
     }
     billsJsonData.forEach((e, i) => {
-        if(e.name === data.bill.name && e.id === data.bill.id) {
+        if(e.id === data.bill.id) {
             billBalace = billsJsonData[i].balance;
             billName = billsJsonData[i].name
         }
@@ -2887,7 +2936,7 @@ async function defExpenditureTransaction(data, modifier, oldData) {
         return status
     }
     planJsonData.forEach((e, i) => {
-        if(e.name === data.category.name && e.id === data.category.id) {
+        if(e.id === data.category.id) {
             planAmount = planJsonData[i].amount
             planName = planJsonData[i].name
         }
@@ -2965,7 +3014,7 @@ async function defIncomeTransaction(data, modifier, oldData) {
     }
 
     billsJsonData.forEach((e, i) => {
-        if(e.name === data.bill.name && e.id === data.bill.id) {
+        if(e.id === data.bill.id) {
             billBalace = billsJsonData[i].balance;
             billName = billsJsonData[i].name
         }
@@ -2976,7 +3025,7 @@ async function defIncomeTransaction(data, modifier, oldData) {
         return status
     }
     planJsonData.forEach((e, i) => {
-        if(e.name === data.category.name && e.id === data.category.id) {
+        if(e.id === data.category.id) {
             planAmount = planJsonData[i].amount
             planName = planJsonData[i].name
         }
@@ -3099,7 +3148,7 @@ async function defCheckBill(data, oldData) {
 
     if(oldData) {
         jsonData.forEach((e, i) => {
-            if(e.name === data.bill.name && e.id === data.bill.id) {
+            if(e.id === data.bill.id) {
                 const oldBalance = jsonData[i].balance + oldData.amount
                 if(data.amount > oldBalance) {
                     result = `On bill ${jsonData[i].name} insufficient funds`
@@ -3112,7 +3161,7 @@ async function defCheckBill(data, oldData) {
         })
     } else {
         jsonData.forEach((e, i) => {
-            if(e.name === data.bill.name && e.id === data.bill.id) {
+            if(e.id === data.bill.id) {
                 if(data.amount > jsonData[i].balance) {
                     result = `On bill ${jsonData[i].name} insufficient funds`
                 } else {
@@ -3241,54 +3290,6 @@ async function defCheckForDeletionData(id, modifier) {
     }
 
     return false;
-}
-
-async function defChangeAllRelatedFiles(data, modifier) {
-    const { name: categoryToFind } = data
-    
-    const financeFolder = app.vault.getAbstractFileByPath(pluginInstance.settings.targetFolder);
-    let allFiles = [];
-
-    let yearFolders = [];
-    for (const child of financeFolder.children) {
-        yearFolders.push(child);
-    }
-    yearFolders.pop(); // Remove "Archive" folder
-
-    let monthFolders = [];
-    for (let i = 0; i < yearFolders.length; i++) {
-        for (const child of yearFolders[i].children) {
-            monthFolders.push(child);
-        }
-    }
-
-    for (let i = 0; i < monthFolders.length; i++) {
-        for (const child of monthFolders[i].children) {
-            allFiles.push(child);
-        }
-    }
-
-    const historyFiles = allFiles.filter(f => f.name === "History.md");
-    const expenditurePlanFiles = allFiles.filter(f => f.name === "Expenditure plan.md");
-    const incomePlanFiles = allFiles.filter(f => f.name === "Income plan.md");
-
-    const filesToCheck = modifier === 'plan' ? [...historyFiles, ...expenditurePlanFiles, ...incomePlanFiles] : historyFiles;
-    filesToCheck.forEach(async (file) => {
-        try {
-            const content = await app.vault.read(file);
-            const jsonMatch = content.match(/```json([\s\S]*?)```/);
-            if (jsonMatch[1].length <= 2) {
-                return;
-            }
-            const jsonData = JSON.parse(jsonMatch[1].trim());
-            const newData = jsonData.map(item => item.name === categoryToFind ? {...item, ...data} : item)
-            console.log(newData);
-            // const dataStr = JSON.stringify(newData, null, 4) + "\n```";
-            // const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr);
-        } catch (e) {
-            console.error("Error reading/parsing file:", file.path, e);
-        }
-    })
 }
 
 async function defSearchElementById(id, modifier) {
