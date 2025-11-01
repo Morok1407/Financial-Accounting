@@ -175,7 +175,6 @@ module.exports = class mainPlugin extends Plugin {
     }
 
     // Transferring data to a new month
-
     async newMonthExpenditurePlan() {
         return defNewMonthExpenditurePlan(this)
     }
@@ -243,6 +242,7 @@ class DefaultSettings {
         this.targetFolder = 'Finances';
         this.startYear = 2020;
         this.baseCurrency = "USD";
+        this.defaultTag = 'Finances';
     }
 }
 
@@ -347,6 +347,40 @@ class SettingsTab extends PluginSettingTab {
 			await this.plugin.saveSettings();
 			new Notice(`The main currency has been changed to ${event.target.value}`);
 		});
+
+        new Setting(containerEl)
+        .setName("Default tag for Obsidian")
+        .setDesc("Enter one word to use as a tag (no spaces).")
+        .addText(text => {
+            text
+                .setPlaceholder("For example: Finances")
+                .setValue(this.plugin.settings.defaultTag || "");
+
+            text.inputEl.addEventListener("keydown", async (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+
+            text.inputEl.addEventListener("blur", async () => {
+                let value = text.getValue().trim();
+
+                if (/\s/.test(value)) {
+                    new Notice("Error: Tag must not contain spaces.");
+                    return;
+                }
+
+                if (!/^[\w\-а-яА-ЯёЁ]+$/.test(value)) {
+                    new Notice("The tag can only contain letters, numbers, underscores and hyphens.");
+                    return;
+                }
+
+                this.plugin.settings.defaultTag = value;
+                await this.plugin.saveSettings();
+                new Notice(`The tag "${value}" has been saved.`);
+            });
+        });
     }
 }
 
@@ -355,6 +389,7 @@ class SettingsTab extends PluginSettingTab {
 async function defCreateDirectory() {
     const { now, year, month } = getDate()
 
+    const fileContent = `---\ntags:\n  - ${pluginInstance.settings.defaultTag}\n---\n\`\`\`json\n\`\`\``;
     const archiveFolder = `${pluginInstance.settings.targetFolder}/Archive`
     const archiveExpenditurePlan = `${archiveFolder}/Archive expenditure plan.md`
     const archiveIncomePlan = `${archiveFolder}/Archive income plan.md`
@@ -374,17 +409,17 @@ async function defCreateDirectory() {
     }
 
     if (!await this.app.vault.adapter.exists(archiveExpenditurePlan)) {
-        await this.app.vault.create(archiveExpenditurePlan, '');
+        await this.app.vault.create(archiveExpenditurePlan, fileContent);
         await pluginInstance.archiveExpenditurePlan()
     }
 
     if (!await this.app.vault.adapter.exists(archiveIncomePlan)) {
-        await this.app.vault.create(archiveIncomePlan, '');
+        await this.app.vault.create(archiveIncomePlan, fileContent);
         await pluginInstance.archiveIncomePlan()
     }
 
     if (!await this.app.vault.adapter.exists(archiveBills)) {
-        await this.app.vault.create(archiveBills, '');
+        await this.app.vault.create(archiveBills, fileContent);
     }
 
     if (!await this.app.vault.adapter.exists(yearFolder)) {
@@ -396,21 +431,22 @@ async function defCreateDirectory() {
     }
     
     if (!await this.app.vault.adapter.exists(historyPath)) {
-        await this.app.vault.create(historyPath, '');
+        await this.app.vault.create(historyPath, fileContent);
     }
 
     if (!await this.app.vault.adapter.exists(expenditurePlanPath)) {
-        await this.app.vault.create(expenditurePlanPath, '');
+        await this.app.vault.create(expenditurePlanPath, fileContent);
         await pluginInstance.newMonthExpenditurePlan()
     }
     
     if (!await this.app.vault.adapter.exists(incomePlanPath)) {
-        await this.app.vault.create(incomePlanPath, '');
+        await this.app.vault.create(incomePlanPath, fileContent);
         await pluginInstance.newMonthIncomePlan()
     }
 }
 
 async function defCreateOtherMonthDirectory(numMonth, year) {
+    const fileContent = `---\ntags:\n  - ${pluginInstance.settings.defaultTag}\n---\n\`\`\`json\n\`\`\``;
     const yearFolder = `${pluginInstance.settings.targetFolder}/${year}`;
     const monthFolder = `${yearFolder}/${months[numMonth]}`;
     const historyPath = `${monthFolder}/History.md`;
@@ -431,15 +467,15 @@ async function defCreateOtherMonthDirectory(numMonth, year) {
         }
         
         if (!await this.app.vault.adapter.exists(historyPath)) {
-            await this.app.vault.create(historyPath, '');
+            await this.app.vault.create(historyPath, file);
         }
     
         if (!await this.app.vault.adapter.exists(expenditurePlanPath)) {
-            await this.app.vault.create(expenditurePlanPath, '');
+            await this.app.vault.create(expenditurePlanPath, fileContent);
         }
         
         if (!await this.app.vault.adapter.exists(incomePlanPath)) {
-            await this.app.vault.create(incomePlanPath, '');
+            await this.app.vault.create(incomePlanPath, fileContent);
         }
 
         return 'success'
@@ -764,9 +800,6 @@ async function initOtherMonth(e) {
 async function showAnotherMonthView(e) {
     selectedYear = Number(e.target.dataset.year)
     selectedMonth = Number(e.target.dataset.month)
-    
-    await pluginInstance.newMonthExpenditurePlan()
-    await pluginInstance.newMonthIncomePlan()
 
     const { contentEl } = viewInstance
     contentEl.empty()
@@ -907,8 +940,7 @@ async function defNewMonthExpenditurePlan() {
     if(!(status === 'success')) {
         return status
     }
-
-    if(jsonMatch[1].length >= 1) {
+    if(jsonMatch[1].length > 1) {
         try {
             const jsonData = JSON.parse(jsonMatch[1].trim())
             const data = jsonData.map(obj => ({ ...obj, amount: 0 }))
@@ -933,7 +965,7 @@ async function defNewMonthIncomePlan() {
         return status
     }
     
-    if(jsonMatch[1].length >= 1) {
+    if(jsonMatch[1].length > 1) {
         try {
             const jsonData = JSON.parse(jsonMatch[1].trim())
             const data = jsonData.map(obj => ({ ...obj, amount: 0 }))
@@ -1311,6 +1343,21 @@ async function defAddHistory() {
     if(resultBills === null) {
         return new Notice('Add bills')
     } 
+    const { jsonData: resultExpenditurePlan, status: statusExpenditurePlan } = await pluginInstance.getDataFile('Expenditure plan')
+    if(!(statusExpenditurePlan === 'success')) {
+        return statusExpenditurePlan
+    }
+    if(resultExpenditurePlan === null) {
+        return new Notice('Add expenditure plan')
+    } 
+    const { jsonData: resultIncomePlan, status: statusIncomePlan } = await pluginInstance.getDataFile('Income plan')
+    if(!(statusIncomePlan === 'success')) {
+        return statusExpenditurePlan
+    }
+    if(resultIncomePlan === null) {
+        return new Notice('Add income plan')
+    } 
+
 
     const { contentEl } = viewInstance;
     contentEl.empty()
@@ -2574,7 +2621,7 @@ async function editingBill(e) {
         const data = {
             id: item.id,
             name: inputName.value.trim(),
-            balance: currentBalance.value.trim(),
+            balance: Number(currentBalance.value.trim()),
             generalBalance: checkboxInput.checked,
             comment: commentInput.value.trim(),
         }
@@ -3222,6 +3269,8 @@ async function defGetDataFile(fileName) {
 }
 
 async function defGetDataArchiveFile(fileName) {
+    await pluginInstance.createDirectory()
+    
     const filePath = `${pluginInstance.settings.targetFolder}/Archive/${fileName}.md`
     const file = app.vault.getAbstractFileByPath(filePath);
     if(!file) {
