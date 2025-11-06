@@ -9,6 +9,8 @@ let selectedYear = null;
 let selectedMonth = null;
 
 let openPageNow;
+let resultCreatDirectory = false;
+let resultCreatOtherDirectory = false;
 
 const months = [
     "January",
@@ -228,7 +230,7 @@ class FinancialAccountingView extends ItemView {
 
     onOpen() {
         viewInstance = this;
-        showInitialView()
+        awaitCreatDirectory()
     }
 
     onClose() {
@@ -387,6 +389,7 @@ class SettingsTab extends PluginSettingTab {
 //====================================== Create directory ======================================
 
 async function defCreateDirectory() {
+    resultCreatDirectory = false;
     const { now, year, month } = getDate()
 
     const fileContent = `---\ntags:\n  - ${pluginInstance.settings.defaultTag}\n---\n\`\`\`json\n\`\`\``;
@@ -443,9 +446,13 @@ async function defCreateDirectory() {
         await this.app.vault.create(incomePlanPath, fileContent);
         await pluginInstance.newMonthIncomePlan()
     }
+
+    resultCreatDirectory = true;
 }
 
 async function defCreateOtherMonthDirectory(numMonth, year) {
+    resultCreatOtherDirectory = false;
+
     const fileContent = `---\ntags:\n  - ${pluginInstance.settings.defaultTag}\n---\n\`\`\`json\n\`\`\``;
     const yearFolder = `${pluginInstance.settings.targetFolder}/${year}`;
     const monthFolder = `${yearFolder}/${months[numMonth]}`;
@@ -467,17 +474,20 @@ async function defCreateOtherMonthDirectory(numMonth, year) {
         }
         
         if (!await this.app.vault.adapter.exists(historyPath)) {
-            await this.app.vault.create(historyPath, file);
+            await this.app.vault.create(historyPath, fileContent);
         }
     
         if (!await this.app.vault.adapter.exists(expenditurePlanPath)) {
             await this.app.vault.create(expenditurePlanPath, fileContent);
+            await pluginInstance.newMonthExpenditurePlan()
         }
         
         if (!await this.app.vault.adapter.exists(incomePlanPath)) {
             await this.app.vault.create(incomePlanPath, fileContent);
+            await pluginInstance.newMonthIncomePlan()
         }
 
+        resultCreatOtherDirectory = true;
         return 'success'
     } catch (error) {
         return 'Error creating directory'
@@ -485,6 +495,17 @@ async function defCreateOtherMonthDirectory(numMonth, year) {
 }
 
 //====================================== View ======================================
+
+async function awaitCreatDirectory() {
+    await pluginInstance.createDirectory()
+    
+    const intercalId = setInterval(() => {
+        if(resultCreatDirectory) {
+            clearInterval(intercalId)
+            showInitialView()
+        }
+    }, 100)
+}
 
 async function showInitialView() {
     const { contentEl } = viewInstance
@@ -785,22 +806,31 @@ async function showAllMonths(contentEl) {
 async function initOtherMonth(e) {
     const { now, year, month } = getDate()
 
-    if(months[e.target.dataset.month - 1] === month && e.target.dataset.year === year) {
+    if(months[Number(e.target.dataset.month) - 1] === month && e.target.dataset.year === year) {
         return viewInstance.onOpen()
     }
+    
+    selectedYear = e.target.dataset.year
+    selectedMonth = months[Number(e.target.dataset.month) - 1]
 
     const resultCreat = await pluginInstance.createOtherMonthDirectory(e.target.dataset.month - 1, e.target.dataset.year);
     if(!resultCreat === 'success') {
         new Notice(resultCreat)
     }
 
-    await showAnotherMonthView(e)
+    awaitCreatOtherDirectory()
 }
 
-async function showAnotherMonthView(e) {
-    selectedYear = Number(e.target.dataset.year)
-    selectedMonth = Number(e.target.dataset.month)
+async function awaitCreatOtherDirectory() {
+    const intercalId = setInterval(() => {
+        if(resultCreatDirectory) {
+            clearInterval(intercalId)
+            showAnotherInitialView()
+        }
+    }, 100)
+}
 
+async function showAnotherInitialView() {
     const { contentEl } = viewInstance
     contentEl.empty()
 
@@ -820,7 +850,7 @@ async function showAnotherMonthView(e) {
     })
 
     const showAllMonthsButton = financeHeader.createEl("button", {
-        text: `🗓️ ${months[e.target.dataset.month - 1]}`,
+        text: `🗓️ ${selectedMonth}`,
         attr: {
             id: 'showAllMonths'
         }
@@ -3247,7 +3277,8 @@ async function defGetDataFile(fileName) {
         const dataFile = { jsonMatch, content, file, jsonData, status: 'success' }
         return dataFile
     } else {
-        const filePath = `${pluginInstance.settings.targetFolder}/${selectedYear}/${months[selectedMonth - 1]}/${fileName}.md`
+        const filePath = `${pluginInstance.settings.targetFolder}/${selectedYear}/${selectedMonth}/${fileName}.md`
+        console.log(filePath)
         const file = app.vault.getAbstractFileByPath(filePath);
         if(!file) {
             return { status: `File not found: ${filePath}` }
