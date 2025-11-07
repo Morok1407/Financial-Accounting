@@ -168,12 +168,18 @@
 
 .main-content-body--undefined {
   flex-direction: row;
+  align-items: center;
   justify-content: center;
   padding: 43% 0;
 }
 
 .main-content-body--padding {
   padding-bottom: 60px;
+}
+
+.history-content {
+  display: flex;
+  flex-direction: column;
 }
 
 .input-search {
@@ -350,6 +356,7 @@
 
 .full-data-block {
   display: flex;
+  gap: 12px;
   align-items: center;
   justify-content: space-between;
   width: 100%;

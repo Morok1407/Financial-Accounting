@@ -117,6 +117,10 @@ module.exports = class mainPlugin extends Plugin {
         return defGetDataFile(fileName, this)
     }
 
+    async searchHistory(inputValue) {
+        return defSearchHistory(inputValue, this)
+    }
+
     //add data
     async addHistory() {
         defAddHistory(this)
@@ -883,7 +887,7 @@ async function showAnotherInitialView() {
     const balanceExpensesСheck = balanceExpenses.createEl('div', {
         cls: 'balance_expenses-check'
     })
-
+    
     setIcon(balanceExpensesСheck, 'upload')
     balanceExpensesСheck.createEl('p', {
         text: '0'
@@ -1043,8 +1047,44 @@ async function showHistory(mainContentBody, mainContentButton) {
                 placeholder: '🔎 Search by operations'
             }
         })
+        searchInput.addEventListener('input', async (e) => {
+            const searchValue = e.target.value;
+            const { jsonData: searchHistoryData, status: searchStatus } = await pluginInstance.searchHistory(searchValue);
+            if(searchStatus !== 'success') {
+                new Notice(searchStatus)
+                console.error(searchStatus)
+            }
+            historuContent.empty()
+            if(searchHistoryData === null) {
+                const undefinedContent = historuContent.createEl('div', {
+                    cls: 'undefined-content'
+                })
+                historuContent.addClass('main-content-body--undefined')
+                const undefinedContentSmiles = undefinedContent.createEl('span', {
+                    text: '🍕 🎮 👕'
+                })
 
-        const grouped = Object.values(
+                const undefinedContentText = undefinedContent.createEl('p', {
+                    text: 'No matching operations found.'
+                })
+            } else if(searchHistoryData.length >= 1) {
+                historuContent.removeClass('main-content-body--undefined')
+                await generationHistoryContent(historuContent, mainContentBody, searchHistoryData)
+            } else {
+                historuContent.removeClass('main-content-body--undefined')
+                await generationHistoryContent(historuContent, mainContentBody, historyInfo)
+            }
+        });
+
+        const historuContent = mainContentBody.createEl('div', {
+            cls: 'history-content'
+        })
+
+        await generationHistoryContent(historuContent, mainContentBody, historyInfo)
+}
+
+async function generationHistoryContent(historuContent, mainContentBody, historyInfo) {
+    const grouped = Object.values(
             historyInfo.reduce((acc, item) => {
                 if (!acc[item.date]) {
                     acc[item.date] = [];
@@ -1062,7 +1102,7 @@ async function showHistory(mainContentBody, mainContentButton) {
             mainContentBody.addClass('main-content-body--padding')
         }
         result.forEach((e, i) => {
-            const historyBlock = mainContentBody.createEl('div', {
+            const historyBlock = historuContent.createEl('div', {
                 cls: 'history-block'
             })
             
@@ -1070,10 +1110,10 @@ async function showHistory(mainContentBody, mainContentButton) {
                 cls: 'full-data-block'
             })
             const dateSpan = dateBlock.createEl('span', {
-                text: `${e[0].date}`
+                text: humanizeDate(e[0].date)
             })
             const matchSpan = dateBlock.createEl('span', {
-                text: `- ${SummarizingDataForTheDayExpense(e)} + ${SummarizingDataForTheDayIncome(e)}`
+                text: `${SummarizingDataForTheDay(e)}`
             })
             const dataList = historyBlock.createEl('ul', {
                 cls: 'data-list'
@@ -1169,7 +1209,7 @@ async function showPlans(mainContentBody, mainContentButton) {
                 text: 'Expense'
             })
             const expenseMatchSpan = expenseDateBlock.createEl('span', {
-                text: SummarizingDataForTheDayExpense(resultExpense)
+                text: String(SummarizingDataForTheDayExpense(resultExpense))
             })
             const expenseDataList = expensePlanBlock.createEl('ul', {
                 cls: 'data-list'
@@ -1207,7 +1247,7 @@ async function showPlans(mainContentBody, mainContentButton) {
                 text: 'Income'
             })
             const incomeMatchSpan = incomeDateBlock.createEl('span', {
-                text: SummarizingDataForTheDayIncome(resultIncome)
+                text: String(SummarizingDataForTheDayIncome(resultIncome))
             })
             const incomeDataList = incomePlanBlock.createEl('ul', {
                 cls: 'data-list'
@@ -1285,7 +1325,7 @@ async function showBills(mainContentBody, mainContentButton) {
                 text: 'Main'
             })
             const trueMatchSpan = trueDateBlock.createEl('span', {
-                text: SummarizingDataForTheTrueBills(billsInfo)
+                text: String(SummarizingDataForTheTrueBills(billsInfo))
             })
             const trueDataList = trueBillBlock.createEl('ul', {
                 cls: 'data-list'
@@ -1324,7 +1364,7 @@ async function showBills(mainContentBody, mainContentButton) {
                 text: 'Additional'
             })
             const falseMatchSpan = falseDateBlock.createEl('span', {
-                text: SummarizingDataForTheFalseBills(billsInfo)
+                text: String(SummarizingDataForTheFalseBills(billsInfo))
             })
             const falseDataList = falseBillBlock.createEl('ul', {
                 cls: 'data-list'
@@ -2480,10 +2520,10 @@ async function editingPlan(e) {
                 cls: 'full-data-block'
             })
             const dateSpan = dateBlock.createEl('span', {
-                text: `${e[0].date}`
+                text: humanizeDate(e[0].date)
             })
             const matchSpan = dateBlock.createEl('span', {
-                text: `- ${SummarizingDataForTheDayExpense(e)} + ${SummarizingDataForTheDayIncome(e)}`
+                text: SummarizingDataForTheDay(e)
             })
             const dataList = historyBlock.createEl('ul', {
                 cls: 'data-list'
@@ -3410,6 +3450,53 @@ async function defSearchElementById(id, modifier) {
     }
 }
 
+async function defSearchHistory(inputValue) {
+    const { jsonData, status } = await pluginInstance.getDataFile('History')
+    if(!(status === 'success')) {
+        return status
+    }
+
+    const { jsonData: expenditurePlanInfo } = await pluginInstance.getDataFile('Expenditure plan')
+    const { jsonData: incomePlanInfo } = await pluginInstance.getDataFile('Income plan')
+    const { jsonData: billsInfo } = await pluginInstance.getDataArchiveFile('Archive bills')
+    const allInfo = [...expenditurePlanInfo, ...incomePlanInfo, ...billsInfo]
+    const additionalParameter = allInfo.filter(item => 
+        item.name.toLowerCase().includes(inputValue.toLowerCase())
+    )
+    
+    try {
+        if(additionalParameter.length === 0) {
+            const filteredData = jsonData.filter(item => 
+                item.type.toLowerCase().includes(inputValue.toLowerCase()) ||
+                item.amount.toString().includes(inputValue) ||
+                (item.comment && item.comment.toLowerCase().includes(inputValue.toLowerCase()))
+            );
+    
+            if(filteredData.length === 0) {
+                return { status: 'success', jsonData: null }
+            }
+    
+            return { status: 'success', jsonData: filteredData }
+        } else {
+            const filteredData = jsonData.filter(item => 
+                item.type.toLowerCase().includes(inputValue.toLowerCase()) ||
+                item.amount.toString().includes(inputValue) ||
+                (item.comment && item.comment.toLowerCase().includes(inputValue.toLowerCase())) ||
+                item.bill.id.includes(additionalParameter[0].id) ||
+                item.category.id.includes(additionalParameter[0].id)
+            );
+    
+            if(filteredData.length === 0) {
+                return { status: 'success', jsonData: null }
+            }
+    
+            return { status: 'success', jsonData: filteredData }
+        }
+    } catch (err) {
+        return { status: err }
+    }
+}
+
 //====================================== Other Function ======================================
 
 function generateUUID() {
@@ -3484,6 +3571,17 @@ function checkExpenceOrIncome(amount, type) {
     }
 }
 
+function SummarizingDataForTheDay(obj) {
+    const expense = SummarizingDataForTheDayExpense(obj)
+    const income = SummarizingDataForTheDayIncome(obj)
+    if(expense === 0) {
+        return `+${income}`
+    } else if (income === 0) {
+        return `-${expense}`
+    } else {
+        return `-${expense} +${income}`
+    }
+}
 function SummarizingDataForTheDayExpense(obj) {
     if(!obj) {
         return 0
@@ -3569,4 +3667,32 @@ function getCurrencyGroups() {
 function getCurrencySymbol(code) {
     const currency = pluginInstance.currenciesData[code];
     return currency ? (currency.symbol || currency.symbolNative || code) : code;
+}
+function humanizeDate(dateStr) {
+    const [day, month, year] = dateStr.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.round((today - date) / (1000 * 60 * 60 * 24));
+
+    const weekdays = [
+        "Sunday", "Monday", "Tuesday", "Wednesday",
+        "Thursday", "Friday", "Saturday"
+    ];
+
+    const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+
+    let prefix = "";
+    // if (diffDays === 0) prefix = "Today";
+    // else if (diffDays === 1) prefix = "Yesterday";
+    // else if (diffDays === 2) prefix = "The day before yesterday";
+
+    const formatted = `${months[date.getMonth()]} ${date.getDate()}, ${weekdays[date.getDay()]}`;
+
+    return prefix ? `${prefix}, ${formatted}` : formatted;
 }
