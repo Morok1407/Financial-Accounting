@@ -189,6 +189,14 @@ module.exports = class mainPlugin extends Plugin {
         return defNewMonthIncomePlan(this)
     }
 
+    async checkingExpensePlanForCompliance() {
+        return defCheckingExpensePlanForCompliance(this)
+    }
+
+    async checkingIncomePlanForCompliance() {
+        return defCheckingIncomePlanForCompliance(this)
+    }
+
     // Middleware function
     async getDataArchiveFile(fileName) {
         return defGetDataArchiveFile(fileName, this)
@@ -484,11 +492,15 @@ async function defCreateOtherMonthDirectory(numMonth, year) {
         if (!await this.app.vault.adapter.exists(expenditurePlanPath)) {
             await this.app.vault.create(expenditurePlanPath, fileContent);
             await pluginInstance.newMonthExpenditurePlan()
+        } else {
+            await pluginInstance.checkingExpensePlanForCompliance()
         }
         
         if (!await this.app.vault.adapter.exists(incomePlanPath)) {
             await this.app.vault.create(incomePlanPath, fileContent);
             await pluginInstance.newMonthIncomePlan()
+        } else {
+            await pluginInstance.checkingIncomePlanForCompliance()
         }
 
         resultCreatOtherDirectory = true;
@@ -871,6 +883,7 @@ async function showAnotherInitialView() {
     const balance = contentEl.createEl("div", {
         cls: "balance"
     });
+    balance.addClass('balance-other')
 
     const balanceBody = balance.createEl('div', {
         cls: 'balance-body'
@@ -941,7 +954,7 @@ async function otherMonthHomeButtons(contentEl) {
         historyButton.addClass('home_button--active')
         mainContentBody.empty()
         mainContentButton.empty()
-        // showHistory(mainContentBody, mainContentButton)
+        showHistory(mainContentBody, mainContentButton)
     })
 
     const planButton = homeNav.createEl('a', {
@@ -956,11 +969,11 @@ async function otherMonthHomeButtons(contentEl) {
         planButton.addClass('home_button--active')
         mainContentBody.empty()
         mainContentButton.empty()
-        // showPlans(mainContentBody, mainContentButton)
+        showPlans(mainContentBody, mainContentButton)
     })
 
     historyButton.addClass('home_button--active')
-    // showHistory(mainContentBody, mainContentButton)
+    showHistory(mainContentBody, mainContentButton)
 }
 
 //====================================== Transferring data to a new month ======================================
@@ -1007,6 +1020,58 @@ async function defNewMonthIncomePlan() {
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await this.app.vault.modify(file, newContent);
 
+            return 'success'
+        } catch (error) {
+            return error
+        }
+    }
+}
+
+async function defCheckingExpensePlanForCompliance() {
+    const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await pluginInstance.getDataFile('Expenditure plan');
+    if(!(expenditurePlanStatus === 'success')) {
+        return expenditurePlanStatus
+    }
+    const { jsonData: archiveExpenditurePlanInfo, status: archiveExpenditurePlanStatus } = await pluginInstance.getDataArchiveFile('Archive expenditure plan');
+    if(!(archiveExpenditurePlanStatus === 'success')) {
+        return archiveExpenditurePlanStatus
+    }
+    if(expenditurePlanInfo.length < archiveExpenditurePlanInfo.length) {
+        try {
+            const missingItems = archiveExpenditurePlanInfo.filter(archiveItem => 
+                !expenditurePlanInfo.some(currentItem => currentItem.id === archiveItem.id)
+            ).map(obj => ({ ...obj, amount: 0 }));
+            const updatedData = [...expenditurePlanInfo, ...missingItems];
+            const { file, content } = await pluginInstance.getDataFile('Expenditure plan');
+            const dataStr = JSON.stringify(updatedData, null, 4);
+            const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
+            await this.app.vault.modify(file, newContent);
+            return 'success'
+        } catch (error) {
+            return error
+        }
+    }
+}
+
+async function defCheckingIncomePlanForCompliance() {
+    const { jsonData: incomePlanInfo, status: incomePlanStatus } = await pluginInstance.getDataFile('Income plan');
+    if(!(incomePlanStatus === 'success')) {
+        return incomePlanStatus
+    }
+    const { jsonData: archiveIncomePlanInfo, status: archiveIncomePlanStatus } = await pluginInstance.getDataArchiveFile('Archive income plan');
+    if(!(archiveIncomePlanStatus === 'success')) {
+        return archiveIncomePlanStatus
+    }
+    if(incomePlanInfo.length < archiveIncomePlanInfo.length) {
+        try {
+            const missingItems = archiveIncomePlanInfo.filter(archiveItem =>
+                !incomePlanInfo.some(currentItem => currentItem.id === archiveItem.id)
+            ).map(obj => ({ ...obj, amount: 0 }));
+            const updatedData = [...incomePlanInfo, ...missingItems];
+            const { file, content } = await pluginInstance.getDataFile('Income plan');
+            const dataStr = JSON.stringify(updatedData, null, 4);
+            const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
+            await this.app.vault.modify(file, newContent);
             return 'success'
         } catch (error) {
             return error
@@ -3318,7 +3383,6 @@ async function defGetDataFile(fileName) {
         return dataFile
     } else {
         const filePath = `${pluginInstance.settings.targetFolder}/${selectedYear}/${selectedMonth}/${fileName}.md`
-        console.log(filePath)
         const file = app.vault.getAbstractFileByPath(filePath);
         if(!file) {
             return { status: `File not found: ${filePath}` }

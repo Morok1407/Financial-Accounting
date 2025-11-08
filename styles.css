@@ -38,6 +38,10 @@
   margin-bottom: 42px;
 }
 
+.balance-other {
+  margin-top: 42px;
+}
+
 .balance-top {
   display: flex;
   flex-direction: column;
