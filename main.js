@@ -117,6 +117,10 @@ module.exports = class mainPlugin extends Plugin {
         return defGetDataFile(fileName, this)
     }
 
+    async getSpecificFile(fileName, year, month) {
+        return defGetSpecificFile(fileName, year, month, this)
+    }
+
     async searchHistory(inputValue) {
         return defSearchHistory(inputValue, this)
     }
@@ -781,7 +785,7 @@ async function showAllMonths(contentEl) {
             text: i
         })
         calendarUlTitle.createEl('span', {
-            text: '-900 000 +900 0000'
+            text: await TheSumOfExpensesAndIncomeForTheYear(i)
         })
 
         const calendarUl = calendarMain.createEl('ul', {
@@ -807,14 +811,7 @@ async function showAllMonths(contentEl) {
             const storyMonth = calendarItem.createEl('div', {
                 cls: 'story-month'
             })
-            storyMonth.createEl('span', {
-                text: '-50 000',
-                cls: 'expense-all-month'
-            })
-            storyMonth.createEl('span', {
-                text: '+900 000',
-                cls: 'income-all-month'
-            })
+            IncomeAndExpensesForTheMonth(months[k], i, storyMonth);
         }
     }
 }
@@ -2740,7 +2737,7 @@ async function editingBill(e) {
     })
 
     const addButton = mainFormInput.createEl('button', {
-        text: 'Добавить',
+        text: 'Add',
         cls: 'add-button',
         attr: {
             type: 'submit'
@@ -3403,6 +3400,27 @@ async function defGetDataFile(fileName) {
     }
 }
 
+async function defGetSpecificFile(fileName, year, month) {
+    const filePath = `${pluginInstance.settings.targetFolder}/${year}/${month}/${fileName}.md`
+    const file = app.vault.getAbstractFileByPath(filePath);
+    if(!file) {
+        return { status: `File not found` }
+    }
+    const content = await app.vault.read(file);
+    if(!content) {
+        return { status: `File is empty` }
+    }
+    const jsonMatch = content.match(/```json([\s\S]*?)```/);
+    let jsonData;
+    if(jsonMatch[1].length > 3) {
+        jsonData = JSON.parse(jsonMatch[1].trim());
+    } else {
+        jsonData = null;
+    }
+    const dataFile = { jsonMatch, content, file, jsonData, status: 'success' }
+    return dataFile
+}
+
 async function defGetDataArchiveFile(fileName) {
     await pluginInstance.createDirectory()
     
@@ -3759,4 +3777,60 @@ function humanizeDate(dateStr) {
     const formatted = `${months[date.getMonth()]} ${date.getDate()}, ${weekdays[date.getDay()]}`;
 
     return prefix ? `${prefix}, ${formatted}` : formatted;
+}
+async function IncomeAndExpensesForTheMonth(month, year, div) {
+    const { jsonData: expenseData, status: expenseStatus } = await pluginInstance.getSpecificFile('Expenditure plan', year, month)
+    if(!(expenseStatus === 'success')) {
+        return
+    }
+    const { jsonData: incomeData, status: incomeStatus } = await pluginInstance.getSpecificFile('Income plan', year, month)
+    if(!(incomeStatus === 'success')) {
+        return
+    }
+
+    const totalExpense = SummarizingDataForTheDayExpense(expenseData)
+    const totalIncome = SummarizingDataForTheDayIncome(incomeData)
+
+    if(totalIncome >= totalExpense) {
+            div.createEl('span', {
+                text: `-${totalExpense}`,
+                cls: 'expense-all-month-success'
+            }),
+            div.createEl('span', {
+                text: `+${totalIncome}`,
+                cls: 'income-all-month'
+            })
+    } else {
+            div.createEl('span', {
+                text: `-${totalExpense}`,
+                cls: 'expense-all-month-failure'
+            }),
+            div.createEl('span', {
+                text: `+${totalIncome}`,
+                cls: 'income-all-month'
+            })
+    }
+}
+async function TheSumOfExpensesAndIncomeForTheYear(year) {
+    totalExpense = 0
+    totalIncome = 0
+
+    for(let m = 1; m <= 12; m++) {
+        const { jsonData: expenseData, status: expenseStatus } = await pluginInstance.getSpecificFile('Expenditure plan', year, months[m])
+        if(expenseStatus === 'File not found') {
+            continue
+        } else if (expenseStatus === 'File is empty') {
+            continue
+        }
+        const { jsonData: incomeData, status: incomeStatus } = await pluginInstance.getSpecificFile('Income plan', year, months[m])
+        if(incomeStatus === 'File not found') {
+            continue
+        } else if (incomeStatus === 'File is empty') {
+            continue
+        }
+        totalExpense += SummarizingDataForTheDayExpense(expenseData)
+        totalIncome += SummarizingDataForTheDayIncome(incomeData)
+    }
+
+    return `-${totalExpense} +${totalIncome}`
 }

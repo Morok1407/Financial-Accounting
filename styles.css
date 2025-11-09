@@ -459,14 +459,22 @@
 .story-month {
   display: flex;
   flex-direction: column;
+  align-items: end;
 }
 
-.expense-all-month {
+.expense-all-month-failure {
   color: #ff4f44;
+  font-size: 17px;
+}
+
+.expense-all-month-success {
+  color: #f5f5f5;
+  font-size: 17px;
 }
 
 .income-all-month {
   color: #abafb3;
+  font-size: 14px;
 }
 
 .history-plan {
