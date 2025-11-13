@@ -246,7 +246,11 @@ class FinancialAccountingView extends ItemView {
 
     onOpen() {
         viewInstance = this;
-        awaitCreatDirectory()
+        if(selectedMonth === null && selectedYear === null) {
+            awaitCreatDirectory()
+        } else {
+            showAnotherInitialView()
+        }
     }
 
     onClose() {
@@ -867,6 +871,8 @@ async function showAnotherInitialView() {
     })
     setIcon(exitButton, 'arrow-left')
     exitButton.addEventListener('click', () => {
+        selectedMonth = null;
+        selectedYear = null;
         viewInstance.onOpen()
     })
 
@@ -981,8 +987,19 @@ async function otherMonthHomeButtons(contentEl) {
         showPlans(mainContentBody, mainContentButton)
     })
 
-    historyButton.addClass('home_button--active')
-    showHistory(mainContentBody, mainContentButton)
+    if(!openPageNow || openPageNow === 'History') {
+        showHistory(mainContentBody, mainContentButton)
+        historyButton.addClass('home_button--active')
+        planButton.removeClass('home_button--active')
+    } else if(openPageNow === 'Plans') {
+        showPlans(mainContentBody, mainContentButton)
+        historyButton.removeClass('home_button--active')
+        planButton.addClass('home_button--active')
+    } else {
+        showHistory(mainContentBody, mainContentButton)
+        historyButton.addClass('home_button--active')
+        planButton.removeClass('home_button--active')
+    }
 }
 
 //====================================== Transferring data to a new month ======================================
@@ -1667,38 +1684,40 @@ async function defAddHistory() {
     })
     fillMonthDates(selectDate)
 
-    const selectDateButtonDiv = mainFormInput.createEl('div', {
-        cls: 'form-selects-date-buttons'
-    })
-
-    const selectDateToday = selectDateButtonDiv.createEl('button', {
-        text: 'Today',
-        attr: {
-            type: 'button'
-        }
-    })
-    // selectDateToday.addClass('button-selects-date--active')
-    selectDateToday.addEventListener('click', () => {
-        selectRelativeDate(selectDate, 0)
-    })
-    const selectDateYesterday = selectDateButtonDiv.createEl('button', {
-        text: 'Yesterday',
-        attr: {
-            type: 'button'
-        }
-    })
-    selectDateYesterday.addEventListener('click', () => {
-        selectRelativeDate(selectDate, -1)
-    })
-    const selectDateTheDayBefotreYesterday = selectDateButtonDiv.createEl('button', {
-        text: 'The day before yesterday',
-        attr: {
-            type: 'button'
-        }
-    })
-    selectDateTheDayBefotreYesterday.addEventListener('click', () => {
-        selectRelativeDate(selectDate, -2)
-    })
+    if(selectedYear === null && selectedMonth === null) {
+        const selectDateButtonDiv = mainFormInput.createEl('div', {
+            cls: 'form-selects-date-buttons'
+        })
+    
+        const selectDateToday = selectDateButtonDiv.createEl('button', {
+            text: 'Today',
+            attr: {
+                type: 'button'
+            }
+        })
+        // selectDateToday.addClass('button-selects-date--active')
+        selectDateToday.addEventListener('click', () => {
+            selectRelativeDate(selectDate, 0)
+        })
+        const selectDateYesterday = selectDateButtonDiv.createEl('button', {
+            text: 'Yesterday',
+            attr: {
+                type: 'button'
+            }
+        })
+        selectDateYesterday.addEventListener('click', () => {
+            selectRelativeDate(selectDate, -1)
+        })
+        const selectDateTheDayBefotreYesterday = selectDateButtonDiv.createEl('button', {
+            text: 'The day before yesterday',
+            attr: {
+                type: 'button'
+            }
+        })
+        selectDateTheDayBefotreYesterday.addEventListener('click', () => {
+            selectRelativeDate(selectDate, -2)
+        })
+    }
 
     const addButton = mainFormInput.createEl('button', {
         text: 'Add',
@@ -3809,9 +3828,6 @@ function humanizeDate(dateStr) {
     ];
 
     let prefix = "";
-    // if (diffDays === 0) prefix = "Today";
-    // else if (diffDays === 1) prefix = "Yesterday";
-    // else if (diffDays === 2) prefix = "The day before yesterday";
 
     const formatted = `${months[date.getMonth()]} ${date.getDate()}, ${weekdays[date.getDay()]}`;
 
