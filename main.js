@@ -844,6 +844,18 @@ async function awaitCreatOtherDirectory() {
 }
 
 async function showAnotherInitialView() {
+    const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await pluginInstance.getDataFile('Expenditure plan');
+    if(expenditurePlanStatus !== 'success') {
+        new Notice(expenditurePlanStatus)
+        console.error(expenditurePlanStatus)
+    }
+
+    const { jsonData: incomePlanInfo, status: incomePlanStatus } = await pluginInstance.getDataFile('Income plan');
+    if(incomePlanStatus !== 'success') {
+        new Notice(incomePlanStatus)
+        console.error(incomePlanStatus)
+    }
+    
     const { contentEl } = viewInstance
     contentEl.empty()
 
@@ -900,7 +912,7 @@ async function showAnotherInitialView() {
     
     setIcon(balanceExpensesСheck, 'upload')
     balanceExpensesСheck.createEl('p', {
-        text: '0'
+        text: String(SummarizingDataForTheDayExpense(expenditurePlanInfo))
     })
 
     const balanceIncome = balanceBody.createEl('div', {
@@ -917,7 +929,7 @@ async function showAnotherInitialView() {
 
     setIcon(balanceIncomeCheck, 'download')
     balanceIncomeCheck.createEl('p', {
-        text: '0'
+        text: String(SummarizingDataForTheDayIncome(incomePlanInfo))
     })
 
     otherMonthHomeButtons(contentEl)
@@ -1489,7 +1501,6 @@ async function defAddHistory() {
     if(resultIncomePlan === null) {
         return new Notice('Add income plan')
     } 
-
 
     const { contentEl } = viewInstance;
     contentEl.empty()
@@ -3594,42 +3605,70 @@ function getDate() {
 }
 
 function fillMonthDates(selectEl, oldDate) {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
     const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const monthNames = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ];
 
-    for (let d = daysInMonth; d >= 1; d--) {
-        const date = new Date(year, month, d);
+    if(selectedYear === null && selectedMonth === null) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth();
 
-        const day = date.getDate();
-        const weekday = dayNames[date.getDay()];
-        const monthName = monthNames[month];
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+        for (let d = daysInMonth; d >= 1; d--) {
+            const date = new Date(year, month, d);
+    
+            const day = date.getDate();
+            const weekday = dayNames[date.getDay()];
+            const monthName = monthNames[month];
+    
+            let label = `${day} ${monthName}, ${weekday}`;
+    
+            const diff = Math.floor((date - today) / (1000 * 60 * 60 * 24));
+    
+            if (diff === -1) label = `Today, ${label}`;
+            else if (diff === 0) label = `Tomorrow, ${label}`;
+            else if (diff === 1) label = `The day after tomorrow, ${label}`;
+            else if (diff === -2) label = `Yesterday, ${label}`;
+            else if (diff === -3) label = `The day before yesterday, ${label}`;
+    
+            const value = `${String(d).padStart(2, "0")}-${String(month + 1).padStart(2, "0")}-${year}`;
+            const option = selectEl.createEl("option", {
+                text: label,
+                attr: { value }
+            });
+    
+            if (value === oldDate) option.selected = true;
+            else if (diff === -1) option.selected = true;
+        }
+    } else {
+        const convertMonth = new Date(`${selectedMonth} 1, ${selectedYear}`);
+        const selectedMonthNumber = isNaN(convertMonth) ? null : convertMonth.getMonth();
 
-        let label = `${day} ${monthName}, ${weekday}`;
+        const today = new Date();
+        const year = Number(selectedYear);
+        const month = selectedMonthNumber;
 
-        const diff = Math.floor((date - today) / (1000 * 60 * 60 * 24));
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+        for (let d = daysInMonth; d >= 1; d--) {
+            const date = new Date(year, month, d);
+    
+            const day = date.getDate();
+            const weekday = dayNames[date.getDay()];
+            const monthName = monthNames[month];
+    
+            let label = `${day} ${monthName}, ${weekday}`;
 
-        if (diff === -1) label = `Today, ${label}`;
-        else if (diff === 0) label = `Tomorrow, ${label}`;
-        else if (diff === 1) label = `The day after tomorrow, ${label}`;
-        else if (diff === -2) label = `Yesterday, ${label}`;
-        else if (diff === -3) label = `The day before yesterday, ${label}`;
-
-        const value = `${String(d).padStart(2, "0")}-${String(month + 1).padStart(2, "0")}-${year}`;
-        const option = selectEl.createEl("option", {
-            text: label,
-            attr: { value }
-        });
-
-        if (value === oldDate) option.selected = true;
-        else if (diff === -1) option.selected = true;
+            const value = `${String(d).padStart(2, "0")}-${String(month + 1).padStart(2, "0")}-${year}`;
+            const option = selectEl.createEl("option", {
+                text: label,
+                attr: { value }
+            });
+        }
     }
 }
 
