@@ -1175,20 +1175,18 @@ async function showHistory(mainContentBody, mainContentButton) {
 }
 
 async function generationHistoryContent(historuContent, mainContentBody, historyInfo) {
-    const grouped = Object.values(
+        const now = new Date();
+        const groupedByDay = Object.values(
             historyInfo.reduce((acc, item) => {
-                if (!acc[item.date]) {
-                    acc[item.date] = [];
-                }
-                acc[item.date].push(item);
+                const day = item.date.split('T')[0]; 
+                if (!acc[day]) acc[day] = [];
+                acc[day].push(item);
                 return acc;
             }, {})
         );
-        const result = grouped.sort((a, b) => {
-            const dateA = new Date(a[0].date.split("-").reverse().join("-"));
-            const dateB = new Date(b[0].date.split("-").reverse().join("-"));
-            return dateB - dateA;
-        });
+        const result = groupedByDay.map(dayGroup => 
+            dayGroup.sort((a, b) => Math.abs(new Date(a.date) - now) - Math.abs(new Date(b.date) - now))
+        );
         if(result.length > 5) {
             mainContentBody.addClass('main-content-body--padding')
         }
@@ -1201,7 +1199,7 @@ async function generationHistoryContent(historuContent, mainContentBody, history
                 cls: 'full-data-block'
             })
             const dateSpan = dateBlock.createEl('span', {
-                text: humanizeDate(e[0].date)
+                text: humanizeDate(e[0].date.split("T")[0])
             })
             const matchSpan = dateBlock.createEl('span', {
                 text: `${SummarizingDataForTheDay(e)}`
@@ -1744,7 +1742,7 @@ async function defAddHistory() {
                 id: selectCategory.selectedOptions[0].dataset.planId
             }, 
             comment: commentInput.value.trim(),
-            date: selectDate.value,
+            date: `${selectDate.value}T${getLocalTimeISO()}`,
             type: resultRadio,
         }
         const resultOfadd = await pluginInstance.addJsonToHistory(data)
@@ -2580,20 +2578,18 @@ async function editingPlan(e) {
         if(filterHistoryInfo.length < 1) {
             return
         }
-        const grouped = Object.values(
+        const now = new Date();
+        const groupedByDay = Object.values(
             filterHistoryInfo.reduce((acc, item) => {
-                if (!acc[item.date]) {
-                    acc[item.date] = [];
-                }
-                acc[item.date].push(item);
+                const day = item.date.split('T')[0]; 
+                if (!acc[day]) acc[day] = [];
+                acc[day].push(item);
                 return acc;
             }, {})
         );
-        const result = grouped.sort((a, b) => {
-            const dateA = new Date(a[0].date.split("-").reverse().join("-"));
-            const dateB = new Date(b[0].date.split("-").reverse().join("-"));
-            return dateB - dateA;
-        });
+        const result = groupedByDay.map(dayGroup => 
+            dayGroup.sort((a, b) => Math.abs(new Date(a.date) - now) - Math.abs(new Date(b.date) - now))
+        );
 
         const historyPlanTitle = contentEl.createEl('h1', {
             text: 'History of the plan'
@@ -2612,7 +2608,7 @@ async function editingPlan(e) {
                 cls: 'full-data-block'
             })
             const dateSpan = dateBlock.createEl('span', {
-                text: humanizeDate(e[0].date)
+                text: humanizeDate(e[0].date.split("T")[0])
             })
             const matchSpan = dateBlock.createEl('span', {
                 text: SummarizingDataForTheDay(e)
@@ -3654,7 +3650,7 @@ function fillMonthDates(selectEl, oldDate) {
             else if (diff === -2) label = `Yesterday, ${label}`;
             else if (diff === -3) label = `The day before yesterday, ${label}`;
     
-            const value = `${String(d).padStart(2, "0")}-${String(month + 1).padStart(2, "0")}-${year}`;
+            const value = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
             const option = selectEl.createEl("option", {
                 text: label,
                 attr: { value }
@@ -3682,7 +3678,7 @@ function fillMonthDates(selectEl, oldDate) {
     
             let label = `${day} ${monthName}, ${weekday}`;
 
-            const value = `${String(d).padStart(2, "0")}-${String(month + 1).padStart(2, "0")}-${year}`;
+            const value = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
             const option = selectEl.createEl("option", {
                 text: label,
                 attr: { value }
@@ -3809,7 +3805,7 @@ function getCurrencySymbol(code) {
     return currency ? (currency.symbol || currency.symbolNative || code) : code;
 }
 function humanizeDate(dateStr) {
-    const [day, month, year] = dateStr.split("-").map(Number);
+    const [year, month, day] = dateStr.split("-").map(Number);
     const date = new Date(year, month - 1, day);
 
     const today = new Date();
@@ -3828,6 +3824,8 @@ function humanizeDate(dateStr) {
     ];
 
     let prefix = "";
+    if (diffDays === 0) prefix = "Today";
+    else if (diffDays === 1) prefix = "Yesterday";
 
     const formatted = `${months[date.getMonth()]} ${date.getDate()}, ${weekdays[date.getDay()]}`;
 
@@ -3888,4 +3886,9 @@ async function TheSumOfExpensesAndIncomeForTheYear(year) {
     }
 
     return `-${totalExpense} +${totalIncome}`
+}
+function getLocalTimeISO() {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split('T')[1].split('.')[0];
 }
