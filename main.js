@@ -1515,7 +1515,11 @@ async function defAddHistory() {
     }
     if(resultIncomePlan === null) {
         return new Notice('Add income plan')
-    } 
+    }
+    const { jsonData: resultHistory, status: statusHistory } = await pluginInstance.getDataFile('History')
+    if(!(statusHistory === 'success')) {
+        return statusHistory
+    }
 
     const { contentEl } = viewInstance;
     contentEl.empty()
@@ -1608,16 +1612,60 @@ async function defAddHistory() {
             id: 'select-bills'
         }
     })
-    resultBills.sort((a, b) => b.balance - a.balance)
-    resultBills.forEach(bill => {
-        selectBills.createEl('option', {
-            text: `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-            attr: { 
-                value: bill.name,
-                'data-bill-id': bill.id
-            }
+    if(resultHistory === null) {
+        resultBills.sort((a, b) => b.balance - a.balance)
+        resultBills.forEach(bill => {
+            selectBills.createEl('option', {
+                text: `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                attr: { 
+                    value: bill.name,
+                    'data-bill-id': bill.id
+                }
+            })
         })
-    })
+    } else {
+        // Sort by number of uses
+        let counts = {};
+        resultHistory.forEach(item => {
+            const billId = item.bill.id;
+            counts[billId] = (counts[billId] || 0) + 1;
+        });
+        let maxCount = 0;
+        let mostFrequentBillId = null;
+        for (const billId in counts) {
+            if (counts[billId] > maxCount) {
+                maxCount = counts[billId];
+                mostFrequentBillId = billId;
+            } else if (counts[billId] === maxCount) {
+                resultBills.sort((a, b) => b.balance - a.balance)
+                resultBills.forEach(bill => {
+                    selectBills.createEl('option', {
+                        text: `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                        attr: { 
+                            value: bill.name,
+                            'data-bill-id': bill.id
+                        }
+                    })
+                })
+            }
+        }
+
+        const sorted = resultBills.sort((a, b) => {
+            if (a.id === mostFrequentBillId) return -1;
+            if (b.id === mostFrequentBillId) return 1;
+            return 0;
+        });
+
+        sorted.forEach(bill => {
+            selectBills.createEl('option', {
+                text: `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                attr: { 
+                    value: bill.name,
+                    'data-bill-id': bill.id
+                }
+            })
+        })
+    }
     
     const selectCategory = mainFormInput.createEl('select', {
         cls: 'form-selects',
