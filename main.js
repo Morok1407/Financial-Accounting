@@ -460,11 +460,15 @@ async function defCreateDirectory() {
     if (!await this.app.vault.adapter.exists(expenditurePlanPath)) {
         await this.app.vault.create(expenditurePlanPath, fileContent);
         await pluginInstance.newMonthExpenditurePlan()
+    } else {
+        await pluginInstance.checkingExpensePlanForCompliance()
     }
     
     if (!await this.app.vault.adapter.exists(incomePlanPath)) {
         await this.app.vault.create(incomePlanPath, fileContent);
         await pluginInstance.newMonthIncomePlan()
+    } else {
+        await pluginInstance.checkingIncomePlanForCompliance()
     }
 
     resultCreatDirectory = true;
@@ -1054,7 +1058,7 @@ async function defNewMonthIncomePlan() {
 }
 
 async function defCheckingExpensePlanForCompliance() {
-    const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await pluginInstance.getDataFile('Expenditure plan');
+    const { jsonData: expenditurePlanInfo, file, content, status: expenditurePlanStatus } = await pluginInstance.getDataFile('Expenditure plan');
     if(!(expenditurePlanStatus === 'success')) {
         return expenditurePlanStatus
     }
@@ -1062,14 +1066,27 @@ async function defCheckingExpensePlanForCompliance() {
     if(!(archiveExpenditurePlanStatus === 'success')) {
         return archiveExpenditurePlanStatus
     }
-    if(expenditurePlanInfo.length < archiveExpenditurePlanInfo.length) {
+    if(expenditurePlanInfo === null) {
+        await pluginInstance.newMonthExpenditurePlan()
+    } else if(expenditurePlanInfo.length < archiveExpenditurePlanInfo.length) {
         try {
-            const missingItems = archiveExpenditurePlanInfo.filter(archiveItem => 
+            const missingItems = archiveExpenditurePlanInfo.filter(archiveItem =>
                 !expenditurePlanInfo.some(currentItem => currentItem.id === archiveItem.id)
             ).map(obj => ({ ...obj, amount: 0 }));
             const updatedData = [...expenditurePlanInfo, ...missingItems];
-            const { file, content } = await pluginInstance.getDataFile('Expenditure plan');
             const dataStr = JSON.stringify(updatedData, null, 4);
+            const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
+            await this.app.vault.modify(file, newContent);
+            return 'success'
+        } catch (error) {
+            return error
+        }
+    } else if (expenditurePlanInfo.length > archiveExpenditurePlanInfo.length) {
+        try {
+            const updatedArchiveData = archiveExpenditurePlanInfo.filter(archiveItem =>
+                expenditurePlanInfo.some(currentItem => currentItem.id === archiveItem.id)
+            ).map(obj => ({ ...obj, amount: 0 }));;
+            const dataStr = JSON.stringify(updatedArchiveData, null, 4);
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await this.app.vault.modify(file, newContent);
             return 'success'
@@ -1080,7 +1097,7 @@ async function defCheckingExpensePlanForCompliance() {
 }
 
 async function defCheckingIncomePlanForCompliance() {
-    const { jsonData: incomePlanInfo, status: incomePlanStatus } = await pluginInstance.getDataFile('Income plan');
+    const { jsonData: incomePlanInfo, file, content, status: incomePlanStatus } = await pluginInstance.getDataFile('Income plan');
     if(!(incomePlanStatus === 'success')) {
         return incomePlanStatus
     }
@@ -1088,14 +1105,27 @@ async function defCheckingIncomePlanForCompliance() {
     if(!(archiveIncomePlanStatus === 'success')) {
         return archiveIncomePlanStatus
     }
-    if(incomePlanInfo.length < archiveIncomePlanInfo.length) {
+    if(incomePlanInfo === null) {
+        await pluginInstance.newMonthIncomePlan()
+    } else if(incomePlanInfo.length < archiveIncomePlanInfo.length) {
         try {
             const missingItems = archiveIncomePlanInfo.filter(archiveItem =>
                 !incomePlanInfo.some(currentItem => currentItem.id === archiveItem.id)
             ).map(obj => ({ ...obj, amount: 0 }));
             const updatedData = [...incomePlanInfo, ...missingItems];
-            const { file, content } = await pluginInstance.getDataFile('Income plan');
             const dataStr = JSON.stringify(updatedData, null, 4);
+            const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
+            await this.app.vault.modify(file, newContent);
+            return 'success'
+        } catch (error) {
+            return error
+        }
+    } else if (incomePlanInfo.length > archiveIncomePlanInfo.length) {
+        try {
+            const updatedArchiveData = archiveIncomePlanInfo.filter(archiveItem =>
+                incomePlanInfo.some(currentItem => currentItem.id === archiveItem.id)
+            ).map(obj => ({ ...obj, amount: 0 }));;
+            const dataStr = JSON.stringify(updatedArchiveData, null, 4);
             const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await this.app.vault.modify(file, newContent);
             return 'success'
@@ -3430,14 +3460,13 @@ async function defCheckBill(data, oldData) {
 }
 
 async function defGetDataFile(fileName) {
-    await pluginInstance.createDirectory()
-
     if(selectedYear === null || selectedMonth === null) {
         const { year, month } = getDate()
         const filePath = `${pluginInstance.settings.targetFolder}/${year}/${month}/${fileName}.md`
         const file = app.vault.getAbstractFileByPath(filePath);
         if(!file) {
-            return { status: `File not found: ${filePath}` }
+            await pluginInstance.createDirectory()
+            return { status: `File not found: ${filePath}. Please try again` }
         }
         const content = await app.vault.read(file);
         if(!content) {
@@ -3496,12 +3525,11 @@ async function defGetSpecificFile(fileName, year, month) {
 }
 
 async function defGetDataArchiveFile(fileName) {
-    await pluginInstance.createDirectory()
-    
     const filePath = `${pluginInstance.settings.targetFolder}/Archive/${fileName}.md`
     const file = app.vault.getAbstractFileByPath(filePath);
     if(!file) {
-        return { status: `File not found: ${filePath}` }
+        await pluginInstance.createDirectory()
+        return { status: `File not found: ${filePath}. Please try again` }
     }
     const content = await app.vault.read(file);
     if(!content) {
