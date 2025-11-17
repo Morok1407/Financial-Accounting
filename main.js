@@ -3427,36 +3427,32 @@ async function defUpdateData(fileName, accountName, targetE, newTargetE) {
 async function defCheckBill(data, oldData) {
     const { jsonData } = await pluginInstance.getDataArchiveFile("Archive bills")
 
-    let result;
-
     if(oldData) {
         jsonData.forEach((e, i) => {
             if(e.id === data.bill.id) {
                 const oldBalance = jsonData[i].balance + oldData.amount
                 if(data.amount > oldBalance) {
-                    result = `On bill ${jsonData[i].name} insufficient funds`
+                    return `On bill ${jsonData[i].name} insufficient funds`
                 } else {
-                    result = "success"
+                    return "success"
                 }
             } else {
-                result = `Bill ${data.bill} not found`
+                return `Bill ${data.bill} not found`
             }
         })
     } else {
         jsonData.forEach((e, i) => {
             if(e.id === data.bill.id) {
                 if(data.amount > jsonData[i].balance) {
-                    result = `On bill ${jsonData[i].name} insufficient funds`
+                    return `On bill ${jsonData[i].name} insufficient funds`
                 } else {
-                    result = "success"
+                    return "success"
                 }
             } else {
-                result = `Bill ${data.bill} not found`
+                return `Bill ${data.bill} not found`
             }
         })
     }
-
-    return result
 }
 
 async function defGetDataFile(fileName) {
