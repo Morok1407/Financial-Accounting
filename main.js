@@ -1630,7 +1630,8 @@ async function defAddHistory() {
         attr: {
             placeholder: 'Sum',
             id: 'input-sum',
-            type: 'number'
+            type: 'number',
+            inputmode: "decimal"
         }
     })
     inputSum.focus()
@@ -2119,7 +2120,6 @@ async function defAddJsonToHistory(data) {
     }
     
     const resultCheckBill  = await pluginInstance.checkBill(data)
-    console.log(resultCheckBill)
     if(data.type === 'expense') {
         if(!(resultCheckBill === 'success')) {
             return resultCheckBill
