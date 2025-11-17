@@ -2119,6 +2119,7 @@ async function defAddJsonToHistory(data) {
     }
     
     const resultCheckBill  = await pluginInstance.checkBill(data)
+    console.log(resultCheckBill)
     if(data.type === 'expense') {
         if(!(resultCheckBill === 'success')) {
             return resultCheckBill
@@ -3426,33 +3427,21 @@ async function defUpdateData(fileName, accountName, targetE, newTargetE) {
 
 async function defCheckBill(data, oldData) {
     const { jsonData } = await pluginInstance.getDataArchiveFile("Archive bills")
+    const bill = jsonData.find(b => b.id === data.bill.id);
 
-    if(oldData) {
-        jsonData.forEach((e, i) => {
-            if(e.id === data.bill.id) {
-                const oldBalance = jsonData[i].balance + oldData.amount
-                if(data.amount > oldBalance) {
-                    return `On bill ${jsonData[i].name} insufficient funds`
-                } else {
-                    return "success"
-                }
-            } else {
-                return `Bill ${data.bill} not found`
-            }
-        })
-    } else {
-        jsonData.forEach((e, i) => {
-            if(e.id === data.bill.id) {
-                if(data.amount > jsonData[i].balance) {
-                    return `On bill ${jsonData[i].name} insufficient funds`
-                } else {
-                    return "success"
-                }
-            } else {
-                return `Bill ${data.bill} not found`
-            }
-        })
+    if (!bill) {
+        return `Bill ${data.bill.id} not found`;
     }
+
+    const currentBalance = oldData
+        ? bill.balance + oldData.amount
+        : bill.balance;
+
+    if (data.amount > currentBalance) {
+        return `On bill ${bill.name} insufficient funds`;
+    }
+
+    return "success";
 }
 
 async function defGetDataFile(fileName) {
