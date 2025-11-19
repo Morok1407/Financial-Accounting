@@ -2544,11 +2544,9 @@ async function editingHistory(e) {
             id: item.id,
             amount: Number(inputSum.value),
             bill: {
-                name: selectBills.value,
-                id: selectBills.selectedOptions[0].dataset.billId
+                id: selectBills.value
             },
             category: {
-                name: selectCategory.value,
                 id: selectCategory.selectedOptions[0].dataset.planId
             },
             comment: commentInput.value,
