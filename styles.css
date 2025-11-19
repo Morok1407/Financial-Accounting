@@ -343,6 +343,18 @@
   background-color: #5288c1 !important;
 }
 
+.form-transfer-expense-div {
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.form-transfer-expense-div svg {
+  width: 30px;
+  height: 30px;
+}
+
 .history-block {
   display: flex;
   flex-direction: column;

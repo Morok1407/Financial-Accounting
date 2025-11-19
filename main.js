@@ -174,6 +174,15 @@ module.exports = class mainPlugin extends Plugin {
     async checkForDeletionData(id, modifier) {
         return defCheckForDeletionData(id, modifier, this)
     }
+
+    // Transfer between bills
+    async transferBetweenBills(billId) {
+        return defTransferBetweenBills(billId, this)
+    }
+
+    async transferJsonToBills(data) {
+        return defTransferJsonToBills(data, this)
+    }
     
     // Duplicating data to archive
     async archiveExpenditurePlan() {
@@ -1213,7 +1222,7 @@ async function generationHistoryContent(historuContent, mainContentBody, history
                 acc[day].push(item);
                 return acc;
             }, {})
-        );
+        ).sort((a, b) => new Date(b[0].date) - new Date(a[0].date));
         const result = groupedByDay.map(dayGroup => 
             dayGroup.sort((a, b) => Math.abs(new Date(a.date) - now) - Math.abs(new Date(b.date) - now))
         );
@@ -1643,17 +1652,39 @@ async function defAddHistory() {
             id: 'select-bills'
         }
     })
+
+    // --- Main ---
+    const mainGroup = document.createElement("optgroup");
+    mainGroup.label = "Main";
+    
+    resultBills.forEach(bill => {
+        if(bill.generalBalance) {
+            const option = document.createElement("option");
+            option.value = bill.id;
+            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+            mainGroup.appendChild(option);
+        }
+    })
+
+    // --- Additional ---
+    const additionalGroup = document.createElement("optgroup");
+    additionalGroup.label = "Additional";
+
+    resultBills.forEach(bill => {
+        if(!bill.generalBalance) {
+            const option = document.createElement("option");
+            option.value = bill.id;
+            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+            additionalGroup.appendChild(option);
+        }
+    })
+
+    selectBills.appendChild(mainGroup);
+    selectBills.appendChild(additionalGroup);
+
     if(resultHistory === null) {
         resultBills.sort((a, b) => b.balance - a.balance)
-        resultBills.forEach(bill => {
-            selectBills.createEl('option', {
-                text: `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-                attr: { 
-                    value: bill.name,
-                    'data-bill-id': bill.id
-                }
-            })
-        })
+        selectBills.value = resultBills[0].id;
     } else {
         // Sort by number of uses
         let counts = {};
@@ -1669,15 +1700,7 @@ async function defAddHistory() {
                 mostFrequentBillId = billId;
             } else if (counts[billId] === maxCount) {
                 resultBills.sort((a, b) => b.balance - a.balance)
-                resultBills.forEach(bill => {
-                    selectBills.createEl('option', {
-                        text: `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-                        attr: { 
-                            value: bill.name,
-                            'data-bill-id': bill.id
-                        }
-                    })
-                })
+                selectBills.value = resultBills[0].id;
             }
         }
 
@@ -1686,16 +1709,7 @@ async function defAddHistory() {
             if (b.id === mostFrequentBillId) return 1;
             return 0;
         });
-
-        sorted.forEach(bill => {
-            selectBills.createEl('option', {
-                text: `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-                attr: { 
-                    value: bill.name,
-                    'data-bill-id': bill.id
-                }
-            })
-        })
+        selectBills.value = sorted[0].id;
     }
     
     const selectCategory = mainFormInput.createEl('select', {
@@ -1815,7 +1829,7 @@ async function defAddHistory() {
         const data = {
             amount: Number(inputSum.value),
             bill: {
-                id: selectBills.selectedOptions[0].dataset.billId
+                id: selectBills.value
             },
             category: {
                 id: selectCategory.selectedOptions[0].dataset.planId
@@ -2046,7 +2060,8 @@ async function defAddBills() {
         attr: {
             placeholder: 'Current balance',
             id: 'input-current-balance',
-            type: 'number'
+            type: 'number',
+            inputmode: "decimal"
         }
     })
 
@@ -2351,6 +2366,7 @@ async function editingHistory(e) {
             id: 'input-sum',
             type: 'number',
             value: item.amount,
+            inputmode: "decimal"
         }
     })
     
@@ -2811,6 +2827,7 @@ async function editingBill(e) {
             id: 'input-current-balance',
             type: 'number',
             value: item.balance,
+            inputmode: "decimal"
         }
     })
 
@@ -2822,6 +2839,18 @@ async function editingBill(e) {
             type: 'text',
             value: item.comment,
         }
+    })
+
+    const transferUploadDiv = mainFormInput.createEl('div', {
+        cls: 'form-transfer-expense-div'
+    })
+    setIcon(transferUploadDiv, 'upload')
+    const transferUploadText = transferUploadDiv.createEl('span', {
+        text: 'Transactions between bills',
+        cls: 'form-text-transfer',
+    })
+    transferUploadDiv.addEventListener('click', async () => {
+        await pluginInstance.transferBetweenBills(item.id)
     })
 
     const chechboxDiv = mainFormInput.createEl('div', {
@@ -3122,6 +3151,209 @@ async function deleteBill(item) {
         } catch (error) {
             return (`Error deleting item: ${error}`)
         }
+    }
+}
+
+//====================================== Transfer between bills ======================================
+
+async function defTransferBetweenBills(billId) {
+    if(!billId) {
+        return 'Element not found'
+    }
+
+    const { jsonData: resultBills, status } = await pluginInstance.getDataArchiveFile('Archive bills')
+    if(!status) {
+        return status
+    }
+
+    const { contentEl } = viewInstance
+    contentEl.empty()
+
+    const exitButton = contentEl.createEl('div', {
+        cls: 'exit-button',
+        attr: {
+            id: 'exit-button'
+        }
+    });
+    setIcon(exitButton, 'arrow-left')
+    exitButton.addEventListener('click', () => {
+        viewInstance.onOpen()
+    })
+
+    const header = contentEl.createEl('div', {
+        cls: 'main-header'
+    })
+    const headerTitle = header.createEl('h1', {
+        text: 'Transfer'
+    })
+    const mainAddForm = contentEl.createEl('form', {
+        cls: 'main-add-form',
+        attr: {
+            id: 'main-add-form'
+        }
+    })
+
+    // Form input
+    const mainFormInput = mainAddForm.createEl('div', {
+        cls: 'main-form-input'
+    })
+
+    const selectFromBill = mainFormInput.createEl('select', {
+        cls: 'form-selects',
+        attr: {
+            name: 'select-from-bill',
+            id: 'select-from-bill'
+        }
+    })
+
+    // --- Main ---
+    const fromBillMainGroup = document.createElement("optgroup");
+    fromBillMainGroup.label = "Main";
+    
+    resultBills.forEach(bill => {
+        if(bill.generalBalance) {
+            const option = document.createElement("option");
+            option.value = bill.id;
+            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+            fromBillMainGroup.appendChild(option);
+        }
+    })
+
+    // --- Additional ---
+    const fromBillAdditionalGroup = document.createElement("optgroup");
+    fromBillAdditionalGroup.label = "Additional";
+
+    resultBills.forEach(bill => {
+        if(!bill.generalBalance) {
+            const option = document.createElement("option");
+            option.value = bill.id;
+            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+            fromBillAdditionalGroup.appendChild(option);
+        }
+    })
+
+    selectFromBill.appendChild(fromBillMainGroup);
+    selectFromBill.appendChild(fromBillAdditionalGroup);
+    selectFromBill.value = billId;
+
+    const selectToBill = mainFormInput.createEl('select', {
+        cls: 'form-selects',
+        attr: {
+            name: 'select-to-bill',
+            id: 'select-to-bill'
+        }
+    })
+
+    // --- Main ---
+    const toBillmainGroup = document.createElement("optgroup");
+    toBillmainGroup.label = "Main";
+    
+    resultBills.forEach(bill => {
+        if(bill.generalBalance) {
+            const option = document.createElement("option");
+            option.value = bill.id;
+            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+            toBillmainGroup.appendChild(option);
+        }
+    })
+
+    // --- Additional ---
+    const toBilladditionalGroup = document.createElement("optgroup");
+    toBilladditionalGroup.label = "Additional";
+
+    resultBills.forEach(bill => {
+        if(!bill.generalBalance) {
+            const option = document.createElement("option");
+            option.value = bill.id;
+            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+            toBilladditionalGroup.appendChild(option);
+        }
+    })
+
+    selectToBill.appendChild(toBillmainGroup);
+    selectToBill.appendChild(toBilladditionalGroup);
+    selectToBill.value = resultBills[1].id;
+
+    const inputSum = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Sum',
+            id: 'input-sum',
+            type: 'number',
+            inputmode: "decimal"
+        }
+    })
+    const addButton = mainFormInput.createEl('button', {
+        text: 'Transfer',
+        cls: 'add-button',
+        attr: {
+            type: 'submit'
+        }
+    })
+    addButton.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if(!inputSum.value >= 1) {
+            inputSum.focus()
+            return new Notice('Enter the amount')
+        }
+        const data = {
+            fromBillId: selectFromBill.value,
+            toBillId: selectToBill.value,
+            amount: Number(inputSum.value),
+        }
+        const resultOfTransfer = await pluginInstance.transferJsonToBills(data)
+        if(resultOfTransfer === "success") {
+            setTimeout(() => {
+                viewInstance.onOpen()
+                new Notice('Transfer completed')
+            }, 100)
+        } else {
+            new Notice(resultOfTransfer)
+        }
+    })
+}
+
+async function defTransferJsonToBills(data) {
+    if(data.fromBillId === data.toBillId) {
+        return 'Cannot transfer to the same bill'
+    }
+
+    const { jsonData: resultBills, file, content, status } = await pluginInstance.getDataArchiveFile('Archive bills')
+    if(!status) {
+        return status
+    }
+    let fromBillBalance;
+    let toBillBalance;
+    resultBills.forEach((e, i) => {
+        if(e.id === data.fromBillId) {
+            fromBillBalance = resultBills[i].balance;
+        }
+        if(e.id === data.toBillId) {
+            toBillBalance = resultBills[i].balance;
+        }
+    })
+
+    try {
+        fromBillBalance -= Number(data.amount)
+        toBillBalance += Number(data.amount)
+
+        const newData = resultBills.map(item => {
+            if(item.id === data.fromBillId) {
+                return { ...item, balance: fromBillBalance };
+            } else if (item.id === data.toBillId) {
+                return { ...item, balance: toBillBalance };
+            } else {
+                return item;
+            }
+        })
+
+        const dataStr = JSON.stringify(newData, null, 4);
+        const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
+        await this.app.vault.modify(file, newContent);
+
+        return 'success'
+    } catch (error) {
+        return error
     }
 }
 
