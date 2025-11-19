@@ -1184,12 +1184,12 @@ async function showHistory(mainContentBody, mainContentButton) {
                 new Notice(searchStatus)
                 console.error(searchStatus)
             }
-            historuContent.empty()
+            historyContent.empty()
             if(searchHistoryData === null) {
-                const undefinedContent = historuContent.createEl('div', {
+                const undefinedContent = historyContent.createEl('div', {
                     cls: 'undefined-content'
                 })
-                historuContent.addClass('main-content-body--undefined')
+                historyContent.addClass('main-content-body--undefined')
                 const undefinedContentSmiles = undefinedContent.createEl('span', {
                     text: '🍕 🎮 👕'
                 })
@@ -1198,22 +1198,22 @@ async function showHistory(mainContentBody, mainContentButton) {
                     text: 'No matching operations found.'
                 })
             } else if(searchHistoryData.length >= 1) {
-                historuContent.removeClass('main-content-body--undefined')
-                await generationHistoryContent(historuContent, mainContentBody, searchHistoryData)
+                historyContent.removeClass('main-content-body--undefined')
+                await generationHistoryContent(historyContent, mainContentBody, searchHistoryData)
             } else {
-                historuContent.removeClass('main-content-body--undefined')
-                await generationHistoryContent(historuContent, mainContentBody, historyInfo)
+                historyContent.removeClass('main-content-body--undefined')
+                await generationHistoryContent(historyContent, mainContentBody, historyInfo)
             }
         });
 
-        const historuContent = mainContentBody.createEl('div', {
+        const historyContent = mainContentBody.createEl('div', {
             cls: 'history-content'
         })
 
-        await generationHistoryContent(historuContent, mainContentBody, historyInfo)
+        await generationHistoryContent(historyContent, mainContentBody, historyInfo)
 }
 
-async function generationHistoryContent(historuContent, mainContentBody, historyInfo) {
+async function generationHistoryContent(historyContent, mainContentBody, historyInfo) {
         const now = new Date();
         const groupedByDay = Object.values(
             historyInfo.reduce((acc, item) => {
@@ -1226,11 +1226,11 @@ async function generationHistoryContent(historuContent, mainContentBody, history
         const result = groupedByDay.map(dayGroup => 
             dayGroup.sort((a, b) => Math.abs(new Date(a.date) - now) - Math.abs(new Date(b.date) - now))
         );
-        if(result.length > 5) {
+        if(historyInfo.length >= 5) {
             mainContentBody.addClass('main-content-body--padding')
         }
         result.forEach((e, i) => {
-            const historyBlock = historuContent.createEl('div', {
+            const historyBlock = historyContent.createEl('div', {
                 cls: 'history-block'
             })
             
@@ -2384,20 +2384,35 @@ async function editingHistory(e) {
         return archiveStatus
     }
 
-    resultBills.sort((a, b) => b.balance - a.balance)
-    resultBills.forEach(arr => {
-        if(arr.id === item.bill.id) {
-            selectBills.createEl('option', {
-                text: `${arr.name} • ${arr.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-                attr: { value: arr.name, 'data-bill-id': arr.id, selected: 'selected' }
-            })
-            return
+    // --- Main ---
+    const mainGroup = document.createElement("optgroup");
+    mainGroup.label = "Main";
+    
+    resultBills.forEach(bill => {
+        if(bill.generalBalance) {
+            const option = document.createElement("option");
+            option.value = bill.id;
+            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+            mainGroup.appendChild(option);
         }
-        selectBills.createEl('option', {
-            text: `${arr.name} • ${arr.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-            attr: { value: arr.name, 'data-bill-id': arr.id }
-        })
     })
+
+    // --- Additional ---
+    const additionalGroup = document.createElement("optgroup");
+    additionalGroup.label = "Additional";
+
+    resultBills.forEach(bill => {
+        if(!bill.generalBalance) {
+            const option = document.createElement("option");
+            option.value = bill.id;
+            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+            additionalGroup.appendChild(option);
+        }
+    })
+
+    selectBills.appendChild(mainGroup);
+    selectBills.appendChild(additionalGroup);
+    selectBills.value = item.bill.id;
     
     const selectCategory = mainFormInput.createEl('select', {
         cls: 'form-selects',
