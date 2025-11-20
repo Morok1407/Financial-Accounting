@@ -223,8 +223,8 @@ module.exports = class mainPlugin extends Plugin {
         return defIncomeTransaction(data, modifier, oldData, this)
     }
 
-    async updateData(fileName, accountName, targetE, newTargetE) {
-        return defUpdateData(fileName, accountName, targetE, newTargetE, this)
+    async updateFile(newData, file, content) {
+        return defUpdateFile(newData, file, content, this)
     }
 
     async checkBill(data, oldData) {
@@ -2490,6 +2490,7 @@ async function editingHistory(e) {
         }
     })
     fillMonthDates(selectDate, item.date)
+    selectDate.value = item.date.split('T')[0]
 
     const selectDateButtonDiv = mainFormInput.createEl('div', {
         cls: 'form-selects-date-buttons'
@@ -2950,8 +2951,8 @@ async function defEditingJsonToHistory(data, oldData) {
     }
     try {
         const newData = jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
-        const dataStr = JSON.stringify(newData, null, 4) + "\n```";
-        const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr);
+        const dataStr = JSON.stringify(newData, null, 4);
+        const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
         await this.app.vault.modify(file, newContent)
 
         return "success"
@@ -3335,6 +3336,11 @@ async function defTransferJsonToBills(data) {
     if(!status) {
         return status
     }
+    const bill = resultBills.find(b => b.id === data.fromBillId);
+    if(data.amount > bill.balance) {
+        return `Insufficient funds in the ${bill.name}`
+    }
+    
     let fromBillBalance;
     let toBillBalance;
     resultBills.forEach((e, i) => {
@@ -3443,230 +3449,150 @@ async function defArchiveIncomePlan() {
 //====================================== Middleware Function ======================================
 
 async function defExpenditureTransaction(data, modifier, oldData) {
-    let billName;
-    let billBalace;
-
-    let planName;
-    let planAmount;
-
-    const { jsonData: billsJsonData, status: archiveStatus } = await pluginInstance.getDataArchiveFile("Archive bills")
+    const { jsonData: billJsonData, file: billFile, content: billContent, status: archiveStatus } = await pluginInstance.getDataArchiveFile("Archive bills")
     if(!(archiveStatus === 'success')) {
         return archiveStatus
     }
-    billsJsonData.forEach((e, i) => {
-        if(e.id === data.bill.id) {
-            billBalace = billsJsonData[i].balance;
-            billName = billsJsonData[i].name
-        }
-    })
+    const bill = billJsonData.find(b => b.id === data.bill.id)
 
-    const { jsonData: planJsonData, status } = await pluginInstance.getDataFile("Expenditure plan")
+    const { jsonData: planJsonData, file: planFile, content: planContent, status } = await pluginInstance.getDataFile("Expenditure plan")
     if(!(status === 'success')) {
         return status
     }
-    planJsonData.forEach((e, i) => {
-        if(e.id === data.category.id) {
-            planAmount = planJsonData[i].amount
-            planName = planJsonData[i].name
-        }
-    })
+    const plan = planJsonData.find(p => p.id === data.category.id)
 
-    if(modifier === 'add') {
-        try {        
-            billBalace -= Number(data.amount)
-            planAmount += Number(data.amount)
-        
-            const resultBills = await pluginInstance.updateData('Archive bills', billName, 'balance', billBalace)
-            const resultPlan = await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
-            if(!(resultBills === 'success') || !(resultPlan === 'success')) {
-                return 'Error update data'
-            }
+    let billNewData = [];
+    let planNewData = [];
 
-            return 'success'
-        } catch (error) {
-            return error
-        }
-    } else if (modifier === 'remove') {
-        try {
-            billBalace += Number(data.amount)
-            planAmount -= Number(data.amount)
-
-            const resultBills = await pluginInstance.updateData('Archive bills', billName, 'balance', billBalace)
-            const resultPlan = await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
-            if(!(resultBills === 'success') || !(resultPlan === 'success')) {
-                return 'Error update data'
-            }
-
-            return 'success'
-        } catch (error) {
-            return error
-        }
-    } else if (modifier === 'edit') {
-        try {
-            billBalace += Number(oldData.amount)
-            planAmount -= Number(oldData.amount)
+    switch (modifier) {
+        case 'add':
+            billNewData = billJsonData.map(i => i.id === data.bill.id ? { ...i, balance: Number(bill.balance) - Number(data.amount)} : i)
+            planNewData = planJsonData.map(i => i.id === data.category.id ? { ...i, amount: Number(plan.amount) + Number(data.amount)} : i)
             
-            const resultBillsReset = await pluginInstance.updateData('Archive bills', billName, 'balance', billBalace)
-            const resultPlanReset = await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
-            if(!(resultBillsReset === 'success') || !(resultPlanReset === 'success')) {
-                return 'Error update data'
-            }
-            
-            billBalace -= Number(data.amount)
-            planAmount += Number(data.amount)
+            return await func()
+        case 'remove':
+            billNewData = billJsonData.map(i => i.id === data.bill.id ? { ...i, balance: Number(bill.balance) + Number(data.amount)} : i)
+            planNewData = planJsonData.map(i => i.id === data.category.id ? { ...i, amount: Number(plan.amount) - Number(data.amount)} : i)
 
-            const resultBills = await pluginInstance.updateData('Archive bills', billName, 'balance', billBalace)
-            const resultPlan = await pluginInstance.updateData('Expenditure plan', planName, 'amount', planAmount)
-            if(!(resultBills === 'success') || !(resultPlan === 'success')) {
-                return 'Error update data'
+            return await func()
+        case 'edit':
+            const oldBill = billJsonData.find(b => b.id === oldData.bill.id)
+            const oldPlan = planJsonData.find(p => p.id === oldData.category.id)
+
+            billNewData = billJsonData.map(i => i.id === oldData.bill.id ? { ...i, balance: Number(oldBill.balance) + Number(oldData.amount)} : i)
+            planNewData = planJsonData.map(i => i.id === oldData.category.id ? { ...i, amount: Number(oldPlan.amount) - Number(oldData.amount)} : i)
+            
+            await func()
+
+            const { jsonData: newBillJsonData } = await pluginInstance.getDataArchiveFile("Archive bills")
+            const { jsonData: newpPlanJsonData } = await pluginInstance.getDataFile("Expenditure plan")
+
+            const newBill = newBillJsonData.find(b => b.id === data.bill.id)
+            const newPlan = newpPlanJsonData.find(p => p.id === data.category.id)
+
+            billNewData = newBillJsonData.map(i => i.id === data.bill.id ? { ...i, balance: Number(newBill.balance) - Number(data.amount)} : i)
+            planNewData = newpPlanJsonData.map(i => i.id === data.category.id ? { ...i, amount: Number(newPlan.amount) + Number(data.amount)} : i)
+
+            return await func()
+        default:
+            return 'Error modifier'
+    }
+
+    async function func()  {
+        try {
+            const { status: billStatus } = await pluginInstance.updateFile(billNewData, billFile, billContent)
+            if(!(status === 'success')) {
+                return billStatus
+            }
+            const { status: planStatus } = await pluginInstance.updateFile(planNewData, planFile, planContent)
+            if(!(planStatus === 'success')) {
+                return planStatus
             }
 
             return 'success'
         } catch (error) {
             return error
         }
-    } else {
-        return 'Error modifier'
     }
 }
 
 async function defIncomeTransaction(data, modifier, oldData) {
-    let billName;
-    let billBalace;
-
-    let planName;
-    let planAmount;
-
-    const { jsonData: billsJsonData, status: archiveStatus } = await pluginInstance.getDataArchiveFile("Archive bills")
+    const { jsonData: billJsonData, file: billFile, content: billContent, status: archiveStatus } = await pluginInstance.getDataArchiveFile("Archive bills")
     if(!(archiveStatus === 'success')) {
         return archiveStatus
     }
+    const bill = billJsonData.find(b => b.id === data.bill.id)
 
-    billsJsonData.forEach((e, i) => {
-        if(e.id === data.bill.id) {
-            billBalace = billsJsonData[i].balance;
-            billName = billsJsonData[i].name
-        }
-    })
-
-    const { jsonData: planJsonData, status } = await pluginInstance.getDataFile("Income plan")
+    const { jsonData: planJsonData, file: planFile, content: planContent, status } = await pluginInstance.getDataFile("Income plan")
     if(!(status === 'success')) {
         return status
     }
-    planJsonData.forEach((e, i) => {
-        if(e.id === data.category.id) {
-            planAmount = planJsonData[i].amount
-            planName = planJsonData[i].name
-        }
-    })
-    if(modifier === 'add') {
-        try {
-            billBalace += Number(data.amount)
-            planAmount += Number(data.amount)
-        
-            const resultBills = await pluginInstance.updateData('Archive bills', billName, 'balance', billBalace)
-            const resultPlan = await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
-            if(!(resultBills === 'success') || !(resultPlan === 'success')) {
-                return 'Error update data'
-            }
+    const plan = planJsonData.find(p => p.id === data.category.id)
 
-            return 'success'
-        } catch (error) {
-            return error
-        }
-    } else if (modifier === 'remove') {
-        try {
-            billBalace -= data.amount
-            planAmount -= data.amount
+    let billNewData = [];
+    let planNewData = [];
 
-            if(billBalace < 0) {
-                return `On bill ${billName} insufficient funds`
-            }
-        
-            const resultBills = await pluginInstance.updateData('Archive bills', billName, 'balance', billBalace)
-            const resultPlan = await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
-            if(!(resultBills === 'success') || !(resultPlan === 'success')) {
-                return 'Error update data'
-            }
-
-            return 'success'
-        } catch (error) {
-            return error
-        }
-    } else if (modifier === 'edit') {
-        try {
-            billBalace -= Number(oldData.amount)
-            planAmount -= Number(oldData.amount)
+    switch (modifier) {
+        case 'add':
+            billNewData = billJsonData.map(i => i.id === data.bill.id ? { ...i, balance: Number(bill.balance) + Number(data.amount)} : i)
+            planNewData = planJsonData.map(i => i.id === data.category.id ? { ...i, amount: Number(plan.amount) + Number(data.amount)} : i)
             
-            const resultBillsReset = await pluginInstance.updateData('Archive bills', billName, 'balance', billBalace)
-            const resultPlanReset = await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
-            if(!(resultBillsReset === 'success') || !(resultPlanReset === 'success')) {
-                return 'Error update data'
-            }
-            
-            billBalace += Number(data.amount)
-            planAmount += Number(data.amount)
+            return await func()
+        case 'remove':
+            billNewData = billJsonData.map(i => i.id === data.bill.id ? { ...i, balance: Number(bill.balance) - Number(data.amount)} : i)
+            planNewData = planJsonData.map(i => i.id === data.category.id ? { ...i, amount: Number(plan.amount) - Number(data.amount)} : i)
 
-            const resultBills = await pluginInstance.updateData('Archive bills', billName, 'balance', billBalace)
-            const resultPlan = await pluginInstance.updateData('Income plan', planName, 'amount', planAmount)
-            if(!(resultBills === 'success') || !(resultPlan === 'success')) {
-                return 'Error update data'
+            return await func()
+        case 'edit':
+            const oldBill = billJsonData.find(b => b.id === oldData.bill.id)
+            const oldPlan = planJsonData.find(p => p.id === oldData.category.id)
+
+            billNewData = billJsonData.map(i => i.id === oldData.bill.id ? { ...i, balance: Number(oldBill.balance) - Number(oldData.amount)} : i)
+            planNewData = planJsonData.map(i => i.id === oldData.category.id ? { ...i, amount: Number(oldPlan.amount) - Number(oldData.amount)} : i)
+            
+            await func()
+
+            const { jsonData: newBillJsonData } = await pluginInstance.getDataArchiveFile("Archive bills")
+            const { jsonData: newpPlanJsonData } = await pluginInstance.getDataFile("Income plan")
+
+            const newBill = newBillJsonData.find(b => b.id === data.bill.id)
+            const newPlan = newpPlanJsonData.find(p => p.id === data.category.id)
+
+            billNewData = newBillJsonData.map(i => i.id === data.bill.id ? { ...i, balance: Number(newBill.balance) + Number(data.amount)} : i)
+            planNewData = newpPlanJsonData.map(i => i.id === data.category.id ? { ...i, amount: Number(newPlan.amount) + Number(data.amount)} : i)
+
+            return await func()
+        default:
+            return 'Error modifier'
+    }
+
+    async function func()  {
+        try {
+            const { status: billStatus } = await pluginInstance.updateFile(billNewData, billFile, billContent)
+            if(!(status === 'success')) {
+                return billStatus
+            }
+            const { status: planStatus } = await pluginInstance.updateFile(planNewData, planFile, planContent)
+            if(!(planStatus === 'success')) {
+                return planStatus
             }
 
             return 'success'
         } catch (error) {
             return error
         }
-    } else {
-        return 'Error modifier'
     }
 }
 
-async function defUpdateData(fileName, accountName, targetE, newTargetE) {
-    if(fileName === 'Archive bills') {
-        const { jsonData: data, content, file, status: archiveStatus } = await pluginInstance.getDataArchiveFile(fileName)
-        if(!(archiveStatus === 'success')) {
-            return archiveStatus
-        }
+async function defUpdateFile(newData, file, content) {
+    try {
+        const dataStr = JSON.stringify(newData, null, 4);
+        const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
+        await this.app.vault.modify(file, newContent);
 
-        try {
-            const target = data.find(acc => acc.name === accountName);
-            if (target) {
-                target[targetE] = newTargetE;
-            } else {
-                console.warn("Account not found:", accountName);
-            }
-            const dataStr = JSON.stringify(data, null, 4);
-            const newData = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
-
-            await app.vault.modify(file, newData); 
-
-            return 'success'
-        } catch (error) {
-            return error
-        }
-    } else {
-        const { jsonData: data, content, file, status } = await pluginInstance.getDataFile(fileName)
-        if(!(status === 'success')) {
-            return status
-        }
-
-        try {
-            const target = data.find(acc => acc.name === accountName);
-            if (target) {
-                target[targetE] = newTargetE;
-            } else {
-                console.warn("Account not found:", accountName);
-            }
-            const dataStr = JSON.stringify(data, null, 4);
-            const newData = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
-
-            await app.vault.modify(file, newData); 
-
-            return 'success'
-        } catch (error) {
-            return error
-        }
+        return { status: 'success' }
+    } catch (error) {
+        return `Error update ${file.name}: ${error}`
     }
 }
 
