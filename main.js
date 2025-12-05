@@ -577,11 +577,14 @@ async function showInitialView() {
     })
 
     const showAllMonthsButton = financeHeader.createEl("button", {
-        text: `🗓️ ${month}`,
         attr: {
             id: 'showAllMonths'
         }
     });
+    setIcon(showAllMonthsButton, 'calendar-days')
+    showAllMonthsButton.createEl('span', {
+        text: month,
+    })
 
     showAllMonthsButton.addEventListener('click', async () => {
         if(contentEl.dataset.page === 'home') {
@@ -2492,38 +2495,38 @@ async function editingHistory(e) {
     fillMonthDates(selectDate, item.date)
     selectDate.value = item.date.split('T')[0]
 
-    const selectDateButtonDiv = mainFormInput.createEl('div', {
-        cls: 'form-selects-date-buttons'
-    })
+    // const selectDateButtonDiv = mainFormInput.createEl('div', {
+    //     cls: 'form-selects-date-buttons'
+    // })
 
-    const selectDateToday = selectDateButtonDiv.createEl('button', {
-        text: 'Today',
-        attr: {
-            type: 'button'
-        }
-    })
+    // const selectDateToday = selectDateButtonDiv.createEl('button', {
+    //     text: 'Today',
+    //     attr: {
+    //         type: 'button'
+    //     }
+    // })
     // selectDateToday.addClass('button-selects-date--active')
-    selectDateToday.addEventListener('click', () => {
-        selectRelativeDate(selectDate, 0)
-    })
-    const selectDateYesterday = selectDateButtonDiv.createEl('button', {
-        text: 'Yesterday',
-        attr: {
-            type: 'button'
-        }
-    })
-    selectDateYesterday.addEventListener('click', () => {
-        selectRelativeDate(selectDate, -1)
-    })
-    const selectDateTheDayBefotreYesterday = selectDateButtonDiv.createEl('button', {
-        text: 'The day before yesterday',
-        attr: {
-            type: 'button'
-        }
-    })
-    selectDateTheDayBefotreYesterday.addEventListener('click', () => {
-        selectRelativeDate(selectDate, -2)
-    })
+    // selectDateToday.addEventListener('click', () => {
+    //     selectRelativeDate(selectDate, 0)
+    // })
+    // const selectDateYesterday = selectDateButtonDiv.createEl('button', {
+    //     text: 'Yesterday',
+    //     attr: {
+    //         type: 'button'
+    //     }
+    // })
+    // selectDateYesterday.addEventListener('click', () => {
+    //     selectRelativeDate(selectDate, -1)
+    // })
+    // const selectDateTheDayBefotreYesterday = selectDateButtonDiv.createEl('button', {
+    //     text: 'The day before yesterday',
+    //     attr: {
+    //         type: 'button'
+    //     }
+    // })
+    // selectDateTheDayBefotreYesterday.addEventListener('click', () => {
+    //     selectRelativeDate(selectDate, -2)
+    // })
 
     const addButton = mainFormInput.createEl('button', {
         text: 'Safe',
@@ -2689,13 +2692,13 @@ async function editingPlan(e) {
         }
         const now = new Date();
         const groupedByDay = Object.values(
-            filterHistoryInfo.reduce((acc, item) => {
+            historyInfo.reduce((acc, item) => {
                 const day = item.date.split('T')[0]; 
                 if (!acc[day]) acc[day] = [];
                 acc[day].push(item);
                 return acc;
             }, {})
-        );
+        ).sort((a, b) => new Date(b[0].date) - new Date(a[0].date));
         const result = groupedByDay.map(dayGroup => 
             dayGroup.sort((a, b) => Math.abs(new Date(a.date) - now) - Math.abs(new Date(b.date) - now))
         );
@@ -3922,7 +3925,7 @@ function fillMonthDates(selectEl, oldDate) {
 function selectRelativeDate(selectEl, offset) {
     const now = new Date();
     const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
-    const targetValue = `${String(target.getDate()).padStart(2, "0")}-${String(target.getMonth() + 1).padStart(2, "0")}-${target.getFullYear()}`;
+    const targetValue = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")}`;
     const option = Array.from(selectEl.options).find(opt => opt.value === targetValue);
     if (option) {
         selectEl.value = targetValue;
