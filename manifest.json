@@ -1,11 +1,11 @@
 {
-  "id": "financial-accounting",
-  "name": "Financial accounting",
-  "version": "0.0.2",
-  "minAppVersion": "0.0.2",
-  "description": "Plugin for easy entry of personal finance data",
-  "author": "Bugaev Daniil",
-  "authorUrl": "https://github.com/Morok1407",
-  "main": "main.js",
-  "css": "styles.css"
+	"id": "finance-accounting-plugin",
+	"name": "Finance Accounting",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "",
+	"author": "Daniel",
+	"authorUrl": "https://obsidian.md",
+	"fundingUrl": "https://obsidian.md/pricing",
+	"isDesktopOnly": false
 }
