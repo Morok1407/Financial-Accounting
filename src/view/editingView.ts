@@ -1,7 +1,7 @@
 import { Notice, setIcon } from 'obsidian';
 import { deleteBill, deletePlan, deleteHistory } from '../controllers/deleteData';
 import { searchElementById, getDataArchiveFile, getDataFile } from '../controllers/searchData';
-import { viewInstance, pluginInstance } from '../../main';
+import { viewInstance, pluginInstance, HistoryData, PlanData, BillData } from '../../main';
 import { fillMonthDates, humanizeDate, checkExpenceOrIncome, SummarizingDataForTheDay, getCurrencySymbol } from '../middleware/otherFunc';
 import { editingJsonToHistory, editingJsonToPlan, editingJsonToBill } from '../controllers/editingData';
 import { transferBetweenBills } from '../middleware/transferring'
@@ -88,10 +88,11 @@ export const editingHistory = async (e: any) => {
         }
     })
     
-    const { jsonData: resultBills, status: archiveStatus } = await getDataArchiveFile('Archive bills')
+    const { jsonData: resultBills, status: archiveStatus } = await getDataArchiveFile<BillData>('Archive bills')
     if(!(archiveStatus === 'success')) {
         return archiveStatus
     }
+    if(resultBills === null || resultBills === undefined) throw new Error('Bill is null or undefined')
 
     // --- Main ---
     const mainGroup = document.createElement("optgroup");
@@ -136,10 +137,11 @@ export const editingHistory = async (e: any) => {
         if(item.type === 'expense'){
             selectCategory.empty()
             
-            const { jsonData: resultCategory, status } = await getDataFile('Expenditure plan');
+            const { jsonData: resultCategory, status } = await getDataFile<PlanData>('Expenditure plan');
             if(!(status === 'success')) {
                 return status
             }
+            if(resultCategory === null || resultCategory === undefined) throw new Error('Expenditure plan is null or undefined') 
 
             resultCategory.sort((a, b) => b.amount - a.amount)
             resultCategory.forEach(arr => {
@@ -152,28 +154,29 @@ export const editingHistory = async (e: any) => {
                 }
                 selectCategory.createEl('option', {
                     text: `${arr.name} • ${arr.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-                    attr: { value: arr.name, 'data-plan-id': arr.id }
+                    attr: { value: arr.id }
                 })
             })
         } else if (item.type === 'income') {
             selectCategory.empty()
-            const { jsonData: resultCategory, status } = await getDataFile('Income plan');
+            const { jsonData: resultCategory, status } = await getDataFile<PlanData>('Income plan');
             if(!(status === 'success')) {
                 return status
             }
+            if(resultCategory === null || resultCategory === undefined) throw new Error('Expenditure plan is null or undefined') 
 
             resultCategory.sort((a, b) => b.amount - a.amount)
             resultCategory.forEach(plan => {
                 if(plan.id === item.category.id) {
                     selectCategory.createEl('option', {
                         text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-                        attr: { value: plan.name, 'data-plan-id': plan.id, selected: 'selected' }
+                        attr: { value: plan.id, selected: 'selected' }
                     })
                     return
                 }
                 selectCategory.createEl('option', {
                     text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-                    attr: { value: plan.name, 'data-plan-id': plan.id }
+                    attr: { value: plan.id }
                 })
             })
         } else {
@@ -228,7 +231,7 @@ export const editingHistory = async (e: any) => {
     //     text: 'The day before yesterday',
     //     attr: {
     //         type: 'button'
-    //     }
+    //     }    
     // })
     // selectDateTheDayBefotreYesterday.addEventListener('click', () => {
     //     selectRelativeDate(selectDate, -2)
@@ -245,19 +248,19 @@ export const editingHistory = async (e: any) => {
     addButton.addEventListener('click', async (e) => {
         e.preventDefault();
 
-        if(!inputSum.value >= 1) {
+        if(!(Number(inputSum.value) >= 1)) {
             inputSum.focus()
             return new Notice('Enter the amount')
         }
 
-        const data = {
+        const data: HistoryData = {
             id: item.id,
             amount: Number(inputSum.value),
             bill: {
                 id: selectBills.value
             },
             category: {
-                id: selectCategory.selectedOptions[0].dataset.planId
+                id: selectCategory.value
             },
             comment: commentInput.value,
             date: selectDate.value,
@@ -347,6 +350,24 @@ export const editingPlan = async (e: any) => {
         }
     })
 
+    const inputEmoji = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Emoji',
+            id: 'input-emoji',
+            type: 'text',
+            value: item.emoji
+        }
+    })
+    inputEmoji.addEventListener('input', () => {
+        const value = inputEmoji.value;
+        const chars = Array.from(value);
+        const emojiOnly = chars.filter(ch =>
+            /\p{Extended_Pictographic}/u.test(ch)
+        );
+        inputEmoji.value = emojiOnly.slice(0, 1).join('');
+    });
+
     const commentInput = mainFormInput.createEl('input', {
         cls: 'form-inputs',
         attr: {
@@ -368,14 +389,16 @@ export const editingPlan = async (e: any) => {
     addButton.addEventListener('click', async (e) => {
         e.preventDefault();
 
-        if(!inputName.value >= 1) {
+        if(!inputName.value) {
             inputName.focus()
             return new Notice('Enter the name')
         }
 
-        const data = {
+        const data: PlanData = {
             id: item.id,
             name: inputName.value.trim(),
+            emoji: inputEmoji.value,
+            amount: item.amount,
             comment: commentInput.value.trim(),
             type: item.type,
         }
@@ -390,23 +413,24 @@ export const editingPlan = async (e: any) => {
         }
     })
 
-    let { jsonData: historyInfo } = await getDataFile('History');
+    let { jsonData: historyInfo } = await getDataFile<HistoryData>('History');
+    if(historyInfo === undefined) throw new Error('History is undefined')
     if(historyInfo !== null) {
         const filterHistoryInfo = historyInfo.filter(item => item.category.id === id)
         if(filterHistoryInfo.length < 1) {
             return
         }
-        const now = new Date();
+        const now: any = new Date();
         const groupedByDay = Object.values(
-            filterHistoryInfo.reduce((acc, item) => {
+            filterHistoryInfo.reduce((acc: any, item: any) => {
                 const day = item.date.split('T')[0]; 
                 if (!acc[day]) acc[day] = [];
                 acc[day].push(item);
                 return acc;
             }, {})
-        ).sort((a, b) => new Date(b[0].date) - new Date(a[0].date));
-        const result = groupedByDay.map(dayGroup => 
-            dayGroup.sort((a, b) => Math.abs(new Date(a.date) - now) - Math.abs(new Date(b.date) - now))
+        ).sort((a: any, b: any) => new Date(b[0].date).getTime() - new Date(a[0].date).getTime());
+        const result = groupedByDay.map((dayGroup: any) => 
+            dayGroup.sort((a: any, b: any) => Math.abs(new Date(a.date).getTime() - now) - Math.abs(new Date(b.date).getTime() - now))
         );
 
         const historyPlanTitle = contentEl.createEl('h1', {
@@ -434,7 +458,7 @@ export const editingPlan = async (e: any) => {
             const dataList = historyBlock.createEl('ul', {
                 cls: 'data-list'
             })
-            e.forEach(async (e, i) => {
+            e.forEach(async (e: any, i: any) => {
                 const dataItem = dataList.createEl('li', {
                     cls: 'data-item',
                     attr: {
@@ -543,6 +567,24 @@ export const editingBill = async (e: any) => {
         }
     })
 
+    const inputEmoji = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Emoji',
+            id: 'input-emoji',
+            type: 'text',
+            value: item.emoji
+        }
+    })
+    inputEmoji.addEventListener('input', () => {
+        const value = inputEmoji.value;
+        const chars = Array.from(value);
+        const emojiOnly = chars.filter(ch =>
+            /\p{Extended_Pictographic}/u.test(ch)
+        );
+        inputEmoji.value = emojiOnly.slice(0, 1).join('');
+    });
+
     const currentBalance = mainFormInput.createEl('input', {
         cls: 'form-inputs',
         attr: {
@@ -568,6 +610,7 @@ export const editingBill = async (e: any) => {
     if(!(archiveStatus === 'success')) {
         return archiveStatus
     }
+    if(fullDataBills === null || fullDataBills === undefined) throw new Error('Bills is null or undefined')
 
     if(fullDataBills.length > 1) {
         const transferUploadDiv = mainFormInput.createEl('div', {
@@ -610,14 +653,16 @@ export const editingBill = async (e: any) => {
     addButton.addEventListener('click', async () => {
         e.preventDefault();
 
-        if(!inputName.value >= 1) {
+        if(!inputName.value) {
             inputName.focus()
             return new Notice('Enter the name')
         }
-        const data = {
+        const data: BillData = {
             id: item.id,
             name: inputName.value.trim(),
+            emoji: inputEmoji.value,
             balance: Number(currentBalance.value.trim()),
+            currency: item.currency,
             generalBalance: checkboxInput.checked,
             comment: commentInput.value.trim(),
         }

@@ -1,4 +1,4 @@
-import { pluginInstance } from "main";
+import { pluginInstance } from "../../main";
 import { getDate } from "../middleware/otherFunc";
 import { newMonthExpenditurePlan, checkingExpensePlanForCompliance, newMonthIncomePlan, checkingIncomePlanForCompliance, archiveExpenditurePlan, archiveIncomePlan } from "../middleware/duplicating";
 
@@ -38,24 +38,6 @@ export const createDirectory = async () => {
             await pluginInstance.app.vault.createFolder(pluginInstance.settings.targetFolder);
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(archiveFolder))) {
-            await pluginInstance.app.vault.createFolder(archiveFolder);
-        }
-
-        if (!(await pluginInstance.app.vault.adapter.exists(archiveExpenditurePlan))) {
-            await pluginInstance.app.vault.create(archiveExpenditurePlan, fileContent);
-            await archiveExpenditurePlan();
-        }
-
-        if (!(await pluginInstance.app.vault.adapter.exists(archiveIncomePlan))) {
-            await pluginInstance.app.vault.create(archiveIncomePlan, fileContent);
-            await archiveIncomePlan();
-        }
-
-        if (!(await pluginInstance.app.vault.adapter.exists(archiveBills))) {
-            await pluginInstance.app.vault.create(archiveBills, fileContent);
-        }
-
         if (!(await pluginInstance.app.vault.adapter.exists(yearFolder))) {
             await pluginInstance.app.vault.createFolder(yearFolder);
         }
@@ -81,11 +63,29 @@ export const createDirectory = async () => {
         } else {
             await checkingIncomePlanForCompliance();
         }
+        
+        if (!(await pluginInstance.app.vault.adapter.exists(archiveFolder))) {
+            await pluginInstance.app.vault.createFolder(archiveFolder);
+        }
+
+        if (!(await pluginInstance.app.vault.adapter.exists(archiveExpenditurePlan))) {
+            await pluginInstance.app.vault.create(archiveExpenditurePlan, fileContent);
+            // await archiveExpenditurePlan();
+        }
+
+        if (!(await pluginInstance.app.vault.adapter.exists(archiveIncomePlan))) {
+            await pluginInstance.app.vault.create(archiveIncomePlan, fileContent);
+            // await archiveIncomePlan();
+        }
+
+        if (!(await pluginInstance.app.vault.adapter.exists(archiveBills))) {
+            await pluginInstance.app.vault.create(archiveBills, fileContent);
+        }
 
         result = true;
         return result;
     } catch (err) {
-        console.error("defCreateDirectory error", err);
+        console.error("createDirectory error", err);
         throw err;
     }
 }

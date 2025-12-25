@@ -1,5 +1,5 @@
 import { Notice } from "obsidian";
-import { stateManager } from "../../main";
+import { stateManager, HistoryData, PlanData, BillData } from "../../main";
 import { getDataFile, getDataArchiveFile, searchElementById, searchHistory } from "../controllers/searchData";
 import { addHistory, addPlan, addBills } from '../view/addView';
 import { editingHistory, editingPlan, editingBill } from '../view/editingView';
@@ -7,7 +7,7 @@ import { humanizeDate, SummarizingDataForTheDay, checkExpenceOrIncome, Summarizi
 
 export const showHistory = async (mainContentBody: any, mainContentButton: any) => {
     stateManager({ openPageNow: "History" });
-    const { jsonData: historyInfo, status } = await getDataFile('History');
+    const { jsonData: historyInfo, status } = await getDataFile<HistoryData>('History');
     if(status !== 'success') {
         new Notice(status)
         console.error(status)
@@ -36,9 +36,10 @@ export const showHistory = async (mainContentBody: any, mainContentButton: any) 
                 placeholder: '🔎 Search by operations'
             }
         })
-        searchInput.addEventListener('input', async (e) => {
+        searchInput.addEventListener('input', async (e: any) => {
             const searchValue = e.target.value;
             const { jsonData: searchHistoryData, status: searchStatus } = await searchHistory(searchValue);
+            if (searchHistoryData === undefined) throw new Error('jsonData is null or undefined');
             if(searchStatus !== 'success') {
                 new Notice(searchStatus)
                 console.error(searchStatus)
@@ -74,22 +75,22 @@ export const showHistory = async (mainContentBody: any, mainContentButton: any) 
 
 async function generationHistoryContent(historyContent: any, mainContentBody: any, historyInfo: any, mainContentButton?: any) {
     if(historyInfo !== null) {
-        const now = new Date();
-        const groupedByDay = Object.values(
-            historyInfo.reduce((acc, item) => {
+        const now: any = new Date();
+        const groupedByDay: any = Object.values(
+            historyInfo.reduce((acc: any, item: HistoryData) => {
                 const day = item.date.split('T')[0]; 
                 if (!acc[day]) acc[day] = [];
                 acc[day].push(item);
                 return acc;
             }, {})
-        ).sort((a, b) => new Date(b[0].date) - new Date(a[0].date));
-        const result = groupedByDay.map(dayGroup => 
-            dayGroup.sort((a, b) => Math.abs(new Date(a.date) - now) - Math.abs(new Date(b.date) - now))
+        ).sort((a: any, b: any) => new Date(b[0].date).getTime() - new Date(a[0].date).getTime());
+        const result = groupedByDay.map((dayGroup: any) => 
+            dayGroup.sort((a: any, b: any) => Math.abs(new Date(a.date).getTime() - now) - Math.abs(new Date(b.date).getTime() - now))
         );
         if(historyInfo.length >= 5) {
             mainContentBody.addClass('main-content-body--padding')
         }
-        result.forEach((e, i) => {
+        result.forEach((e: any, i: any) => {
             const historyBlock = historyContent.createEl('div', {
                 cls: 'history-block'
             })
@@ -119,7 +120,7 @@ async function generationHistoryContent(historyContent: any, mainContentBody: an
                 const { item: itemCategory, status: statusPlan } = await searchElementById(e.category.id, e.type)
                 if(statusPlan === 'success') {
                     dataItem.createEl('p', {
-                        text: `${itemCategory.name}`
+                        text: `${itemCategory.emoji} ${itemCategory.name}`
                     })
                 } else {
                     dataItem.createEl('p', {
@@ -129,7 +130,7 @@ async function generationHistoryContent(historyContent: any, mainContentBody: an
                 const { item: itemBill, status: statusBill } = await searchElementById(e.bill.id, 'Archive bills')
                 if(statusBill === 'success') {
                     dataItem.createEl('span', {
-                        text: itemBill.name
+                        text: `${itemBill.emoji} ${itemBill.name}`
                     })
                 } else {
                     dataItem.createEl('span', {
@@ -154,13 +155,14 @@ async function generationHistoryContent(historyContent: any, mainContentBody: an
 
 export const showPlans = async (mainContentBody: any, mainContentButton: any) => {
     stateManager({ openPageNow: "Plans" });
-    const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await getDataFile('Expenditure plan');
+    const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await getDataFile<PlanData>('Expenditure plan');
+    if(expenditurePlanInfo === undefined) throw new Error('jsonData is undefined');
     if(expenditurePlanStatus !== 'success') {
         new Notice(expenditurePlanStatus)
         console.error(expenditurePlanStatus)
     }
 
-    const { jsonData: incomePlanInfo, status: incomePlanStatus } = await getDataFile('Income plan');
+    const { jsonData: incomePlanInfo, status: incomePlanStatus } = await getDataFile<PlanData>('Income plan');
     if(incomePlanStatus !== 'success') {
         new Notice(incomePlanStatus)
         console.error(incomePlanStatus)
@@ -183,7 +185,7 @@ export const showPlans = async (mainContentBody: any, mainContentButton: any) =>
     } else {
         if(expenditurePlanInfo !== null) {
             mainContentBody.removeClass('main-content-body--undefined')
-            const resultExpense = expenditurePlanInfo.sort((a, b) => b.amount - a.amount)
+            const resultExpense = expenditurePlanInfo.sort((a: any, b: any) => b.amount - a.amount)
             resultExpense.forEach(e => allResult.push(e))
             const expensePlanBlock = mainContentBody.createEl('div', {
                 cls: 'plan-block'
@@ -200,7 +202,7 @@ export const showPlans = async (mainContentBody: any, mainContentButton: any) =>
             const expenseDataList = expensePlanBlock.createEl('ul', {
                 cls: 'data-list'
             })
-            resultExpense.forEach((e, i) => {
+            resultExpense.forEach((e: any, i: any) => {
                 const dataItem = expenseDataList.createEl('li', {
                     cls: 'data-item',
                     attr: {
@@ -208,11 +210,11 @@ export const showPlans = async (mainContentBody: any, mainContentButton: any) =>
                             'data-type': e.type
                         }
                 })
-                dataItem.onclick = async (e) => {
+                dataItem.onclick = async (e: any) => {
                     await editingPlan(e);
                 };
                 const itemCategory = dataItem.createEl('p', {
-                    text: e.name
+                    text: `${e.emoji} ${e.name}`
                 })
                 const itemAmount = dataItem.createEl('p', {
                     text: String(e.amount)
@@ -220,8 +222,9 @@ export const showPlans = async (mainContentBody: any, mainContentButton: any) =>
             })
         }
         if(incomePlanInfo !== null) {
+            if(incomePlanInfo === undefined) throw new Error('incomePlanInfo is undefined')
             mainContentBody.removeClass('main-content-body--undefined')
-            const resultIncome = incomePlanInfo.sort((a, b) => b.amount - a.amount)
+            const resultIncome = incomePlanInfo.sort((a: any, b: any) => b.amount - a.amount)
             resultIncome.forEach(e => allResult.push(e))
             const incomePlanBlock = mainContentBody.createEl('div', {
                 cls: 'plan-block'
@@ -238,7 +241,7 @@ export const showPlans = async (mainContentBody: any, mainContentButton: any) =>
             const incomeDataList = incomePlanBlock.createEl('ul', {
                 cls: 'data-list'
             })
-            resultIncome.forEach((e, i) => {
+            resultIncome.forEach((e: any, i: any) => {
                 const dataItem = incomeDataList.createEl('li', {
                     cls: 'data-item',
                     attr: {
@@ -246,11 +249,11 @@ export const showPlans = async (mainContentBody: any, mainContentButton: any) =>
                             'data-type': e.type
                         }
                 })
-                dataItem.onclick = async (e) => {
+                dataItem.onclick = async (e: any) => {
                     await editingPlan(e);
                 };
                 const itemCategory = dataItem.createEl('p', {
-                    text: e.name
+                    text: `${e.emoji} ${e.name}`
                 })
                 const itemAmount = dataItem.createEl('p', {
                     text: String(e.amount)
@@ -274,11 +277,12 @@ export const showPlans = async (mainContentBody: any, mainContentButton: any) =>
 
 export const showBills = async (mainContentBody: any, mainContentButton: any) => {
     stateManager({ openPageNow: "Bills" });
-    const { jsonData: billsInfo, status } = await getDataArchiveFile('Archive bills');
+    const { jsonData: billsInfo, status } = await getDataArchiveFile<BillData>('Archive bills');
     if(status !== 'success') {
         new Notice(status)
         console.error(status)
     }
+    if(billsInfo === undefined) throw new Error('Bill is undefined')
 
     if(billsInfo === null) {
         const undefinedContent = mainContentBody.createEl('div', {
@@ -297,7 +301,7 @@ export const showBills = async (mainContentBody: any, mainContentButton: any) =>
         if(billsInfo.length > 5) {
             mainContentBody.addClass('main-content-body--padding')
         }
-        if(billsInfo.filter(e => e.generalBalance).length >= 1) {
+        if(billsInfo.filter((e: any) => e.generalBalance).length >= 1) {
             mainContentBody.removeClass('main-content-body--undefined')
             const trueBillBlock = mainContentBody.createEl('div', {
                 cls: 'bill-block'
@@ -315,7 +319,7 @@ export const showBills = async (mainContentBody: any, mainContentButton: any) =>
                 cls: 'data-list'
             })
 
-            billsInfo.forEach((e, i) => {
+            billsInfo.forEach((e: any, i) => {
                 if(e.generalBalance) {
                     const dataItem = trueDataList.createEl('li', {
                         cls: 'data-item',
@@ -323,11 +327,11 @@ export const showBills = async (mainContentBody: any, mainContentButton: any) =>
                                 'data-id': e.id
                             }
                     })
-                    dataItem.onclick = async (e) => {
+                    dataItem.onclick = async (e: any) => {
                         await editingBill(e);
                     }
                     const itemCategory = dataItem.createEl('p', {
-                        text: e.name
+                        text: `${e.emoji} ${e.name}`
                     })
                     const itemAmount = dataItem.createEl('p', {
                         text: String(e.balance)
@@ -336,7 +340,7 @@ export const showBills = async (mainContentBody: any, mainContentButton: any) =>
             })
         }
         
-        if(billsInfo.filter(e => !e.generalBalance).length >= 1) {
+        if(billsInfo.filter((e: any) => !e.generalBalance).length >= 1) {
             mainContentBody.removeClass('main-content-body--undefined')
             const falseBillBlock = mainContentBody.createEl('div', {
                 cls: 'bill-block'
@@ -354,7 +358,7 @@ export const showBills = async (mainContentBody: any, mainContentButton: any) =>
                 cls: 'data-list'
             })
             
-            billsInfo.forEach((e, i) => {
+            billsInfo.forEach((e: any, i) => {
                 if(!e.generalBalance) {
                     const dataItem = falseDataList.createEl('li', {
                         cls: 'data-item',
@@ -362,7 +366,7 @@ export const showBills = async (mainContentBody: any, mainContentButton: any) =>
                                 'data-id': e.id
                             }
                     })
-                    dataItem.onclick = async (e) => {
+                    dataItem.onclick = async (e: any) => {
                         await editingBill(e);
                     }
                     const itemCategory = dataItem.createEl('p', {

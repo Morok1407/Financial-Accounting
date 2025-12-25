@@ -1,159 +1,185 @@
 import { setIcon, Notice } from "obsidian";
 import { transferJsonToBills } from "../controllers/editingData";
-import { pluginInstance, viewInstance } from "../../main";
-import { getDataArchiveFile, getDataFile } from "src/controllers/searchData";
-import { updateFile } from "src/controllers/editingData";
+import { pluginInstance, viewInstance, TransferBetweenBills, BillData, PlanData, HistoryData } from "../../main";
+import { getDataArchiveFile, getDataFile } from "../controllers/searchData";
+import { updateFile } from "../controllers/editingData";
 import { getCurrencySymbol } from "./otherFunc";
 
-export const expenditureTransaction = async (data: object, modifier: string, oldData?: object) => {
-    const { jsonData: billJsonData, file: billFile, content: billContent, status: archiveStatus } = await getDataArchiveFile("Archive bills")
-    if(!(archiveStatus === 'success')) {
-        return archiveStatus
-    }
-    const bill = billJsonData.find(b => b.id === data.bill.id)
+export const expenditureTransaction = async (
+    data: HistoryData,
+    modifier: 'add' | 'remove' | 'edit',
+    oldData?: HistoryData
+) => {
+    const amount = Number(data.amount);
 
-    const { jsonData: planJsonData, file: planFile, content: planContent, status } = await getDataFile("Expenditure plan")
-    if(!(status === 'success')) {
-        return status
+    const billsRes = await getDataArchiveFile<BillData>('Archive bills');
+    if (billsRes.status !== 'success') return billsRes.status;
+    if (!billsRes.jsonData || !billsRes.file || !billsRes.content) {
+        return 'Bills data error';
     }
-    const plan = planJsonData.find(p => p.id === data.category.id)
 
-    let billNewData = [];
-    let planNewData = [];
+    const plansRes = await getDataFile<PlanData>('Expenditure plan');
+    if (plansRes.status !== 'success') return plansRes.status;
+    if (!plansRes.jsonData || !plansRes.file || !plansRes.content) {
+        return 'Plans data error';
+    }
+
+    let bills = billsRes.jsonData;
+    let plans = plansRes.jsonData;
+
+    const update = async () => {
+        const billUpdate = await updateFile(bills, billsRes.file, billsRes.content);
+        if (billUpdate !== 'success') return billUpdate;
+
+        const planUpdate = await updateFile(plans, plansRes.file, plansRes.content);
+        if (planUpdate !== 'success') return planUpdate;
+
+        return 'success';
+    };
+
+    const updateBill = (billId: string, delta: number) => {
+        bills = bills.map(b =>
+            b.id === billId ? { ...b, balance: Number(b.balance) + delta } : b
+        );
+    };
+
+    const updatePlan = (planId: string, delta: number) => {
+        plans = plans.map(p =>
+            p.id === planId ? { ...p, amount: Number(p.amount) + delta } : p
+        );
+    };
 
     switch (modifier) {
         case 'add':
-            billNewData = billJsonData.map(i => i.id === data.bill.id ? { ...i, balance: Number(bill.balance) - Number(data.amount)} : i)
-            planNewData = planJsonData.map(i => i.id === data.category.id ? { ...i, amount: Number(plan.amount) + Number(data.amount)} : i)
-            
-            return await func()
+            updateBill(data.bill.id, -amount);
+            updatePlan(data.category.id, amount);
+            return await update();
+
         case 'remove':
-            billNewData = billJsonData.map(i => i.id === data.bill.id ? { ...i, balance: Number(bill.balance) + Number(data.amount)} : i)
-            planNewData = planJsonData.map(i => i.id === data.category.id ? { ...i, amount: Number(plan.amount) - Number(data.amount)} : i)
+            updateBill(data.bill.id, amount);
+            updatePlan(data.category.id, -amount);
+            return await update();
 
-            return await func()
         case 'edit':
-            const oldBill = billJsonData.find(b => b.id === oldData.bill.id)
-            const oldPlan = planJsonData.find(p => p.id === oldData.category.id)
+            if (!oldData) return 'Old data is required for edit';
 
-            billNewData = billJsonData.map(i => i.id === oldData.bill.id ? { ...i, balance: Number(oldBill.balance) + Number(oldData.amount)} : i)
-            planNewData = planJsonData.map(i => i.id === oldData.category.id ? { ...i, amount: Number(oldPlan.amount) - Number(oldData.amount)} : i)
-            
-            await func()
+            updateBill(oldData.bill.id, Number(oldData.amount));
+            updatePlan(oldData.category.id, -Number(oldData.amount));
+            await update();
 
-            const { jsonData: newBillJsonData } = await getDataArchiveFile("Archive bills")
-            const { jsonData: newpPlanJsonData } = await getDataFile("Expenditure plan")
+            const newBillsRes = await getDataArchiveFile<BillData>('Archive bills');
+            const newPlansRes = await getDataFile<PlanData>('Expenditure plan');
 
-            const newBill = newBillJsonData.find(b => b.id === data.bill.id)
-            const newPlan = newpPlanJsonData.find(p => p.id === data.category.id)
+            if (!newBillsRes.jsonData || !newPlansRes.jsonData) {
+                return 'Reload data error';
+            }
 
-            billNewData = newBillJsonData.map(i => i.id === data.bill.id ? { ...i, balance: Number(newBill.balance) - Number(data.amount)} : i)
-            planNewData = newpPlanJsonData.map(i => i.id === data.category.id ? { ...i, amount: Number(newPlan.amount) + Number(data.amount)} : i)
+            bills = newBillsRes.jsonData;
+            plans = newPlansRes.jsonData;
 
-            return await func()
+            updateBill(data.bill.id, -amount);
+            updatePlan(data.category.id, amount);
+            return await update();
+
         default:
-            return 'Error modifier'
+            return 'Invalid modifier';
+    }
+};
+
+export const incomeTransaction = async (
+    data: HistoryData,
+    modifier: 'add' | 'remove' | 'edit',
+    oldData?: HistoryData
+) => {
+    const amount = Number(data.amount);
+
+    const billsRes = await getDataArchiveFile<BillData>('Archive bills');
+    if (billsRes.status !== 'success') return billsRes.status;
+    if (!billsRes.jsonData || !billsRes.file || !billsRes.content) {
+        return 'Bills data error';
     }
 
-    async function func()  {
-        try {
-            const { status: billStatus } = await updateFile(billNewData, billFile, billContent)
-            if(!(status === 'success')) {
-                return billStatus
-            }
-            const { status: planStatus } = await updateFile(planNewData, planFile, planContent)
-            if(!(planStatus === 'success')) {
-                return planStatus
-            }
-
-            return 'success'
-        } catch (error) {
-            return error
-        }
+    const plansRes = await getDataFile<PlanData>('Income plan');
+    if (plansRes.status !== 'success') return plansRes.status;
+    if (!plansRes.jsonData || !plansRes.file || !plansRes.content) {
+        return 'Plans data error';
     }
-}
 
-export const incomeTransaction = async (data: object, modifier: string, oldData?: object) => {
-    const { jsonData: billJsonData, file: billFile, content: billContent, status: archiveStatus } = await getDataArchiveFile("Archive bills")
-    if(!(archiveStatus === 'success')) {
-        return archiveStatus
-    }
-    const bill = billJsonData.find(b => b.id === data.bill.id)
+    let bills = billsRes.jsonData;
+    let plans = plansRes.jsonData;
 
-    const { jsonData: planJsonData, file: planFile, content: planContent, status } = await getDataFile("Income plan")
-    if(!(status === 'success')) {
-        return status
-    }
-    const plan = planJsonData.find(p => p.id === data.category.id)
+    const update = async () => {
+        const billRes = await updateFile(bills, billsRes.file, billsRes.content);
+        if (billRes !== 'success') return billRes;
 
-    let billNewData = [];
-    let planNewData = [];
+        const planRes = await updateFile(plans, plansRes.file, plansRes.content);
+        if (planRes !== 'success') return planRes;
+
+        return 'success';
+    };
+
+    const updateBill = (billId: string, delta: number) => {
+        bills = bills.map(b =>
+            b.id === billId
+                ? { ...b, balance: Number(b.balance) + delta }
+                : b
+        );
+    };
+
+    const updatePlan = (planId: string, delta: number) => {
+        plans = plans.map(p =>
+            p.id === planId
+                ? { ...p, amount: Number(p.amount) + delta }
+                : p
+        );
+    };
 
     switch (modifier) {
         case 'add':
-            billNewData = billJsonData.map(i => i.id === data.bill.id ? { ...i, balance: Number(bill.balance) + Number(data.amount)} : i)
-            planNewData = planJsonData.map(i => i.id === data.category.id ? { ...i, amount: Number(plan.amount) + Number(data.amount)} : i)
-            
-            return await func()
+            updateBill(data.bill.id, amount);
+            updatePlan(data.category.id, amount);
+            return await update();
+
         case 'remove':
-            billNewData = billJsonData.map(i => i.id === data.bill.id ? { ...i, balance: Number(bill.balance) - Number(data.amount)} : i)
-            planNewData = planJsonData.map(i => i.id === data.category.id ? { ...i, amount: Number(plan.amount) - Number(data.amount)} : i)
+            updateBill(data.bill.id, -amount);
+            updatePlan(data.category.id, -amount);
+            return await update();
 
-            return await func()
         case 'edit':
-            const oldBill = billJsonData.find(b => b.id === oldData.bill.id)
-            const oldPlan = planJsonData.find(p => p.id === oldData.category.id)
+            if (!oldData) return 'Old data is required for edit';
 
-            billNewData = billJsonData.map(i => i.id === oldData.bill.id ? { ...i, balance: Number(oldBill.balance) - Number(oldData.amount)} : i)
-            planNewData = planJsonData.map(i => i.id === oldData.category.id ? { ...i, amount: Number(oldPlan.amount) - Number(oldData.amount)} : i)
-            
-            await func()
+            updateBill(oldData.bill.id, -Number(oldData.amount));
+            updatePlan(oldData.category.id, -Number(oldData.amount));
+            await update();
 
-            const { jsonData: newBillJsonData } = await getDataArchiveFile("Archive bills")
-            const { jsonData: newpPlanJsonData } = await getDataFile("Income plan")
+            const newBillsRes = await getDataArchiveFile<BillData>('Archive bills');
+            const newPlansRes = await getDataFile<PlanData>('Income plan');
 
-            const newBill = newBillJsonData.find(b => b.id === data.bill.id)
-            const newPlan = newpPlanJsonData.find(p => p.id === data.category.id)
+            if (!newBillsRes.jsonData || !newPlansRes.jsonData) {
+                return 'Reload data error';
+            }
 
-            billNewData = newBillJsonData.map(i => i.id === data.bill.id ? { ...i, balance: Number(newBill.balance) + Number(data.amount)} : i)
-            planNewData = newpPlanJsonData.map(i => i.id === data.category.id ? { ...i, amount: Number(newPlan.amount) + Number(data.amount)} : i)
+            bills = newBillsRes.jsonData;
+            plans = newPlansRes.jsonData;
 
-            return await func()
+            updateBill(data.bill.id, amount);
+            updatePlan(data.category.id, amount);
+            return await update();
+
         default:
-            return 'Error modifier'
+            return 'Invalid modifier';
     }
+};
 
-    async function func()  {
-        try {
-            const { status: billStatus } = await updateFile(billNewData, billFile, billContent)
-            if(!(status === 'success')) {
-                return billStatus
-            }
-            const { status: planStatus } = await updateFile(planNewData, planFile, planContent)
-            if(!(planStatus === 'success')) {
-                return planStatus
-            }
-
-            return 'success'
-        } catch (error) {
-            return error
-        }
-    }
-}
 
 export const transferBetweenBills = async (billId: string) => {
     if(!billId) {
         return 'Element not found'
     }
 
-    const { jsonData: resultBills, status } = await getDataArchiveFile('Archive bills')
-    if(!status) {
-        return status
-    }
-
-    if(resultBills.length < 2) {
-        return 'At least two bills are required to make a transfer'
-    }
+    const { jsonData: resultBills, status } = await getDataArchiveFile<BillData>('Archive bills')
+    if(!status) return status
+    if(!resultBills) return 'Bill is null or undifined'
 
     const { contentEl } = viewInstance
     contentEl.empty()
@@ -281,11 +307,11 @@ export const transferBetweenBills = async (billId: string) => {
     })
     addButton.addEventListener('click', async (e) => {
         e.preventDefault();
-        if(!inputSum.value >= 1) {
+        if(!inputSum.value) {
             inputSum.focus()
             return new Notice('Enter the amount')
         }
-        const data = {
+        const data: TransferBetweenBills = {
             fromBillId: selectFromBill.value,
             toBillId: selectToBill.value,
             amount: Number(inputSum.value),

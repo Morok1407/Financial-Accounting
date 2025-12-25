@@ -1,8 +1,12 @@
-import { getDataArchiveFile } from "src/controllers/searchData";
-import { pluginInstance } from "../../main";
+import { App, TFolder, TFile } from 'obsidian'
+import { getDataArchiveFile } from "../controllers/searchData";
+import { pluginInstance, BillData, HistoryData } from "../../main";
 
-export const checkBill = async (data: object, oldData?: object) => {
-    const { jsonData } = await getDataArchiveFile("Archive bills")
+declare const app: App;
+
+export const checkBill = async (data: HistoryData, oldData?: HistoryData ) => {
+    const { jsonData } = await getDataArchiveFile<BillData>("Archive bills")
+    if(jsonData === null || jsonData === undefined) throw new Error('Bill is null or undefined')
     const bill = jsonData.find(b => b.id === data.bill.id);
 
     if (!bill) {
@@ -20,52 +24,60 @@ export const checkBill = async (data: object, oldData?: object) => {
     return "success";
 }
 
-export const checkForDeletionData = async (id: string, modifier: string) => {
-    const financeFolder = app.vault.getAbstractFileByPath(pluginInstance.settings.targetFolder);
-    let allFiles = [];
+export const checkForDeletionData = async (
+    id: string,
+    modifier: 'plan' | 'bill'
+): Promise<boolean> => {
 
-    let yearFolders = [];
-    for (const child of financeFolder.children) {
-        yearFolders.push(child);
+    const financeFolder = app.vault.getAbstractFileByPath(
+        pluginInstance.settings.targetFolder
+    );
+
+    if (!financeFolder || !(financeFolder instanceof TFolder)) {
+        throw new Error('Finance folder not found or is not a folder');
     }
-    yearFolders.pop(); // Remove "Archive" folder
 
-    let monthFolders = [];
-    for (let i = 0; i < yearFolders.length; i++) {
-        for (const child of yearFolders[i].children) {
-            monthFolders.push(child);
+    const historyFiles: TFile[] = [];
+
+    const collectFiles = (folder: TFolder) => {
+        for (const child of folder.children) {
+            if (child instanceof TFolder) {
+                collectFiles(child);
+            } else if (child instanceof TFile && child.name === 'History.md') {
+                historyFiles.push(child);
+            }
         }
-    }
+    };
 
-    for (let i = 0; i < monthFolders.length; i++) {
-        for (const child of monthFolders[i].children) {
-            allFiles.push(child);
-        }
-    }
-
-    const historyFiles = allFiles.filter(f => f.name === "History.md");
+    collectFiles(financeFolder);
 
     for (const file of historyFiles) {
         try {
             const content = await app.vault.read(file);
             const jsonMatch = content.match(/```json([\s\S]*?)```/);
-            if (jsonMatch[1].length <= 2) {
-                return false;
-            }
+
+            if (!jsonMatch || jsonMatch[1].trim().length <= 2) continue;
+
             const jsonData = JSON.parse(jsonMatch[1].trim());
-            if (Array.isArray(jsonData)) {
-                let found;
-                if(modifier === 'plan') {
-                    found = jsonData.some(item => item.category.id === id);
-                } else if (modifier === 'bill') {
-                    found = jsonData.some(item => item.bill.id === id);
+
+            if (!Array.isArray(jsonData)) continue;
+
+            const found = jsonData.some(item => {
+                if (modifier === 'plan') {
+                    return item?.category?.id === id;
                 }
-                return found
-            }
+                if (modifier === 'bill') {
+                    return item?.bill?.id === id;
+                }
+                return false;
+            });
+
+            if (found) return true;
+
         } catch (e) {
-            console.error("Error reading/parsing file:", file.path, e);
+            console.error(`Error processing file: ${file.path}`, e);
         }
     }
 
     return false;
-}
+};

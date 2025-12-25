@@ -1,36 +1,37 @@
 import { Notice, setIcon } from "obsidian";
-import { HistoryData, PlanData, BillData  } from "../../main";
 import { addJsonToHistory, addJsonToPlan, addJsonToBills } from "../controllers/addData";
-import { getDataArchiveFile, getDataFile } from "src/controllers/searchData";
+import { getDataArchiveFile, getDataFile } from "../controllers/searchData";
 import { pluginInstance, viewInstance, stateManager } from "../../main";
+import { HistoryData, PlanData, BillData  } from "../../main";
 import { getCurrencySymbol, fillMonthDates, getLocalTimeISO, selectRelativeDate, getCurrencyGroups, generateUUID } from "../middleware/otherFunc";
 
 export const addHistory = async () => {
-    const { jsonData: resultBills, status: archiveStatus } = await getDataArchiveFile('Archive bills')
+    const { jsonData: resultBills, status: archiveStatus } = await getDataArchiveFile<BillData>('Archive bills')
     if(!(archiveStatus === 'success')) {
         return archiveStatus
     }
-    if(resultBills === null) {
-        return new Notice('Add bills')
-    } 
-    const { jsonData: resultExpenditurePlan, status: statusExpenditurePlan } = await getDataFile('Expenditure plan')
+    if (resultBills === undefined) throw new Error('Bill is undefined');
+    if(resultBills === null) return new Notice('Add a bill')
+
+    const { jsonData: resultExpenditurePlan, status: statusExpenditurePlan } = await getDataFile<PlanData>('Expenditure plan')
     if(!(statusExpenditurePlan === 'success')) {
         return statusExpenditurePlan
     }
-    if(resultExpenditurePlan === null) {
-        return new Notice('Add expenditure plan')
-    } 
-    const { jsonData: resultIncomePlan, status: statusIncomePlan } = await getDataFile('Income plan')
+    if (resultExpenditurePlan === undefined) throw new Error('Expediture Plan is undefined')
+    if(resultExpenditurePlan === null) return new Notice('Add a expenditure plan')
+
+    const { jsonData: resultIncomePlan, status: statusIncomePlan } = await getDataFile<PlanData>('Income plan')
     if(!(statusIncomePlan === 'success')) {
         return statusExpenditurePlan
     }
-    if(resultIncomePlan === null) {
-        return new Notice('Add income plan')
-    }
-    const { jsonData: resultHistory, status: statusHistory } = await getDataFile('History')
+    if (resultIncomePlan === undefined) throw new Error('Income Plan is undefined')
+    if(resultIncomePlan === null) return new Notice('Add a income plan')
+    
+    const { jsonData: resultHistory, status: statusHistory } = await getDataFile<HistoryData>('History')
     if(!(statusHistory === 'success')) {
         return statusHistory
     }
+    if(resultHistory === undefined) throw new Error('History is undefined')
 
     const { contentEl } = viewInstance;
     const { selectedYear, selectedMonth } = stateManager();
@@ -75,9 +76,10 @@ export const addHistory = async () => {
             type: 'button'
         }
     })
-
-    resultRadio = radioExpense.dataset.radio
-    radioExpense.addClass('main-radion-button--active')
+    if(radioExpense.dataset.radio === 'expense') {
+        resultRadio = radioExpense.dataset.radio;
+        radioExpense.addClass('main-radion-button--active')
+    }
     
     const radioIncome = expenseOrIncome.createEl('button', {
         text: 'Income',
@@ -89,18 +91,22 @@ export const addHistory = async () => {
     })
     
     radioIncome.addEventListener('click', () => {
-        radioExpense.removeClass('main-radion-button--active')
-        radioIncome.addClass('main-radion-button--active')
-        resultRadio = radioIncome.dataset.radio
-        createOptionCategory()
-        inputSum.focus()
+        if(radioIncome.dataset.radio === 'income') {
+            radioExpense.removeClass('main-radion-button--active')
+            radioIncome.addClass('main-radion-button--active')
+            resultRadio = radioIncome.dataset.radio
+            createOptionCategory()
+            inputSum.focus()
+        }
     })
     radioExpense.addEventListener('click', () => {
-        radioIncome.removeClass('main-radion-button--active')
-        radioExpense.addClass('main-radion-button--active')
-        resultRadio = radioExpense.dataset.radio
-        createOptionCategory()
-        inputSum.focus()
+        if(radioExpense.dataset.radio === 'expense') {
+            radioIncome.removeClass('main-radion-button--active')
+            radioExpense.addClass('main-radion-button--active')
+            resultRadio = radioExpense.dataset.radio
+            createOptionCategory()
+            inputSum.focus()
+        }
     })
     
     // Form input
@@ -130,7 +136,7 @@ export const addHistory = async () => {
     const mainGroup = document.createElement("optgroup");
     mainGroup.label = "Main";
     
-    resultBills.forEach(bill => {
+    (resultBills).forEach(bill => {
         if(bill.generalBalance) {
             const option = document.createElement("option");
             option.value = bill.id;
@@ -143,7 +149,7 @@ export const addHistory = async () => {
     const additionalGroup = document.createElement("optgroup");
     additionalGroup.label = "Additional";
 
-    resultBills.forEach(bill => {
+    (resultBills).forEach(bill => {
         if(!bill.generalBalance) {
             const option = document.createElement("option");
             option.value = bill.id;
@@ -160,7 +166,7 @@ export const addHistory = async () => {
         selectBills.value = resultBills[0].id;
     } else {
         // Sort by number of uses
-        let counts = {};
+        let counts: any = {};
         resultHistory.forEach(item => {
             const billId = item.bill.id;
             counts[billId] = (counts[billId] || 0) + 1;
@@ -193,38 +199,34 @@ export const addHistory = async () => {
         }
     })
     createOptionCategory()
-    
+
     async function createOptionCategory() {
         if(resultRadio === 'expense'){
             selectCategory.empty()
-            const { jsonData: resultExpenseCategory, status: expenseStatus } = await getDataFile('Expenditure plan')
-            if(!(expenseStatus === 'success')) {
-                return expenseStatus
-            }
-            resultExpenseCategory.sort((a, b) => b.amount - a.amount)
-            resultExpenseCategory.forEach(plan => {
-                selectCategory.createEl('option', {
-                    text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-                    attr: { 
-                        value: plan.id
-                    }
+            if(resultExpenditurePlan) {
+                resultExpenditurePlan.sort((a, b) => b.amount - a.amount)
+                resultExpenditurePlan.forEach(plan => {
+                    selectCategory.createEl('option', {
+                        text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                        attr: { 
+                            value: plan.id
+                        }
+                    })
                 })
-            })
+            }
         } else {
             selectCategory.empty()
-            const { jsonData: resultIncomeCategory, status: incomeStatus } = await getDataFile('Income plan')
-            if(!(incomeStatus === 'success')) {
-                return incomeStatus
-            }
-            resultIncomeCategory.sort((a, b) => b.amount - a.amount)
-            resultIncomeCategory.forEach(plan => {
-                selectCategory.createEl('option', {
-                    text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-                    attr: { 
-                        value: plan.id
-                    }
+            if(resultIncomePlan) {
+                resultIncomePlan.sort((a, b) => b.amount - a.amount)
+                resultIncomePlan.forEach(plan => {
+                    selectCategory.createEl('option', {
+                        text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                        attr: { 
+                            value: plan.id
+                        }
+                    })
                 })
-            })
+            }
         }
     }
 
@@ -366,8 +368,10 @@ export const addPlan = () => {
         }
     })
 
-    resultRadio = radioExpense.dataset.radio
-    radioExpense.addClass('main-radion-button--active')
+    if(radioExpense.dataset.radio === 'expense') {
+        resultRadio = radioExpense.dataset.radio
+        radioExpense.addClass('main-radion-button--active')
+    }
     
     const radioIncome = expenseOrIncome.createEl('button', {
         text: 'Income',
@@ -379,16 +383,20 @@ export const addPlan = () => {
     })
     
     radioIncome.addEventListener('click', () => {
-        radioExpense.removeClass('main-radion-button--active')
-        radioIncome.addClass('main-radion-button--active')
-        resultRadio = radioIncome.dataset.radio
-        inputName.focus()
+        if(radioIncome.dataset.radio === 'income') {
+            radioExpense.removeClass('main-radion-button--active')
+            radioIncome.addClass('main-radion-button--active')
+            resultRadio = radioIncome.dataset.radio
+            inputName.focus()
+        }
     })
     radioExpense.addEventListener('click', () => {
-        radioIncome.removeClass('main-radion-button--active')
-        radioExpense.addClass('main-radion-button--active')
-        resultRadio = radioExpense.dataset.radio
-        inputName.focus()
+        if(radioExpense.dataset.radio === 'expense') {
+            radioIncome.removeClass('main-radion-button--active')
+            radioExpense.addClass('main-radion-button--active')
+            resultRadio = radioExpense.dataset.radio
+            inputName.focus()
+        }
     })
     
     // Form input
@@ -404,6 +412,23 @@ export const addPlan = () => {
         }
     })
     inputName.focus()
+
+    const inputEmoji = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Emoji',
+            id: 'input-emoji',
+            type: 'text'
+        }
+    })
+    inputEmoji.addEventListener('input', () => {
+        const value = inputEmoji.value;
+        const chars = Array.from(value);
+        const emojiOnly = chars.filter(ch =>
+            /\p{Extended_Pictographic}/u.test(ch)
+        );
+        inputEmoji.value = emojiOnly.slice(0, 1).join('');
+    });
 
     const commentInput = mainFormInput.createEl('input', {
         cls: 'form-inputs',
@@ -425,7 +450,7 @@ export const addPlan = () => {
     addButton.addEventListener('click', async (e) => {
         e.preventDefault();
 
-        if(!inputName.value >= 1) {
+        if(!inputName.value) {
             inputName.focus()
             return new Notice('Enter the name')
         }
@@ -433,6 +458,7 @@ export const addPlan = () => {
         const data: PlanData = {
             id: String(generateUUID()),
             name: inputName.value.trim(),
+            emoji: inputEmoji.value,
             amount: 0,
             comment: commentInput.value.trim(),
             type: resultRadio,
@@ -491,6 +517,23 @@ export const addBills = () => {
         }
     })
     inputName.focus()
+
+    const inputEmoji = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Emoji',
+            id: 'input-emoji',
+            type: 'text'
+        }
+    })
+    inputEmoji.addEventListener('input', () => {
+        const value = inputEmoji.value;
+        const chars = Array.from(value);
+        const emojiOnly = chars.filter(ch =>
+            /\p{Extended_Pictographic}/u.test(ch)
+        );
+        inputEmoji.value = emojiOnly.slice(0, 1).join('');
+    });
 
     const currencyInput = mainFormInput.createEl('select', {
         cls: 'form-selects',
@@ -577,7 +620,7 @@ export const addBills = () => {
     addButton.addEventListener('click', async (e) => {
         e.preventDefault();
 
-        if(!inputName.value >= 1) {
+        if(!inputName.value) {
             inputName.focus()
             return new Notice('Enter the name')
         }
@@ -585,6 +628,7 @@ export const addBills = () => {
         const data: BillData = {
             id: String(generateUUID()),
             name: inputName.value.trim(),
+            emoji: inputEmoji.value,
             balance: Number(currentBalance.value),
             currency: currencyInput.value,
             generalBalance: checkboxInput.checked,

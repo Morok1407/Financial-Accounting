@@ -1,5 +1,5 @@
 import { setIcon, Notice } from "obsidian";
-import { pluginInstance, viewInstance, stateManager } from "../../main";
+import { pluginInstance, viewInstance, stateManager, BillData, PlanData } from "../../main";
 import { getDate } from "../middleware/otherFunc";
 import { createDirectory, createOtherMonthDirectory, months } from "../controllers/createDirectory";
 import { showHistory, showPlans, showBills } from "./showDataView";
@@ -19,23 +19,26 @@ export const showInitialView = async (): Promise<void> => {
     const { contentEl } = viewInstance;
     const { month } = getDate();
 
-    const { jsonData: billsInfo, status: billStatus } = await getDataArchiveFile("Archive bills");
+    const { jsonData: billsInfo, status: billStatus } = await getDataArchiveFile<BillData>("Archive bills");
     if (billStatus !== "success") {
         new Notice(billStatus);
         console.error(billStatus);
     }
+    if (billsInfo === undefined) throw new Error('billsInfo is undefined');
 
-    const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await getDataFile("Expenditure plan");
+    const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await getDataFile<PlanData>("Expenditure plan");
     if (expenditurePlanStatus !== "success") {
         new Notice(expenditurePlanStatus);
         console.error(expenditurePlanStatus);
     }
+    if (expenditurePlanInfo === undefined) throw new Error('expenditurePlanInfo is undefined');
 
-    const { jsonData: incomePlanInfo, status: incomePlanStatus } = await getDataFile("Income plan");
+    const { jsonData: incomePlanInfo, status: incomePlanStatus } = await getDataFile<PlanData>("Income plan");
     if (incomePlanStatus !== "success") {
         new Notice(incomePlanStatus);
         console.error(incomePlanStatus);
     }
+    if (incomePlanInfo === undefined) throw new Error('incomePlanInfo is undefined');
 
     contentEl.empty();
     contentEl.addClass("finance-content");
@@ -263,9 +266,9 @@ const showAllMonths = async () => {
         const calendarUlTitle = calendarMain.createEl("div", {
         cls: "calendar-list-title",
         });
-        calendarUlTitle.createEl("span", { text: i });
+        calendarUlTitle.createEl("span", { text: String(i) });
         calendarUlTitle.createEl("span", {
-            text: await TheSumOfExpensesAndIncomeForTheYear(i),
+            text: await TheSumOfExpensesAndIncomeForTheYear(String(i)),
         });
 
         const calendarUl = calendarMain.createEl("ul", {
@@ -291,7 +294,7 @@ const showAllMonths = async () => {
             const storyMonth = calendarItem.createEl("div", {
                 cls: "story-month",
             });
-            IncomeAndExpensesForTheMonth(months[k], i, storyMonth);
+            IncomeAndExpensesForTheMonth(months[k], String(i), storyMonth);
         }
     }
 }
@@ -322,17 +325,19 @@ export const showAnotherInitialView = async (): Promise<void> => {
 
     const { selectedMonth } = stateManager();
 
-    const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await getDataFile("Expenditure plan");
+    const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await getDataFile<PlanData>("Expenditure plan");
     if (expenditurePlanStatus !== "success") {
         new Notice(expenditurePlanStatus);
         console.error(expenditurePlanStatus);
     }
+    if (expenditurePlanInfo == null) throw new Error('expenditurePlanInfo is null or undefined');
 
-    const { jsonData: incomePlanInfo, status: incomePlanStatus } = await getDataFile("Income plan");
+    const { jsonData: incomePlanInfo, status: incomePlanStatus } = await getDataFile<PlanData>("Income plan");
     if (incomePlanStatus !== "success") {
         new Notice(incomePlanStatus);
         console.error(incomePlanStatus);
     }
+    if (incomePlanInfo == null) throw new Error('incomePlanInfo is null or undefined');
 
     const { contentEl } = viewInstance;
     contentEl.empty();

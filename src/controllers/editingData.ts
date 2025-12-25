@@ -2,23 +2,18 @@ import { getDataFile, getDataArchiveFile } from "./searchData";
 import { checkBill } from "../middleware/checkData";
 import { expenditureTransaction, incomeTransaction } from "../middleware/transferring";
 import { archiveExpenditurePlan, archiveIncomePlan } from "../middleware/duplicating";
-import { pluginInstance } from "../../main";
+import { pluginInstance, HistoryData, PlanData, BillData, TransferBetweenBills } from "../../main";
 
-export const editingJsonToHistory = async (data: object, oldData?: object) => {
-    if(data.amount === 0) {
-        return 'Cannot be corrected to 0'
-    }
-
-    const { jsonData, content, file, status } = await getDataFile('History')
-    if(!(status === 'success')) {
-        return status
-    }
+export const editingJsonToHistory = async (data: HistoryData, oldData: HistoryData) => {
+    const { jsonData, content, file, status } = await getDataFile<HistoryData>('History')
+    if(!(status === 'success')) return status
+    if(!jsonData) return 'Error with data history'
+    if(!content) return 'Error with content history'
+    if(!file) return 'Error with file history'
 
     if(data.type === 'expense') {
         const resultCheckBill  = await checkBill(data, oldData)
-        if(!(resultCheckBill === 'success')) {
-            return resultCheckBill
-        }
+        if(!(resultCheckBill === 'success')) resultCheckBill
     }
 
     if(data.type === 'expense') {
@@ -34,6 +29,7 @@ export const editingJsonToHistory = async (data: object, oldData?: object) => {
     } else {
         return 'Error'
     }
+
     try {
         const newData = jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
         const dataStr = JSON.stringify(newData, null, 4);
@@ -46,13 +42,24 @@ export const editingJsonToHistory = async (data: object, oldData?: object) => {
     }
 }
 
-export const editingJsonToPlan = async (data: object) => {
-    const { jsonData, content, file, status } = await getDataFile(data.type === 'expense' ? 'Expenditure plan' : data.type === 'income' ? 'Income plan' : 'Error')
-    if(!(status === 'success')) {
-        return status
-    }
+export const editingJsonToPlan = async (data: PlanData) => {
+    type Modifier = 'expense' | 'income';
+
+    const sourceMap = {
+        expense: () => getDataFile<PlanData>('Expenditure plan'),
+        income: () => getDataFile<PlanData>('Income plan'),
+    } as const;
     
     try {
+        const loader = sourceMap[data.type];
+        if (!loader) return 'Element not found'
+
+        const { jsonData, content, file, status } = await loader();
+        if (status !== 'success') return status;
+        if (!jsonData) return ('jsonData is null or undefined');
+        if(!file) return "History file is null or undefined"
+        if(!content) return "History content is null or undefined"
+
         const newData = jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
         const dataStr = JSON.stringify(newData, null, 4) + "\n```";
         const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr);
@@ -72,11 +79,12 @@ export const editingJsonToPlan = async (data: object) => {
     }
 }
 
-export const editingJsonToBill = async (data: object) => {
-    const { jsonData, content, file, status } = await getDataArchiveFile('Archive bills')
-    if(!(status === 'success')) {
-        return status
-    }
+export const editingJsonToBill = async (data: BillData) => {
+    const { jsonData, content, file, status } = await getDataArchiveFile<BillData>('Archive bills')
+    if(!(status === 'success')) return status
+    if(!jsonData) return 'Error with data bill'
+    if(!content) return 'Error with content bill'
+    if(!file) return 'Error with file bill'
     
     try {
         const newData = jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
@@ -96,46 +104,48 @@ export const updateFile = async (newData: object, file: any, content: any) => {
         const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
         await pluginInstance.app.vault.modify(file, newContent);
 
-        return { status: 'success' }
+        return 'success'
     } catch (error) {
         return `Error update ${file.name}: ${error}`
     }
 }
 
-export const transferJsonToBills = async (data: object) => {
+export const transferJsonToBills = async (data: TransferBetweenBills) => {
     if(data.fromBillId === data.toBillId) {
         return 'Cannot transfer to the same bill'
     }
 
-    const { jsonData: resultBills, file, content, status } = await getDataArchiveFile('Archive bills')
-    if(!status) {
-        return status
-    }
+    const { jsonData: resultBills, file, content, status } = await getDataArchiveFile<BillData>('Archive bills')
+    if(!status) return status
+    if(!resultBills) return 'Bills is null or undefined'
+    if(!content) return 'Bill content is null or undefined'
+    if(!file) return 'Bill file is null or undefined'
+
     const bill = resultBills.find(b => b.id === data.fromBillId);
+    if(!bill) return 'Bill is null or undefined'
     if(data.amount > bill.balance) {
         return `Insufficient funds in the ${bill.name}`
     }
     
-    let fromBillBalance;
-    let toBillBalance;
-    resultBills.forEach((e, i) => {
-        if(e.id === data.fromBillId) {
-            fromBillBalance = resultBills[i].balance;
-        }
-        if(e.id === data.toBillId) {
-            toBillBalance = resultBills[i].balance;
-        }
-    })
+    const amount = Number(data.amount);
+
+    const fromBill = resultBills.find(b => b.id === data.fromBillId);
+    const toBill = resultBills.find(b => b.id === data.toBillId);
+
+    if (!fromBill || !toBill) {
+        throw new Error('Один из счетов не найден');
+    }
+
+    fromBill.balance -= amount;
+    toBill.balance += amount;
 
     try {
-        fromBillBalance -= Number(data.amount)
-        toBillBalance += Number(data.amount)
 
         const newData = resultBills.map(item => {
             if(item.id === data.fromBillId) {
-                return { ...item, balance: fromBillBalance };
+                return { ...item, balance: fromBill.balance };
             } else if (item.id === data.toBillId) {
-                return { ...item, balance: toBillBalance };
+                return { ...item, balance: toBill.balance };
             } else {
                 return item;
             }

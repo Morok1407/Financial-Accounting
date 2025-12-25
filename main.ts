@@ -1,4 +1,4 @@
-import { Plugin, ItemView, WorkspaceLeaf, Platform, PluginSettingTab, Setting, TFolder, Notice } from 'obsidian';
+import { Plugin, ItemView, WorkspaceLeaf, Platform, PluginSettingTab, Setting, TFolder, TFile, Notice } from 'obsidian';
 import { showInitialView, showAnotherInitialView } from './src/view/homeView'; 
 import { getCurrencyGroups } from './src/middleware/otherFunc';
 
@@ -9,6 +9,7 @@ export let viewInstance: FinancialAccountingView;
 export interface BillData {
     id: string;
     name: string;
+    emoji?: string;
     balance: number;
     currency: string;
     generalBalance: boolean;
@@ -18,9 +19,10 @@ export interface BillData {
 export interface PlanData {
     id: string;
     name: string;
+    emoji?: string;
     amount: number;
     comment?: string;
-    type: string;
+    type: 'expense' | 'income';
 }
 
 export interface HistoryData {
@@ -30,7 +32,20 @@ export interface HistoryData {
     category: { id: string };
     comment?: string;
     date: string;
-    type: string;
+    type: 'expense' | 'income';
+}
+
+export interface TransferBetweenBills {
+    fromBillId: string,
+    toBillId: string,
+    amount: number,
+}
+
+export interface DataFileResult<T> {
+    jsonData?: T[] | null;
+    content?: string;
+    file?: TFile;
+    status: 'success' | 'error' | string | any;
 }
 
 export default class MainPlugin extends Plugin {

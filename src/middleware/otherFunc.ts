@@ -1,7 +1,7 @@
 import currencies from '../../currencies.json'
 import { getSpecificFile } from '../controllers/searchData';
-import { months } from 'src/controllers/createDirectory';
-import { stateManager } from "../../main";
+import { months } from '../controllers/createDirectory';
+import { stateManager, PlanData, BillData } from "../../main";
 
 export const popularCodes : string[] = ["USD", "EUR", "RUB", "KZT", "UZS"];
 
@@ -47,14 +47,14 @@ export function fillMonthDates(selectEl: any, oldDate?: string) {
     const { selectedYear, selectedMonth } = stateManager();
 
     if(selectedYear === null && selectedMonth === null) {
-        const today = new Date();
+        const today: any = new Date();
         const year = today.getFullYear();
         const month = today.getMonth();
 
         const daysInMonth = new Date(year, month + 1, 0).getDate();
     
         for (let d = daysInMonth; d >= 1; d--) {
-            const date = new Date(year, month, d);
+            const date: any = new Date(year, month, d);
     
             const day = date.getDate();
             const weekday = dayNames[date.getDay()];
@@ -80,7 +80,7 @@ export function fillMonthDates(selectEl: any, oldDate?: string) {
             else if (diff === -1) option.selected = true;
         }
     } else {
-        const convertMonth = new Date(`${selectedMonth} 1, ${selectedYear}`);
+        const convertMonth: any = new Date(`${selectedMonth} 1, ${selectedYear}`);
         const selectedMonthNumber = isNaN(convertMonth) ? null : convertMonth.getMonth();
 
         const today = new Date();
@@ -111,7 +111,7 @@ export function selectRelativeDate(selectEl: any, offset: number) {
     const now = new Date();
     const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
     const targetValue = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")}`;
-    const option = Array.from(selectEl.options).find(opt => opt.value === targetValue);
+    const option = Array.from(selectEl.options).find((opt: any) => opt.value === targetValue);
     if (option) {
         selectEl.value = targetValue;
     }
@@ -127,7 +127,7 @@ export function checkExpenceOrIncome(amount: number, type: 'expense' | 'income')
     }
 }
 
-export function SummarizingDataForTheDay(obj: object) {
+export function SummarizingDataForTheDay(obj: PlanData[] | null) {
     const expense = SummarizingDataForTheDayExpense(obj)
     const income = SummarizingDataForTheDayIncome(obj)
     if(expense === 0) {
@@ -138,7 +138,7 @@ export function SummarizingDataForTheDay(obj: object) {
         return `-${expense} +${income}`
     }
 }
-export function SummarizingDataForTheDayExpense(obj: object) {
+export function SummarizingDataForTheDayExpense(obj: PlanData[] | null) {
     if(!obj) {
         return 0
     }
@@ -150,7 +150,7 @@ export function SummarizingDataForTheDayExpense(obj: object) {
     })
     return expense
 }
-export function SummarizingDataForTheDayIncome(obj: object) {
+export function SummarizingDataForTheDayIncome(obj: PlanData[] | null) {
     if(!obj) {
         return 0
     }
@@ -162,8 +162,8 @@ export function SummarizingDataForTheDayIncome(obj: object) {
     })
     return income
 }
-export function SummarizingDataForTheTrueBills(obj: object) {
-    if(!obj) {
+export function SummarizingDataForTheTrueBills(obj: BillData[] | null) {
+    if(!obj || obj === null) {
         return 0
     }
     let balance = 0;
@@ -174,7 +174,10 @@ export function SummarizingDataForTheTrueBills(obj: object) {
     })
     return balance
 }
-export function SummarizingDataForTheFalseBills(obj: object) {
+export function SummarizingDataForTheFalseBills(obj: BillData[]| null) {
+    if(!obj || obj === null) {
+        return 0
+    }
     let balance = 0;
     obj.forEach((e, i) => {
         if(!e.generalBalance) {
@@ -195,10 +198,11 @@ export function divideByRemainingDays(amount: number) {
     return Math.trunc(amount / remainingDays);
 }
 export function getCurrencySymbol(code: string) {
-    const currency = currencies[code];
+    type CurrencyCode = keyof typeof currencies;
+    const currency = currencies[code as CurrencyCode];
     return currency ? (currency.symbol || currency.symbolNative || code) : code;
 }
-export function switchBalanceLine(billsInfo: object, expenditurePlanInfo: object) {
+export function switchBalanceLine(billsInfo: BillData[] | null, expenditurePlanInfo: PlanData[] | null) {
     const fullSum = Number(SummarizingDataForTheTrueBills(billsInfo)) + Number(SummarizingDataForTheDayExpense(expenditurePlanInfo))
     const percent = Number(SummarizingDataForTheDayExpense(expenditurePlanInfo)) / fullSum * 100
     if(Number(SummarizingDataForTheDayExpense(expenditurePlanInfo)) <= fullSum) {
@@ -211,9 +215,9 @@ export function switchBalanceLine(billsInfo: object, expenditurePlanInfo: object
 }
 export function humanizeDate(dateStr: string) {
     const [year, month, day] = dateStr.split("-").map(Number);
-    const date = new Date(year, month - 1, day);
+    const date: any = new Date(year, month - 1, day);
 
-    const today = new Date();
+    const today: any = new Date();
     today.setHours(0, 0, 0, 0);
 
     const diffDays = Math.round((today - date) / (1000 * 60 * 60 * 24));
@@ -237,14 +241,17 @@ export function humanizeDate(dateStr: string) {
     return prefix ? `${prefix}, ${formatted}` : formatted;
 }
 export async function IncomeAndExpensesForTheMonth(month: string, year: string, div: any) {
-    const { jsonData: expenseData, status: expenseStatus } = await getSpecificFile('Expenditure plan', year, month)
+    const { jsonData: expenseData, status: expenseStatus } = await getSpecificFile<PlanData>('Expenditure plan', year, month)
     if(!(expenseStatus === 'success')) {
         return
     }
-    const { jsonData: incomeData, status: incomeStatus } = await getSpecificFile('Income plan', year, month)
+    if(expenseData === undefined) throw new Error('Expesnse plan is undefined')
+
+    const { jsonData: incomeData, status: incomeStatus } = await getSpecificFile<PlanData>('Income plan', year, month)
     if(!(incomeStatus === 'success')) {
         return
     }
+    if(incomeData === undefined) throw new Error('Expesnse plan is undefined')
 
     const totalExpense = SummarizingDataForTheDayExpense(expenseData)
     const totalIncome = SummarizingDataForTheDayIncome(incomeData)
@@ -274,18 +281,20 @@ export async function TheSumOfExpensesAndIncomeForTheYear(year: string) {
     let totalIncome = 0
 
     for(let m = 1; m <= 12; m++) {
-        const { jsonData: expenseData, status: expenseStatus } = await getSpecificFile('Expenditure plan', year, months[m])
+        const { jsonData: expenseData, status: expenseStatus } = await getSpecificFile<PlanData>('Expenditure plan', year, months[m])
         if(expenseStatus === 'File not found') {
             continue
         } else if (expenseStatus === 'File is empty') {
             continue
         }
-        const { jsonData: incomeData, status: incomeStatus } = await getSpecificFile('Income plan', year, months[m])
+        if(expenseData === undefined) throw new Error('Expesnse plan is undefined')
+        const { jsonData: incomeData, status: incomeStatus } = await getSpecificFile<PlanData>('Income plan', year, months[m])
         if(incomeStatus === 'File not found') {
             continue
         } else if (incomeStatus === 'File is empty') {
             continue
         }
+        if(incomeData === undefined) throw new Error('Expesnse plan is undefined')
         totalExpense += SummarizingDataForTheDayExpense(expenseData)
         totalIncome += SummarizingDataForTheDayIncome(incomeData)
     }
