@@ -23,7 +23,7 @@ export const editingHistory = async (e: any) => {
     const header = contentEl.createEl('div', {
         cls: 'main-header'
     })
-    const headerTitle = header.createEl('h1', {
+    header.createEl('h1', {
         text: 'Операция'
     })
 
@@ -331,7 +331,7 @@ export const editingPlan = async (e: any) => {
     const header = contentEl.createEl('div', {
         cls: 'main-header'
     })
-    const headerTitle = header.createEl('h1', {
+    header.createEl('h1', {
         text: 'Categories'
     })
 

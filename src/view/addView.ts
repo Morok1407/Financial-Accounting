@@ -40,7 +40,7 @@ export const addHistory = async () => {
     const header = contentEl.createEl('div', {
         cls: 'main-header'
     })
-    const headerTitle = header.createEl('h1', {
+    header.createEl('h1', {
         text: 'Operation'
     })
 
@@ -177,7 +177,7 @@ export const addHistory = async () => {
             counts[billId] = (counts[billId] || 0) + 1;
         });
         let maxCount = 0;
-        let mostFrequentBillId = null;
+        let mostFrequentBillId: any = null;
         for (const billId in counts) {
             if (counts[billId] > maxCount) {
                 maxCount = counts[billId];
@@ -353,7 +353,7 @@ export const addPlan = () => {
     const header = contentEl.createEl('div', {
         cls: 'main-header'
     })
-    const headerTitle = header.createEl('h1', {
+    header.createEl('h1', {
         text: 'Categories'
     })
 
@@ -504,7 +504,7 @@ export const addBills = () => {
     const header = contentEl.createEl('div', {
         cls: 'main-header'
     })
-    const headerTitle = header.createEl('h1', {
+    header.createEl('h1', {
         text: 'Categories'
     })
 
@@ -615,7 +615,7 @@ export const addBills = () => {
         }
     })
 
-    const chechboxText = chechboxDiv.createEl('span', {
+    chechboxDiv.createEl('span', {
         text: 'Take into account in the general balance',
         cls: 'form-text',
     })

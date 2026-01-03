@@ -1,6 +1,8 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import fs from "fs"; 
+import path from "path"; 
 
 const banner =
 `/*
@@ -10,6 +12,11 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === "production");
+const outDir = "dist"; 
+
+if (!fs.existsSync(outDir)){
+    fs.mkdirSync(outDir);
+}
 
 const context = await esbuild.context({
 	banner: {
@@ -37,13 +44,21 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "main.js",
+	outfile: path.join(outDir, "main.js"),
 	minify: prod,
 });
 
+function copyStaticFiles() {
+    console.log("Copying manifest.json to dist...");
+    fs.copyFileSync("manifest.json", path.join(outDir, "manifest.json"));
+    if (fs.existsSync("styles.css")) fs.copyFileSync("styles.css", path.join(outDir, "styles.css"));
+}
+
 if (prod) {
 	await context.rebuild();
+    copyStaticFiles(); 
 	process.exit(0);
 } else {
 	await context.watch();
+    copyStaticFiles();
 }

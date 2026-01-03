@@ -85,8 +85,6 @@ export const getDataArchiveFile = async <T>(fileName: 'Archive bills' | 'Archive
 }
 
 export const searchElementById = async (id: string, modifier: 'History' | 'expense' | 'income' | 'Archive bills') => {
-    type Modifier = 'History' | 'expense' | 'income' | 'Archive bills';
-
     const sourceMap = {
         History: () => getDataFile<HistoryData>('History'),
         expense: () => getDataFile<PlanData>('Expenditure plan'),
@@ -105,7 +103,7 @@ export const searchElementById = async (id: string, modifier: 'History' | 'expen
             throw new Error('jsonData is null or undefined');
         }
 
-        const item = jsonData.find(item => item.id === id);
+        const item = (jsonData as Array<{ id: string }>).find(item => item.id === id);
 
         return item
             ? { status: 'success', item }
