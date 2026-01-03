@@ -95,33 +95,39 @@ export const editingHistory = async (e: any) => {
     if(resultBills === null || resultBills === undefined) throw new Error('Bill is null or undefined')
 
     // --- Main ---
-    const mainGroup = document.createElement("optgroup");
-    mainGroup.label = "Main";
-    
-    resultBills.forEach(bill => {
-        if(bill.generalBalance) {
-            const option = document.createElement("option");
-            option.value = bill.id;
-            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
-            mainGroup.appendChild(option);
-        }
-    })
+    if(resultBills.some(i => i.generalBalance === true)) {
+        const mainGroup = document.createElement("optgroup");
+        mainGroup.label = "Main";
+        
+        resultBills.forEach(bill => {
+            if(bill.generalBalance) {
+                const option = document.createElement("option");
+                option.value = bill.id;
+                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                mainGroup.appendChild(option);
+            }
+        })
+
+        selectBills.appendChild(mainGroup);
+    }
 
     // --- Additional ---
-    const additionalGroup = document.createElement("optgroup");
-    additionalGroup.label = "Additional";
+    if(resultBills.some(i => i.generalBalance === false)) {
+        const additionalGroup = document.createElement("optgroup");
+        additionalGroup.label = "Additional";
+    
+        resultBills.forEach(bill => {
+            if(!bill.generalBalance) {
+                const option = document.createElement("option");
+                option.value = bill.id;
+                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                additionalGroup.appendChild(option);
+            }
+        })
 
-    resultBills.forEach(bill => {
-        if(!bill.generalBalance) {
-            const option = document.createElement("option");
-            option.value = bill.id;
-            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
-            additionalGroup.appendChild(option);
-        }
-    })
+        selectBills.appendChild(additionalGroup);
+    }
 
-    selectBills.appendChild(mainGroup);
-    selectBills.appendChild(additionalGroup);
     selectBills.value = item.bill.id;
     
     const selectCategory = mainFormInput.createEl('select', {
@@ -143,18 +149,18 @@ export const editingHistory = async (e: any) => {
             }
             if(resultCategory === null || resultCategory === undefined) throw new Error('Expenditure plan is null or undefined') 
 
-            resultCategory.sort((a, b) => b.amount - a.amount)
-            resultCategory.forEach(arr => {
-                if(arr.id === item.category.id) {
+            resultCategory.sort((a, b) => Number(b.amount) - Number(a.amount))
+            resultCategory.forEach(plan => {
+                if(plan.id === item.category.id) {
                     selectCategory.createEl('option', {
-                        text: `${arr.name} • ${arr.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-                        attr: { value: arr.name, 'data-plan-id': arr.id, selected: 'selected' }
+                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                        attr: { value: plan.name, 'data-plan-id': plan.id, selected: 'selected' }
                     })
                     return
                 }
                 selectCategory.createEl('option', {
-                    text: `${arr.name} • ${arr.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-                    attr: { value: arr.id }
+                    text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                    attr: { value: plan.id }
                 })
             })
         } else if (item.type === 'income') {
@@ -165,17 +171,17 @@ export const editingHistory = async (e: any) => {
             }
             if(resultCategory === null || resultCategory === undefined) throw new Error('Expenditure plan is null or undefined') 
 
-            resultCategory.sort((a, b) => b.amount - a.amount)
+            resultCategory.sort((a, b) => Number(b.amount) - Number(a.amount))
             resultCategory.forEach(plan => {
                 if(plan.id === item.category.id) {
                     selectCategory.createEl('option', {
-                        text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
                         attr: { value: plan.id, selected: 'selected' }
                     })
                     return
                 }
                 selectCategory.createEl('option', {
-                    text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                    text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
                     attr: { value: plan.id }
                 })
             })
@@ -255,7 +261,7 @@ export const editingHistory = async (e: any) => {
 
         const data: HistoryData = {
             id: item.id,
-            amount: Number(inputSum.value),
+            amount: String(inputSum.value),
             bill: {
                 id: selectBills.value
             },
@@ -661,7 +667,7 @@ export const editingBill = async (e: any) => {
             id: item.id,
             name: inputName.value.trim(),
             emoji: inputEmoji.value,
-            balance: Number(currentBalance.value.trim()),
+            balance: String(currentBalance.value.trim()),
             currency: item.currency,
             generalBalance: checkboxInput.checked,
             comment: commentInput.value.trim(),
@@ -728,33 +734,39 @@ export const transferBetweenBills = async (billId: string) => {
     })
 
     // --- Main ---
-    const fromBillMainGroup = document.createElement("optgroup");
-    fromBillMainGroup.label = "Main";
-    
-    resultBills.forEach(bill => {
-        if(bill.generalBalance) {
-            const option = document.createElement("option");
-            option.value = bill.id;
-            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
-            fromBillMainGroup.appendChild(option);
-        }
-    })
+    if(resultBills.some(i => i.generalBalance === true)) {
+        const fromBillMainGroup = document.createElement("optgroup");
+        fromBillMainGroup.label = "Main";
+        
+        resultBills.forEach(bill => {
+            if(bill.generalBalance) {
+                const option = document.createElement("option");
+                option.value = bill.id;
+                option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                fromBillMainGroup.appendChild(option);
+            }
+        })
+
+        selectFromBill.appendChild(fromBillMainGroup);
+    }
 
     // --- Additional ---
-    const fromBillAdditionalGroup = document.createElement("optgroup");
-    fromBillAdditionalGroup.label = "Additional";
+    if(resultBills.some(i => i.generalBalance === false)) {
+        const fromBillAdditionalGroup = document.createElement("optgroup");
+        fromBillAdditionalGroup.label = "Additional";
+    
+        resultBills.forEach(bill => {
+            if(!bill.generalBalance) {
+                const option = document.createElement("option");
+                option.value = bill.id;
+                option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                fromBillAdditionalGroup.appendChild(option);
+            }
+        })
+    
+        selectFromBill.appendChild(fromBillAdditionalGroup);
+    }
 
-    resultBills.forEach(bill => {
-        if(!bill.generalBalance) {
-            const option = document.createElement("option");
-            option.value = bill.id;
-            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
-            fromBillAdditionalGroup.appendChild(option);
-        }
-    })
-
-    selectFromBill.appendChild(fromBillMainGroup);
-    selectFromBill.appendChild(fromBillAdditionalGroup);
     selectFromBill.value = billId;
 
     const selectToBill = mainFormInput.createEl('select', {
@@ -764,36 +776,49 @@ export const transferBetweenBills = async (billId: string) => {
             id: 'select-to-bill'
         }
     })
+    selectToBill.createEl('option', {
+        text: 'Select an account',
+        attr: {
+            value: '',
+            selected: '',
+            disabled: '',
+            hidden: '',
+        },
+    })
 
     // --- Main ---
-    const toBillmainGroup = document.createElement("optgroup");
-    toBillmainGroup.label = "Main";
-    
-    resultBills.forEach(bill => {
-        if(bill.generalBalance) {
-            const option = document.createElement("option");
-            option.value = bill.id;
-            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
-            toBillmainGroup.appendChild(option);
-        }
-    })
+    if(resultBills.some(i => i.generalBalance === true)) {
+        const toBillmainGroup = document.createElement("optgroup");
+        toBillmainGroup.label = "Main";
+        
+        resultBills.forEach(bill => {
+            if(bill.generalBalance) {
+                const option = document.createElement("option");
+                option.value = bill.id;
+                option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                toBillmainGroup.appendChild(option);
+            }
+        })
+
+        selectToBill.appendChild(toBillmainGroup);
+    }
 
     // --- Additional ---
-    const toBilladditionalGroup = document.createElement("optgroup");
-    toBilladditionalGroup.label = "Additional";
-
-    resultBills.forEach(bill => {
-        if(!bill.generalBalance) {
-            const option = document.createElement("option");
-            option.value = bill.id;
-            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
-            toBilladditionalGroup.appendChild(option);
-        }
-    })
-
-    selectToBill.appendChild(toBillmainGroup);
-    selectToBill.appendChild(toBilladditionalGroup);
-    selectToBill.value = resultBills[1].id;
+    if(resultBills.some(i => i.generalBalance === false)) {
+        const toBilladditionalGroup = document.createElement("optgroup");
+        toBilladditionalGroup.label = "Additional";
+    
+        resultBills.forEach(bill => {
+            if(!bill.generalBalance) {
+                const option = document.createElement("option");
+                option.value = bill.id;
+                option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                toBilladditionalGroup.appendChild(option);
+            }
+        })
+    
+        selectToBill.appendChild(toBilladditionalGroup);
+    }
 
     const inputSum = mainFormInput.createEl('input', {
         cls: 'form-inputs',
@@ -817,10 +842,15 @@ export const transferBetweenBills = async (billId: string) => {
             inputSum.focus()
             return new Notice('Enter the amount')
         }
+
+        if(selectToBill.value === '') {
+            return new Notice('Select an account')
+        }
+
         const data: TransferBetweenBills = {
             fromBillId: selectFromBill.value,
             toBillId: selectToBill.value,
-            amount: Number(inputSum.value),
+            amount: String(inputSum.value),
         }
         const resultOfTransfer = await transferJsonToBills(data)
         if(resultOfTransfer === "success") {

@@ -133,36 +133,41 @@ export const addHistory = async () => {
     })
 
     // --- Main ---
-    const mainGroup = document.createElement("optgroup");
-    mainGroup.label = "Main";
-    
-    (resultBills).forEach(bill => {
-        if(bill.generalBalance) {
-            const option = document.createElement("option");
-            option.value = bill.id;
-            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
-            mainGroup.appendChild(option);
-        }
-    })
+    if(resultBills.some(i => i.generalBalance === true)) {
+        const mainGroup = document.createElement("optgroup");
+        mainGroup.label = "Main";
+        
+        (resultBills).forEach(bill => {
+            if(bill.generalBalance) {
+                const option = document.createElement("option");
+                option.value = bill.id;
+                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                mainGroup.appendChild(option);
+            }
+        })
+
+        selectBills.appendChild(mainGroup);
+    }
 
     // --- Additional ---
-    const additionalGroup = document.createElement("optgroup");
-    additionalGroup.label = "Additional";
+    if(resultBills.some(i => i.generalBalance === false)) {
+        const additionalGroup = document.createElement("optgroup");
+        additionalGroup.label = "Additional";
+        
+        (resultBills).forEach(bill => {
+            if(!bill.generalBalance) {
+                const option = document.createElement("option");
+                option.value = bill.id;
+                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                additionalGroup.appendChild(option);
+            }
+        })
 
-    (resultBills).forEach(bill => {
-        if(!bill.generalBalance) {
-            const option = document.createElement("option");
-            option.value = bill.id;
-            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
-            additionalGroup.appendChild(option);
-        }
-    })
-
-    selectBills.appendChild(mainGroup);
-    selectBills.appendChild(additionalGroup);
+        selectBills.appendChild(additionalGroup);
+    }
 
     if(resultHistory === null) {
-        resultBills.sort((a, b) => b.balance - a.balance)
+        resultBills.sort((a, b) => Number(b.balance) - Number(a.balance))
         selectBills.value = resultBills[0].id;
     } else {
         // Sort by number of uses
@@ -178,7 +183,7 @@ export const addHistory = async () => {
                 maxCount = counts[billId];
                 mostFrequentBillId = billId;
             } else if (counts[billId] === maxCount) {
-                resultBills.sort((a, b) => b.balance - a.balance)
+                resultBills.sort((a, b) => Number(b.balance) - Number(a.balance))
                 selectBills.value = resultBills[0].id;
             }
         }
@@ -204,10 +209,10 @@ export const addHistory = async () => {
         if(resultRadio === 'expense'){
             selectCategory.empty()
             if(resultExpenditurePlan) {
-                resultExpenditurePlan.sort((a, b) => b.amount - a.amount)
+                resultExpenditurePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
                 resultExpenditurePlan.forEach(plan => {
                     selectCategory.createEl('option', {
-                        text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
                         attr: { 
                             value: plan.id
                         }
@@ -217,10 +222,10 @@ export const addHistory = async () => {
         } else {
             selectCategory.empty()
             if(resultIncomePlan) {
-                resultIncomePlan.sort((a, b) => b.amount - a.amount)
+                resultIncomePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
                 resultIncomePlan.forEach(plan => {
                     selectCategory.createEl('option', {
-                        text: `${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
                         attr: { 
                             value: plan.id
                         }
@@ -248,11 +253,14 @@ export const addHistory = async () => {
     })
     fillMonthDates(selectDate)
 
-    if(selectedYear === null && selectedMonth === null) {
-        const selectDateButtonDiv = mainFormInput.createEl('div', {
-            cls: 'form-selects-date-buttons'
-        })
-    
+    const beginningMonth_3day = Date.now() - new Date(new Date().getFullYear(), new Date().getMonth(), 0).getTime() > 3 * 24 * 60 * 60 * 1000;
+    const beginningMonth_2day = Date.now() - new Date(new Date().getFullYear(), new Date().getMonth(), 0).getTime() > 2 * 24 * 60 * 60 * 1000;
+
+    const selectDateButtonDiv = mainFormInput.createEl('div', {
+        cls: 'form-selects-date-buttons'
+    })
+
+    if((selectedYear === null && selectedMonth === null) && beginningMonth_2day) {
         const selectDateToday = selectDateButtonDiv.createEl('button', {
             text: 'Today',
             attr: {
@@ -263,6 +271,7 @@ export const addHistory = async () => {
         selectDateToday.addEventListener('click', () => {
             selectRelativeDate(selectDate, 0)
         })
+
         const selectDateYesterday = selectDateButtonDiv.createEl('button', {
             text: 'Yesterday',
             attr: {
@@ -272,6 +281,8 @@ export const addHistory = async () => {
         selectDateYesterday.addEventListener('click', () => {
             selectRelativeDate(selectDate, -1)
         })
+    }
+    if((selectedYear === null && selectedMonth === null) && beginningMonth_3day) {
         const selectDateTheDayBefotreYesterday = selectDateButtonDiv.createEl('button', {
             text: 'The day before yesterday',
             attr: {
@@ -301,7 +312,7 @@ export const addHistory = async () => {
 
         const data: HistoryData = {
             id: String(generateUUID()),
-            amount: Number(inputSum.value),
+            amount: String(inputSum.value),
             bill: {
                 id: selectBills.value
             },
@@ -459,7 +470,7 @@ export const addPlan = () => {
             id: String(generateUUID()),
             name: inputName.value.trim(),
             emoji: inputEmoji.value,
-            amount: 0,
+            amount: '0',
             comment: commentInput.value.trim(),
             type: resultRadio,
         }
@@ -629,7 +640,7 @@ export const addBills = () => {
             id: String(generateUUID()),
             name: inputName.value.trim(),
             emoji: inputEmoji.value,
-            balance: Number(currentBalance.value),
+            balance: String(currentBalance.value),
             currency: currencyInput.value,
             generalBalance: checkboxInput.checked,
             comment: commentInput.value.trim(),

@@ -10,7 +10,7 @@ export interface BillData {
     id: string;
     name: string;
     emoji?: string;
-    balance: number;
+    balance: string;
     currency: string;
     generalBalance: boolean;
     comment?: string;
@@ -20,14 +20,14 @@ export interface PlanData {
     id: string;
     name: string;
     emoji?: string;
-    amount: number;
+    amount: string;
     comment?: string;
     type: 'expense' | 'income';
 }
 
 export interface HistoryData {
     id: string;
-    amount: number;
+    amount: string;
     bill: { id: string };
     category: { id: string };
     comment?: string;
@@ -38,7 +38,7 @@ export interface HistoryData {
 export interface TransferBetweenBills {
     fromBillId: string,
     toBillId: string,
-    amount: number,
+    amount: string,
 }
 
 export interface DataFileResult<T> {
@@ -73,7 +73,7 @@ export default class MainPlugin extends Plugin {
         });
 
         pluginInstance = this;
-
+        
         console.log('Financial accounting plugin loaded');
     }
 
