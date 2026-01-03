@@ -1,16 +1,17 @@
-import { setIcon, Notice } from "obsidian";
-import { transferJsonToBills } from "../controllers/editingData";
-import { pluginInstance, viewInstance, TransferBetweenBills, BillData, PlanData, HistoryData } from "../../main";
+import Big from 'big.js';
+import { pluginInstance, TransferBetweenBills, BillData, PlanData, HistoryData } from "../../main";
 import { getDataArchiveFile, getDataFile } from "../controllers/searchData";
 import { updateFile } from "../controllers/editingData";
-import { getCurrencySymbol } from "./otherFunc";
+
+Big.DP = 2;
+Big.RM = Big.roundHalfUp;
 
 export const expenditureTransaction = async (
     data: HistoryData,
     modifier: 'add' | 'remove' | 'edit',
     oldData?: HistoryData
 ) => {
-    const amount = Number(data.amount);
+    const amount = new Big(data.amount);
 
     const billsRes = await getDataArchiveFile<BillData>('Archive bills');
     if (billsRes.status !== 'success') return billsRes.status;
@@ -37,34 +38,36 @@ export const expenditureTransaction = async (
         return 'success';
     };
 
-    const updateBill = (billId: string, delta: number) => {
-        bills = bills.map(b =>
-            b.id === billId ? { ...b, balance: Number(b.balance) + delta } : b
+    const updateBill = (billId: string, delta: Big) => {
+        bills = bills.map((b: any) =>
+            b.id === billId ? { ...b, balance: new Big(b.balance).plus(delta).toFixed(2) } : b
         );
     };
 
-    const updatePlan = (planId: string, delta: number) => {
-        plans = plans.map(p =>
-            p.id === planId ? { ...p, amount: Number(p.amount) + delta } : p
+    const updatePlan = (planId: string, delta: Big) => {
+        plans = plans.map((p: any) =>
+            p.id === planId ? { ...p, amount: new Big(p.amount).plus(delta).toFixed(2) } : p
         );
     };
 
     switch (modifier) {
         case 'add':
-            updateBill(data.bill.id, -amount);
+            updateBill(data.bill.id, amount.times(-1));
             updatePlan(data.category.id, amount);
             return await update();
 
         case 'remove':
             updateBill(data.bill.id, amount);
-            updatePlan(data.category.id, -amount);
+            updatePlan(data.category.id, amount.times(-1));
             return await update();
 
         case 'edit':
             if (!oldData) return 'Old data is required for edit';
 
-            updateBill(oldData.bill.id, Number(oldData.amount));
-            updatePlan(oldData.category.id, -Number(oldData.amount));
+            const oldAmount = new Big(oldData.amount)
+
+            updateBill(oldData.bill.id, oldAmount);
+            updatePlan(oldData.category.id, oldAmount.times(-1));
             await update();
 
             const newBillsRes = await getDataArchiveFile<BillData>('Archive bills');
@@ -77,7 +80,7 @@ export const expenditureTransaction = async (
             bills = newBillsRes.jsonData;
             plans = newPlansRes.jsonData;
 
-            updateBill(data.bill.id, -amount);
+            updateBill(data.bill.id, amount.times(-1));
             updatePlan(data.category.id, amount);
             return await update();
 
@@ -91,7 +94,7 @@ export const incomeTransaction = async (
     modifier: 'add' | 'remove' | 'edit',
     oldData?: HistoryData
 ) => {
-    const amount = Number(data.amount);
+    const amount = new Big(data.amount);
 
     const billsRes = await getDataArchiveFile<BillData>('Archive bills');
     if (billsRes.status !== 'success') return billsRes.status;
@@ -118,18 +121,18 @@ export const incomeTransaction = async (
         return 'success';
     };
 
-    const updateBill = (billId: string, delta: number) => {
-        bills = bills.map(b =>
+    const updateBill = (billId: string, delta: Big) => {
+        bills = bills.map((b: any) =>
             b.id === billId
-                ? { ...b, balance: Number(b.balance) + delta }
+                ? { ...b, balance: new Big(b.balance).plus(delta).toFixed(2) }
                 : b
         );
     };
 
-    const updatePlan = (planId: string, delta: number) => {
-        plans = plans.map(p =>
+    const updatePlan = (planId: string, delta: Big) => {
+        plans = plans.map((p: any) =>
             p.id === planId
-                ? { ...p, amount: Number(p.amount) + delta }
+                ? { ...p, amount: new Big(p.amount).plus(delta).toFixed(2) }
                 : p
         );
     };
@@ -141,15 +144,17 @@ export const incomeTransaction = async (
             return await update();
 
         case 'remove':
-            updateBill(data.bill.id, -amount);
-            updatePlan(data.category.id, -amount);
+            updateBill(data.bill.id, amount.times(-1));
+            updatePlan(data.category.id, amount.times(-1));
             return await update();
 
         case 'edit':
             if (!oldData) return 'Old data is required for edit';
 
-            updateBill(oldData.bill.id, -Number(oldData.amount));
-            updatePlan(oldData.category.id, -Number(oldData.amount));
+            const oldAmount = new Big(oldData.amount)
+
+            updateBill(oldData.bill.id, oldAmount.times(-1));
+            updatePlan(oldData.category.id, oldAmount.times(-1));
             await update();
 
             const newBillsRes = await getDataArchiveFile<BillData>('Archive bills');
@@ -171,159 +176,65 @@ export const incomeTransaction = async (
     }
 };
 
-
-export const transferBetweenBills = async (billId: string) => {
-    if(!billId) {
-        return 'Element not found'
+export const transferJsonToBills = async (data: TransferBetweenBills) => {
+    if (data.fromBillId === data.toBillId) {
+        return 'Cannot transfer to the same bill';
     }
 
-    const { jsonData: resultBills, status } = await getDataArchiveFile<BillData>('Archive bills')
-    if(!status) return status
-    if(!resultBills) return 'Bill is null or undifined'
+    const { jsonData: resultBills, file, content, status } =
+        await getDataArchiveFile<BillData>('Archive bills');
 
-    const { contentEl } = viewInstance
-    contentEl.empty()
+    if (status !== 'success') return status;
+    if (!resultBills) return 'Bills is null or undefined';
+    if (!content) return 'Bill content is null or undefined';
+    if (!file) return 'Bill file is null or undefined';
 
-    const exitButton = contentEl.createEl('div', {
-        cls: 'exit-button',
-        attr: {
-            id: 'exit-button'
-        }
-    });
-    setIcon(exitButton, 'arrow-left')
-    exitButton.addEventListener('click', () => {
-        viewInstance.onOpen()
-    })
+    const fromBill = resultBills.find(b => b.id === data.fromBillId);
+    const toBill = resultBills.find(b => b.id === data.toBillId);
 
-    const header = contentEl.createEl('div', {
-        cls: 'main-header'
-    })
-    const headerTitle = header.createEl('h1', {
-        text: 'Transfer'
-    })
-    const mainAddForm = contentEl.createEl('form', {
-        cls: 'main-add-form',
-        attr: {
-            id: 'main-add-form'
-        }
-    })
+    if (!fromBill || !toBill) {
+        return 'One of the bills was not found';
+    }
 
-    // Form input
-    const mainFormInput = mainAddForm.createEl('div', {
-        cls: 'main-form-input'
-    })
+    const amount = new Big(data.amount);
+    const fromBalance = new Big(fromBill.balance);
 
-    const selectFromBill = mainFormInput.createEl('select', {
-        cls: 'form-selects',
-        attr: {
-            name: 'select-from-bill',
-            id: 'select-from-bill'
-        }
-    })
+    if (amount.gt(fromBalance)) {
+        return `Insufficient funds in the ${fromBill.name}`;
+    }
 
-    // --- Main ---
-    const fromBillMainGroup = document.createElement("optgroup");
-    fromBillMainGroup.label = "Main";
-    
-    resultBills.forEach(bill => {
-        if(bill.generalBalance) {
-            const option = document.createElement("option");
-            option.value = bill.id;
-            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
-            fromBillMainGroup.appendChild(option);
-        }
-    })
+    const newFromBalance = fromBalance.minus(amount);
+    const newToBalance = new Big(toBill.balance).plus(amount);
 
-    // --- Additional ---
-    const fromBillAdditionalGroup = document.createElement("optgroup");
-    fromBillAdditionalGroup.label = "Additional";
+    try {
+        const newData = resultBills.map(item => {
+            if (item.id === data.fromBillId) {
+                return {
+                    ...item,
+                    balance: newFromBalance.toFixed(2),
+                };
+            }
 
-    resultBills.forEach(bill => {
-        if(!bill.generalBalance) {
-            const option = document.createElement("option");
-            option.value = bill.id;
-            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
-            fromBillAdditionalGroup.appendChild(option);
-        }
-    })
+            if (item.id === data.toBillId) {
+                return {
+                    ...item,
+                    balance: newToBalance.toFixed(2),
+                };
+            }
 
-    selectFromBill.appendChild(fromBillMainGroup);
-    selectFromBill.appendChild(fromBillAdditionalGroup);
-    selectFromBill.value = billId;
+            return item;
+        });
 
-    const selectToBill = mainFormInput.createEl('select', {
-        cls: 'form-selects',
-        attr: {
-            name: 'select-to-bill',
-            id: 'select-to-bill'
-        }
-    })
+        const dataStr = JSON.stringify(newData, null, 4);
+        const newContent = content.replace(
+            /```json[\s\S]*?```/,
+            "```json\n" + dataStr + "\n```"
+        );
 
-    // --- Main ---
-    const toBillmainGroup = document.createElement("optgroup");
-    toBillmainGroup.label = "Main";
-    
-    resultBills.forEach(bill => {
-        if(bill.generalBalance) {
-            const option = document.createElement("option");
-            option.value = bill.id;
-            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
-            toBillmainGroup.appendChild(option);
-        }
-    })
+        await pluginInstance.app.vault.modify(file, newContent);
 
-    // --- Additional ---
-    const toBilladditionalGroup = document.createElement("optgroup");
-    toBilladditionalGroup.label = "Additional";
-
-    resultBills.forEach(bill => {
-        if(!bill.generalBalance) {
-            const option = document.createElement("option");
-            option.value = bill.id;
-            option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
-            toBilladditionalGroup.appendChild(option);
-        }
-    })
-
-    selectToBill.appendChild(toBillmainGroup);
-    selectToBill.appendChild(toBilladditionalGroup);
-    selectToBill.value = resultBills[1].id;
-
-    const inputSum = mainFormInput.createEl('input', {
-        cls: 'form-inputs',
-        attr: {
-            placeholder: 'Sum',
-            id: 'input-sum',
-            type: 'number',
-            inputmode: "decimal"
-        }
-    })
-    const addButton = mainFormInput.createEl('button', {
-        text: 'Transfer',
-        cls: 'add-button',
-        attr: {
-            type: 'submit'
-        }
-    })
-    addButton.addEventListener('click', async (e) => {
-        e.preventDefault();
-        if(!inputSum.value) {
-            inputSum.focus()
-            return new Notice('Enter the amount')
-        }
-        const data: TransferBetweenBills = {
-            fromBillId: selectFromBill.value,
-            toBillId: selectToBill.value,
-            amount: Number(inputSum.value),
-        }
-        const resultOfTransfer = await transferJsonToBills(data)
-        if(resultOfTransfer === "success") {
-            setTimeout(() => {
-                viewInstance.onOpen()
-                new Notice('Transfer completed')
-            }, 100)
-        } else {
-            new Notice(resultOfTransfer)
-        }
-    })
-}
+        return 'success';
+    } catch (error) {
+        return error;
+    }
+};
