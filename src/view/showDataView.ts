@@ -370,7 +370,7 @@ export const showBills = async (mainContentBody: any, mainContentButton: any) =>
                         await editingBill(e);
                     }
                     const itemCategory = dataItem.createEl('p', {
-                        text: e.name
+                        text: `${e.emoji} ${e.name}`
                     })
                     const itemAmount = dataItem.createEl('p', {
                         text: String(e.balance)

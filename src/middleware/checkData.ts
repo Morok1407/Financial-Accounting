@@ -1,3 +1,4 @@
+import Big from 'big.js'
 import { App, TFolder, TFile } from 'obsidian'
 import { getDataArchiveFile } from "../controllers/searchData";
 import { pluginInstance, BillData, HistoryData } from "../../main";
@@ -14,10 +15,10 @@ export const checkBill = async (data: HistoryData, oldData?: HistoryData ) => {
     }
 
     const currentBalance = oldData
-        ? bill.balance + oldData.amount
-        : bill.balance;
+        ? new Big(bill.balance).plus(oldData.amount)
+        : new Big(bill.balance);
 
-    if (data.amount > currentBalance) {
+    if (new Big(data.amount).gt(currentBalance)) {
         return `On bill ${bill.name} insufficient funds`;
     }
 

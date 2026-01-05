@@ -154,7 +154,7 @@ export const editingHistory = async (e: any) => {
                 if(plan.id === item.category.id) {
                     selectCategory.createEl('option', {
                         text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
-                        attr: { value: plan.name, 'data-plan-id': plan.id, selected: 'selected' }
+                        attr: { value: plan.id, selected: 'selected' }
                     })
                     return
                 }
@@ -269,7 +269,7 @@ export const editingHistory = async (e: any) => {
                 id: selectCategory.value
             },
             comment: commentInput.value,
-            date: selectDate.value,
+            date: `${selectDate.value}T${item.date.split('T')[1]}`,
             type: item.type,
         }
         const resultOfEditing = await editingJsonToHistory(data, item)

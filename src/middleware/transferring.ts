@@ -63,7 +63,7 @@ export const expenditureTransaction = async (
 
         case 'edit':
             if (!oldData) return 'Old data is required for edit';
-
+console.log(oldData, data)
             const oldAmount = new Big(oldData.amount)
 
             updateBill(oldData.bill.id, oldAmount);

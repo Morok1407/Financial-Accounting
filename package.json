@@ -4,7 +4,7 @@
 	"description": "This is a financial accounting plugin for Obsidian",
 	"main": "dist/main.js",
 	"scripts": {
-		"dev": "node esbuild.config.mjs",
+		"dev": "node dev.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs"
 	},
