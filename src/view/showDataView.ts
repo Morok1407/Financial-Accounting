@@ -91,7 +91,6 @@ async function generationHistoryContent(historyContent: any, mainContentBody: an
             mainContentBody.addClass('main-content-body--padding')
         }
         result.forEach((e: any, i: any) => {
-            console.log(e)
             const historyBlock = historyContent.createEl('div', {
                 cls: 'history-block'
             })

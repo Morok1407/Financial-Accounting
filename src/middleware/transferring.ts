@@ -1,5 +1,5 @@
 import Big from 'big.js';
-import { pluginInstance, TransferBetweenBills, BillData, PlanData, HistoryData } from "../../main";
+import { pluginInstance, TransferBetweenBills, TransferBetweenCurrencies, BillData, PlanData, HistoryData } from "../../main";
 import { getDataArchiveFile, getDataFile } from "../controllers/searchData";
 import { updateFile } from "../controllers/editingData";
 
@@ -181,8 +181,7 @@ export const transferJsonToBills = async (data: TransferBetweenBills) => {
         return 'Cannot transfer to the same bill';
     }
 
-    const { jsonData: resultBills, file, content, status } =
-        await getDataArchiveFile<BillData>('Archive bills');
+    const { jsonData: resultBills, file, content, status } = await getDataArchiveFile<BillData>('Archive bills');
 
     if (status !== 'success') return status;
     if (!resultBills) return 'Bills is null or undefined';
@@ -238,3 +237,67 @@ export const transferJsonToBills = async (data: TransferBetweenBills) => {
         return error;
     }
 };
+
+export const transferBetweenCurrencies = async (data: TransferBetweenCurrencies) => {
+    if (data.fromBillId === data.toBillId) {
+        return 'Cannot transfer to the same bill';
+    }
+
+    const { jsonData: resultBills, file, content, status } = await getDataArchiveFile<BillData>('Archive bills');
+
+    if (status !== 'success') return status;
+    if (!resultBills) return 'Bills is null or undefined';
+    if (!content) return 'Bill content is null or undefined';
+    if (!file) return 'Bill file is null or undefined';
+
+    const fromBill = resultBills.find(b => b.id === data.fromBillId);
+    const toBill = resultBills.find(b => b.id === data.toBillId);
+
+    if (!fromBill || !toBill) {
+        return 'One of the bills was not found';
+    }
+    
+    const sourceAmount = new Big(data.sourceAmount);
+    const targetAmount = new Big(data.targetAmount);
+    const fromBalance = new Big(fromBill.balance);
+    const toBalance = new Big(toBill.balance);
+
+    if (sourceAmount.gt(fromBalance)) {
+        return `Insufficient funds in the ${fromBill.name}`;
+    }
+
+    const newFromBalance = fromBalance.minus(sourceAmount);
+    const newToBalance = toBalance.plus(targetAmount);
+
+    try {
+        const newData = resultBills.map(item => {
+            if (item.id === data.fromBillId) {
+                return {
+                    ...item,
+                    balance: newFromBalance.toFixed(2),
+                };
+            }
+
+            if (item.id === data.toBillId) {
+                return {
+                    ...item,
+                    balance: newToBalance.toFixed(2),
+                };
+            }
+
+            return item;
+        });
+
+        const dataStr = JSON.stringify(newData, null, 4);
+        const newContent = content.replace(
+            /```json[\s\S]*?```/,
+            "```json\n" + dataStr + "\n```"
+        );
+
+        await pluginInstance.app.vault.modify(file, newContent);
+
+        return 'success';
+    } catch (error) {
+        return error;
+    }
+}

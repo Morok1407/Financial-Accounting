@@ -38,8 +38,17 @@ export interface HistoryData {
 
 export interface TransferBetweenBills {
     fromBillId: string,
+    sourceAmount?: number
     toBillId: string,
-    amount: string,
+    targetAmount?: number,
+    amount: number,
+}
+
+export interface TransferBetweenCurrencies {
+    fromBillId: string,
+    sourceAmount: number
+    toBillId: string,
+    targetAmount: number,
 }
 
 export interface DataFileResult<T> {

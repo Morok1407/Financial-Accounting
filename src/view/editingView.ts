@@ -1,10 +1,10 @@
 import { Notice, setIcon } from 'obsidian';
 import { deleteBill, deletePlan, deleteHistory } from '../controllers/deleteData';
 import { searchElementById, getDataArchiveFile, getDataFile } from '../controllers/searchData';
-import { viewInstance, pluginInstance, HistoryData, PlanData, BillData, TransferBetweenBills } from '../../main';
+import { viewInstance, pluginInstance, HistoryData, PlanData, BillData, TransferBetweenBills, TransferBetweenCurrencies } from '../../main';
 import { fillMonthDates, humanizeDate, checkExpenceOrIncome, SummarizingDataForTheDay, getCurrencySymbol } from '../middleware/otherFunc';
 import { editingJsonToHistory, editingJsonToPlan, editingJsonToBill } from '../controllers/editingData';
-import { transferJsonToBills } from '../middleware/transferring'
+import { transferJsonToBills, transferBetweenCurrencies } from '../middleware/transferring'
 
 export const editingHistory = async (e: any) => {
     const { id } = e.target.closest('li').dataset;
@@ -750,7 +750,8 @@ export const transferBetweenBills = async (billId: string) => {
             if(bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
-                option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(bill.currency)}`;
+                option.dataset.currency = bill.currency;
                 fromBillMainGroup.appendChild(option);
             }
         })
@@ -767,15 +768,26 @@ export const transferBetweenBills = async (billId: string) => {
             if(!bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
-                option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(bill.currency)}`;
+                option.dataset.currency = bill.currency;
                 fromBillAdditionalGroup.appendChild(option);
             }
         })
     
         selectFromBill.appendChild(fromBillAdditionalGroup);
     }
-
     selectFromBill.value = billId;
+
+    const sourceAmount = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Source amount',
+            id: 'input-source-amount',
+            type: 'number',
+            inputmode: "decimal",
+            style: 'display: none;'
+        }
+    })
 
     const selectToBill = mainFormInput.createEl('select', {
         cls: 'form-selects',
@@ -803,7 +815,8 @@ export const transferBetweenBills = async (billId: string) => {
             if(bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
-                option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(bill.currency)}`;
+                option.dataset.currency = bill.currency;
                 toBillmainGroup.appendChild(option);
             }
         })
@@ -820,13 +833,26 @@ export const transferBetweenBills = async (billId: string) => {
             if(!bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
-                option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                option.textContent = `${bill.name} • ${bill.balance} ${getCurrencySymbol(bill.currency)}`;
+                option.dataset.currency = bill.currency;
                 toBilladditionalGroup.appendChild(option);
             }
         })
     
         selectToBill.appendChild(toBilladditionalGroup);
     }
+
+    const targetAmount = mainFormInput.createEl('input', {
+        cls: 'form-inputs',
+        attr: {
+            placeholder: 'Target amount',
+            id: 'input-target-amount',
+            type: 'number',
+            inputmode: "decimal",
+            style: 'display: none;'
+        }
+    })
+
 
     const inputSum = mainFormInput.createEl('input', {
         cls: 'form-inputs',
@@ -837,6 +863,43 @@ export const transferBetweenBills = async (billId: string) => {
             inputmode: "decimal"
         }
     })
+
+    selectFromBill.addEventListener('change', () => {
+        const selectedOptionFrom = selectFromBill.options[selectFromBill.selectedIndex];
+        const selectedOptionTo = selectToBill.options[selectToBill.selectedIndex];
+
+        if(selectedOptionTo.value === '') {
+            sourceAmount.style.display = 'none';
+            targetAmount.style.display = 'none';
+            inputSum.style.display = 'block';
+            return
+        }
+
+        if(selectedOptionFrom.dataset.currency === selectedOptionTo.dataset.currency) {
+            sourceAmount.style.display = 'none';
+            targetAmount.style.display = 'none';
+            inputSum.style.display = 'block';
+        } else {
+            sourceAmount.style.display = 'block';
+            targetAmount.style.display = 'block';
+            inputSum.style.display = 'none';
+        }
+    })
+    selectToBill.addEventListener('change', () => {
+        const selectedOptionFrom = selectFromBill.options[selectFromBill.selectedIndex];
+        const selectedOptionTo = selectToBill.options[selectToBill.selectedIndex];
+
+        if(selectedOptionTo.dataset.currency === selectedOptionFrom.dataset.currency) {
+            sourceAmount.style.display = 'none';
+            targetAmount.style.display = 'none';
+            inputSum.style.display = 'block';
+        } else {
+            sourceAmount.style.display = 'block';
+            targetAmount.style.display = 'block';
+            inputSum.style.display = 'none';
+        }
+    })
+
     const addButton = mainFormInput.createEl('button', {
         text: 'Transfer',
         cls: 'add-button',
@@ -846,32 +909,59 @@ export const transferBetweenBills = async (billId: string) => {
     })
     addButton.addEventListener('click', async (e) => {
         e.preventDefault();
-        if(!inputSum.value) {
-            inputSum.focus()
-            return new Notice('Enter the amount')
-        }
 
         if(selectToBill.value === '') {
             return new Notice('Select an account')
         }
 
-        if(selectToBill.value !== selectFromBill.value) {
-            return new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
-        }
+        const selectedOptionFrom = selectFromBill.options[selectFromBill.selectedIndex];
+        const selectedOptionTo = selectToBill.options[selectToBill.selectedIndex];
 
-        const data: TransferBetweenBills = {
-            fromBillId: selectFromBill.value,
-            toBillId: selectToBill.value,
-            amount: String(inputSum.value),
-        }
-        const resultOfTransfer = await transferJsonToBills(data)
-        if(resultOfTransfer === "success") {
-            setTimeout(() => {
-                viewInstance.onOpen()
-                new Notice('Transfer completed')
-            }, 100)
+        if(selectedOptionFrom.dataset.currency !== selectedOptionTo.dataset.currency) {
+            if(!sourceAmount.value) {
+                sourceAmount.focus()
+                return new Notice('Enter the source amount')
+            }
+            if(!targetAmount.value) {
+                targetAmount.focus()
+                return new Notice('Enter the target amount')
+            }
+
+            const data: TransferBetweenCurrencies = {
+                fromBillId: selectFromBill.value,
+                sourceAmount: Number(sourceAmount.value),
+                toBillId: selectToBill.value,
+                targetAmount: Number(targetAmount.value),
+            }
+            const resultOfTransfer = await transferBetweenCurrencies(data)
+            if(resultOfTransfer === "success") {
+                setTimeout(() => {
+                    viewInstance.onOpen()
+                    new Notice('Transfer completed')
+                }, 100)
+            } else {
+                new Notice(resultOfTransfer)
+            }
         } else {
-            new Notice(resultOfTransfer)
+            if(!inputSum.value) {
+                inputSum.focus()
+                return new Notice('Enter the amount')
+            }
+
+            const data: TransferBetweenBills = {
+                fromBillId: selectFromBill.value,
+                toBillId: selectToBill.value,
+                amount: Number(inputSum.value),
+            }
+            const resultOfTransfer = await transferJsonToBills(data)
+            if(resultOfTransfer === "success") {
+                setTimeout(() => {
+                    viewInstance.onOpen()
+                    new Notice('Transfer completed')
+                }, 100)
+            } else {
+                new Notice(resultOfTransfer)
+            }
         }
     })
 }
