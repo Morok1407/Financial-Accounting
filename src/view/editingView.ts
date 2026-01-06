@@ -1,10 +1,10 @@
 import { Notice, setIcon } from 'obsidian';
 import { deleteBill, deletePlan, deleteHistory } from '../controllers/deleteData';
 import { searchElementById, getDataArchiveFile, getDataFile } from '../controllers/searchData';
-import { viewInstance, pluginInstance, HistoryData, PlanData, BillData, TransferBetweenBills, TransferBetweenCurrencies } from '../../main';
+import { viewInstance, pluginInstance, HistoryData, PlanData, BillData, TransferData } from '../../main';
 import { fillMonthDates, humanizeDate, checkExpenceOrIncome, SummarizingDataForTheDay, getCurrencySymbol } from '../middleware/otherFunc';
 import { editingJsonToHistory, editingJsonToPlan, editingJsonToBill } from '../controllers/editingData';
-import { transferJsonToBills, transferBetweenCurrencies } from '../middleware/transferring'
+import { transferBetweenBills } from '../middleware/transferring'
 
 export const editingHistory = async (e: any) => {
     const { id } = e.target.closest('li').dataset;
@@ -692,7 +692,7 @@ export const editingBill = async (e: any) => {
     })
 }
 
-export const transferBetweenBills = async (billId: string) => {
+export const transferBetweenBillsView = async (billId: string) => {
     if(!billId) {
         return 'Element not found'
     }
@@ -907,61 +907,57 @@ export const transferBetweenBills = async (billId: string) => {
             type: 'submit'
         }
     })
-    addButton.addEventListener('click', async (e) => {
+    addButton.addEventListener('click', async e => {
         e.preventDefault();
 
-        if(selectToBill.value === '') {
-            return new Notice('Select an account')
+        if (!selectToBill.value) {
+            return new Notice('Select an account');
         }
 
-        const selectedOptionFrom = selectFromBill.options[selectFromBill.selectedIndex];
-        const selectedOptionTo = selectToBill.options[selectToBill.selectedIndex];
+        const fromOption = selectFromBill.options[selectFromBill.selectedIndex];
+        const toOption = selectToBill.options[selectToBill.selectedIndex];
 
-        if(selectedOptionFrom.dataset.currency !== selectedOptionTo.dataset.currency) {
-            if(!sourceAmount.value) {
-                sourceAmount.focus()
-                return new Notice('Enter the source amount')
-            }
-            if(!targetAmount.value) {
-                targetAmount.focus()
-                return new Notice('Enter the target amount')
-            }
+        const isSameCurrency =
+            fromOption.dataset.currency === toOption.dataset.currency;
 
-            const data: TransferBetweenCurrencies = {
-                fromBillId: selectFromBill.value,
-                sourceAmount: Number(sourceAmount.value),
-                toBillId: selectToBill.value,
-                targetAmount: Number(targetAmount.value),
-            }
-            const resultOfTransfer = await transferBetweenCurrencies(data)
-            if(resultOfTransfer === "success") {
-                setTimeout(() => {
-                    viewInstance.onOpen()
-                    new Notice('Transfer completed')
-                }, 100)
-            } else {
-                new Notice(resultOfTransfer)
-            }
-        } else {
-            if(!inputSum.value) {
-                inputSum.focus()
-                return new Notice('Enter the amount')
+        let transferData: TransferData;
+
+        if (isSameCurrency) {
+            if (!inputSum.value) {
+                inputSum.focus();
+                return new Notice('Enter the amount');
             }
 
-            const data: TransferBetweenBills = {
+            transferData = {
+                type: 'same-currency',
                 fromBillId: selectFromBill.value,
                 toBillId: selectToBill.value,
                 amount: Number(inputSum.value),
+            };
+        } else {
+            if (!sourceAmount.value || !targetAmount.value) {
+                (!sourceAmount.value ? sourceAmount : targetAmount).focus();
+                return new Notice('Enter both amounts');
             }
-            const resultOfTransfer = await transferJsonToBills(data)
-            if(resultOfTransfer === "success") {
-                setTimeout(() => {
-                    viewInstance.onOpen()
-                    new Notice('Transfer completed')
-                }, 100)
-            } else {
-                new Notice(resultOfTransfer)
-            }
+
+            transferData = {
+                type: 'cross-currency',
+                fromBillId: selectFromBill.value,
+                toBillId: selectToBill.value,
+                sourceAmount: Number(sourceAmount.value),
+                targetAmount: Number(targetAmount.value),
+            };
         }
-    })
+
+        const result = await transferBetweenBills(transferData);
+
+        if (result === 'success') {
+            setTimeout(() => {
+                viewInstance.onOpen();
+                new Notice('Transfer completed');
+            }, 100);
+        } else {
+            new Notice(result);
+        }
+    });
 }

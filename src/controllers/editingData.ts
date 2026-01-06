@@ -2,7 +2,7 @@ import { getDataFile, getDataArchiveFile } from "./searchData";
 import { checkBill } from "../middleware/checkData";
 import { expenditureTransaction, incomeTransaction } from "../middleware/transferring";
 import { archiveExpenditurePlan, archiveIncomePlan } from "../middleware/duplicating";
-import { pluginInstance, HistoryData, PlanData, BillData, TransferBetweenBills } from "../../main";
+import { pluginInstance, HistoryData, PlanData, BillData } from "../../main";
 
 export const editingJsonToHistory = async (data: HistoryData, oldData: HistoryData) => {
     const { jsonData, content, file, status } = await getDataFile<HistoryData>('History')

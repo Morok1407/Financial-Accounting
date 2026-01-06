@@ -36,20 +36,21 @@ export interface HistoryData {
     type: 'expense' | 'income';
 }
 
-export interface TransferBetweenBills {
-    fromBillId: string,
-    sourceAmount?: number
-    toBillId: string,
-    targetAmount?: number,
-    amount: number,
-}
+export type TransferData =
+    | {
+        type: 'same-currency';
+        fromBillId: string;
+        toBillId: string;
+        amount: number;
+    }
+    | {
+        type: 'cross-currency';
+        fromBillId: string;
+        toBillId: string;
+        sourceAmount: number;
+        targetAmount: number;
+    };
 
-export interface TransferBetweenCurrencies {
-    fromBillId: string,
-    sourceAmount: number
-    toBillId: string,
-    targetAmount: number,
-}
 
 export interface DataFileResult<T> {
     jsonData?: T[] | null;
