@@ -143,6 +143,10 @@ async function addJsonToIncomePlan(data: PlanData) {
 }
 
 export const addJsonToBills = async (data: BillData) => {    
+    if(data.balance === '') {
+        data.balance = '0'
+    }
+
     const { jsonData, content, file, status } = await getDataArchiveFile('Archive bills')
     if(!(status === 'success')) {
         return status

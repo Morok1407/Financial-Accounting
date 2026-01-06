@@ -103,7 +103,7 @@ export const editingHistory = async (e: any) => {
             if(bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
-                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(bill.currency)}`;
                 mainGroup.appendChild(option);
             }
         })
@@ -120,7 +120,7 @@ export const editingHistory = async (e: any) => {
             if(!bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
-                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(bill.currency)}`;
                 additionalGroup.appendChild(option);
             }
         })
@@ -257,6 +257,10 @@ export const editingHistory = async (e: any) => {
         if(!(Number(inputSum.value) >= 1)) {
             inputSum.focus()
             return new Notice('Enter the amount')
+        }
+
+        if(selectBills.value !== pluginInstance.settings.baseCurrency) {
+            return new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
         }
 
         const data: HistoryData = {
@@ -636,12 +640,16 @@ export const editingBill = async (e: any) => {
         cls: 'form-checkbox-div'
     })
 
+    if(item.currency !== pluginInstance.settings.baseCurrency) {
+        chechboxDiv.style.display = 'none'
+    }
+    
     const checkboxInput = chechboxDiv.createEl('input', {
         cls: 'form-checkbox',
         attr: {
             id: 'input-checkbox',
             type: 'checkbox',
-            checked: item.generalbalance
+            checked: item.generalBalance ? 'checked' : null,
         }
     })
     const chechboxText = chechboxDiv.createEl('span', {
@@ -845,6 +853,10 @@ export const transferBetweenBills = async (billId: string) => {
 
         if(selectToBill.value === '') {
             return new Notice('Select an account')
+        }
+
+        if(selectToBill.value !== selectFromBill.value) {
+            return new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
         }
 
         const data: TransferBetweenBills = {

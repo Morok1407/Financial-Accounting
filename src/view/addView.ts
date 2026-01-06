@@ -141,7 +141,7 @@ export const addHistory = async () => {
             if(bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
-                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(bill.currency)}`;
                 mainGroup.appendChild(option);
             }
         })
@@ -158,7 +158,7 @@ export const addHistory = async () => {
             if(!bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
-                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`;
+                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(bill.currency)}`;
                 additionalGroup.appendChild(option);
             }
         })
@@ -308,6 +308,10 @@ export const addHistory = async () => {
         if(!(Number(inputSum.value) >= 1)) {
             inputSum.focus()
             return new Notice('Enter the amount')
+        }
+
+        if(selectBills.value !== pluginInstance.settings.baseCurrency) {
+            return new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
         }
 
         const data: HistoryData = {
@@ -546,7 +550,7 @@ export const addBills = () => {
         inputEmoji.value = emojiOnly.slice(0, 1).join('');
     });
 
-    const currencyInput = mainFormInput.createEl('select', {
+    const currencySelect = mainFormInput.createEl('select', {
         cls: 'form-selects',
         attr: {
             name: 'select-currency',
@@ -578,10 +582,10 @@ export const addBills = () => {
         otherGroup.appendChild(option);
     });
 
-    currencyInput.appendChild(popularGroup);
-    currencyInput.appendChild(otherGroup);
+    currencySelect.appendChild(popularGroup);
+    currencySelect.appendChild(otherGroup);
 
-    currencyInput.value = pluginInstance.settings.baseCurrency;
+    currencySelect.value = pluginInstance.settings.baseCurrency;
 
     const currentBalance = mainFormInput.createEl('input', {
         cls: 'form-inputs',
@@ -602,11 +606,11 @@ export const addBills = () => {
         }
     })
 
-    const chechboxDiv = mainFormInput.createEl('div', {
+    const checboxDiv = mainFormInput.createEl('div', {
         cls: 'form-checkbox-div'
     })
 
-    const checkboxInput = chechboxDiv.createEl('input', {
+    const checkboxInput = checboxDiv.createEl('input', {
         cls: 'form-checkbox',
         attr: {
             id: 'input-checkbox',
@@ -615,9 +619,19 @@ export const addBills = () => {
         }
     })
 
-    chechboxDiv.createEl('span', {
+    checboxDiv.createEl('span', {
         text: 'Take into account in the general balance',
         cls: 'form-text',
+    })
+
+    currencySelect.addEventListener('change', () => {
+        if(currencySelect.value !== pluginInstance.settings.baseCurrency) {
+            checkboxInput.checked = false
+            checboxDiv.style.display = 'none'
+        } else {
+            checboxDiv.style.display = 'flex'
+            checkboxInput.checked = true
+        }
     })
 
     const addButton = mainFormInput.createEl('button', {
@@ -640,8 +654,8 @@ export const addBills = () => {
             id: String(generateUUID()),
             name: inputName.value.trim(),
             emoji: inputEmoji.value,
-            balance: String(currentBalance.value),
-            currency: currencyInput.value,
+            balance: String(currentBalance.value).trim(),
+            currency: currencySelect.value,
             generalBalance: checkboxInput.checked,
             comment: commentInput.value.trim(),
         }

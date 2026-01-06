@@ -80,6 +80,10 @@ export const editingJsonToPlan = async (data: PlanData) => {
 }
 
 export const editingJsonToBill = async (data: BillData) => {
+    if (data.balance === '') {
+        data.balance = '0'
+    }
+    
     const { jsonData, content, file, status } = await getDataArchiveFile<BillData>('Archive bills')
     if(!(status === 'success')) return status
     if(!jsonData) return 'Error with data bill'

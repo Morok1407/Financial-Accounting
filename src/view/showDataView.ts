@@ -3,7 +3,7 @@ import { stateManager, HistoryData, PlanData, BillData } from "../../main";
 import { getDataFile, getDataArchiveFile, searchElementById, searchHistory } from "../controllers/searchData";
 import { addHistory, addPlan, addBills } from '../view/addView';
 import { editingHistory, editingPlan, editingBill } from '../view/editingView';
-import { humanizeDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheDayExpense, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingDataForTheDayIncome } from "../middleware/otherFunc";
+import { humanizeDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheDayExpense, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingDataForTheDayIncome, getCurrencySymbol } from "../middleware/otherFunc";
 
 export const showHistory = async (mainContentBody: any, mainContentButton: any) => {
     stateManager({ openPageNow: "History" });
@@ -91,6 +91,7 @@ async function generationHistoryContent(historyContent: any, mainContentBody: an
             mainContentBody.addClass('main-content-body--padding')
         }
         result.forEach((e: any, i: any) => {
+            console.log(e)
             const historyBlock = historyContent.createEl('div', {
                 cls: 'history-block'
             })
@@ -138,7 +139,7 @@ async function generationHistoryContent(historyContent: any, mainContentBody: an
                     })
                 }
                 const itemAmount = dataItem.createEl('p', {
-                    text: checkExpenceOrIncome(e.amount, e.type)
+                    text: `${checkExpenceOrIncome(e.amount, e.type)} ${getCurrencySymbol(itemBill.currency)}`
                 })
             })
         })
@@ -334,7 +335,7 @@ export const showBills = async (mainContentBody: any, mainContentButton: any) =>
                         text: `${e.emoji} ${e.name}`
                     })
                     const itemAmount = dataItem.createEl('p', {
-                        text: String(e.balance)
+                        text: `${String(e.balance)} ${getCurrencySymbol(e.currency)}`
                     })
                 }
             })
@@ -373,7 +374,7 @@ export const showBills = async (mainContentBody: any, mainContentButton: any) =>
                         text: `${e.emoji} ${e.name}`
                     })
                     const itemAmount = dataItem.createEl('p', {
-                        text: String(e.balance)
+                        text: `${String(e.balance)} ${getCurrencySymbol(e.currency)}`
                     })
                 }
             })

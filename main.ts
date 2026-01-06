@@ -1,6 +1,7 @@
 import { Plugin, ItemView, WorkspaceLeaf, Platform, PluginSettingTab, Setting, TFolder, TFile, Notice } from 'obsidian';
 import { showInitialView, showAnotherInitialView } from './src/view/homeView'; 
 import { getCurrencyGroups } from './src/middleware/otherFunc';
+import { getDataArchiveFile } from './src/controllers/searchData';
 
 const FINANCIAL_ACCOUNTING_VIEW = "financial-accounting-view";
 export let pluginInstance: MainPlugin;
@@ -258,9 +259,15 @@ class SettingsTab extends PluginSettingTab {
         selectEl.value = this.plugin.settings.baseCurrency;
 
         selectEl.addEventListener("change", async (event: any) => {
-            this.plugin.settings.baseCurrency = event.target.value;
-            await this.plugin.saveSettings();
-            new Notice(`The main currency has been changed to ${event.target.value}`);
+            const bills = await getDataArchiveFile<BillData>('Archive bills');
+            if(bills.jsonData === null || bills.jsonData === undefined || bills.jsonData.length === 0) {
+                this.plugin.settings.baseCurrency = event.target.value;
+                await this.plugin.saveSettings();
+                new Notice(`The main currency has been changed to ${event.target.value}`);
+            } else {
+                selectEl.value = this.plugin.settings.baseCurrency;
+                return new Notice('You can change the base currency only if there are no accounts created yet.');
+            }
         });
 
         new Setting(containerEl)
@@ -277,7 +284,6 @@ class SettingsTab extends PluginSettingTab {
             });
 
             text.inputEl.addEventListener("blur", async () => {
-            // eslint-disable-next-line prefer-const
             let value = text.getValue().trim();
 
             if (/\s/.test(value)) {
