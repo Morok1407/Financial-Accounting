@@ -90,13 +90,11 @@ export default class MainPlugin extends Plugin {
             this.unregisterTracking = trackActiveFinancialAccountingView(
                 this.app,
                 () => {
-                    console.log('Financial Accounting View активна');
                     waitForMobileNavBar((mobileNavBar) => {
                         mobileNavBar.classList.add('disable-mobile-nav-bar');
                     });
                 },
                 () => {
-                    console.log('Financial Accounting View не активна');
                     waitForMobileNavBar((mobileNavBar) => {
                         mobileNavBar.classList.remove('disable-mobile-nav-bar');
                     });

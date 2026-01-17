@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-financial-accounting-plugin",
+	"name": "financial-accounting",
 	"version": "1.0.0",
-	"description": "This is a financial accounting plugin for Obsidian",
+	"description": "Financial control system directly in Obsidian without an internet connection.",
 	"main": "dist/main.js",
 	"scripts": {
 		"dev": "node dev.config.mjs",
@@ -9,7 +9,7 @@
 		"version": "node version-bump.mjs"
 	},
 	"keywords": [],
-	"author": "",
+	"author": "Bugayev Daniil",
 	"license": "MIT",
 	"devDependencies": {
 		"@types/big.js": "^6.2.2",
