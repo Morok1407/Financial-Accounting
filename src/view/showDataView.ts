@@ -119,9 +119,15 @@ async function generationHistoryContent(historyContent: any, mainContentBody: an
                 };
                 const { item: itemCategory, status: statusPlan } = await searchElementById(e.category.id, e.type)
                 if(statusPlan === 'success') {
-                    dataItem.createEl('p', {
-                        text: `${itemCategory.emoji} ${itemCategory.name}`
-                    })
+                    if(e.comment === '') {
+                        dataItem.createEl('p', {
+                            text: `${itemCategory.emoji} ${itemCategory.name}`
+                        })
+                    } else {
+                        dataItem.createEl('p', {
+                            text: `${itemCategory.emoji} ${e.comment}`
+                        })
+                    }
                 } else {
                     dataItem.createEl('p', {
                         text: `Error: Plan not found by id`
@@ -129,9 +135,15 @@ async function generationHistoryContent(historyContent: any, mainContentBody: an
                 }
                 const { item: itemBill, status: statusBill } = await searchElementById(e.bill.id, 'Archive bills')
                 if(statusBill === 'success') {
-                    dataItem.createEl('span', {
-                        text: `${itemBill.emoji} ${itemBill.name}`
-                    })
+                    if(e.comment === '') {
+                        dataItem.createEl('span', {
+                            text: `${itemBill.emoji} ${itemBill.name}`
+                        })
+                    } else {
+                        dataItem.createEl('span', {
+                            text: `${itemBill.emoji} ${itemCategory.name} • ${itemBill.name}`
+                        })
+                    }
                 } else {
                     dataItem.createEl('span', {
                         text: 'Error: Bill not found by id'

@@ -259,7 +259,8 @@ export const editingHistory = async (e: any) => {
             return new Notice('Enter the amount')
         }
 
-        if(selectBills.value !== pluginInstance.settings.baseCurrency) {
+        const { item: billOption } = await searchElementById(selectBills.value, 'Archive bills')
+        if(billOption.currency !== pluginInstance.settings.baseCurrency) {
             return new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
         }
 
@@ -632,7 +633,7 @@ export const editingBill = async (e: any) => {
             cls: 'form-text-transfer',
         })
         transferUploadDiv.addEventListener('click', async () => {
-            await transferBetweenBills(item.id)
+            await transferBetweenBillsView(item.id)
         })
     }
 
