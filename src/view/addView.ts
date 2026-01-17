@@ -1,6 +1,6 @@
 import { Notice, setIcon } from "obsidian";
 import { addJsonToHistory, addJsonToPlan, addJsonToBills } from "../controllers/addData";
-import { getDataArchiveFile, getDataFile } from "../controllers/searchData";
+import { getDataArchiveFile, getDataFile, searchElementById } from "../controllers/searchData";
 import { pluginInstance, viewInstance, stateManager } from "../../main";
 import { HistoryData, PlanData, BillData  } from "../../main";
 import { getCurrencySymbol, fillMonthDates, getLocalTimeISO, selectRelativeDate, getCurrencyGroups, generateUUID } from "../middleware/otherFunc";
@@ -310,7 +310,8 @@ export const addHistory = async () => {
             return new Notice('Enter the amount')
         }
 
-        if(selectBills.value !== pluginInstance.settings.baseCurrency) {
+        const { item: billOption } = await searchElementById(selectBills.value, 'Archive bills')
+        if(billOption.currency !== pluginInstance.settings.baseCurrency) {
             return new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
         }
 

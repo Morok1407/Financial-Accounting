@@ -1,11 +1,10 @@
 {
-	"id": "finance-accounting-plugin",
-	"name": "Finance Accounting",
+	"id": "financial-accounting",
+	"name": "Financial Accounting",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "",
-	"author": "Daniel",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"description": "Financial control system directly without internet connection.",
+	"author": "Bugayev Daniil",
+	"authorUrl": "https://github.com/Morok1407",
 	"isDesktopOnly": false
 }
