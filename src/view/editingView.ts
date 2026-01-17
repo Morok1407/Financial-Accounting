@@ -479,28 +479,51 @@ export const editingPlan = async (e: any) => {
                 dataItem.onclick = async (e) => {
                     await editingHistory(e);
                 };
+                
                 const { item: itemCategory, status: statusPlan } = await searchElementById(e.category.id, e.type)
-                if(statusPlan === 'success') {
-                    dataItem.createEl('p', {
+                const { item: itemBill, status: statusBill } = await searchElementById(e.bill.id, 'Archive bills')
+                if(statusPlan !== 'success') return new Notice(statusPlan)
+                if(statusBill !== 'success') return new Notice(statusBill)
+
+                const dataText = dataItem.createEl('div', {
+                    cls: 'data-link'
+                })
+
+                const divEmoji = dataText.createEl('div', {
+                    cls: 'data-link-emoji'
+                })
+                const divText = dataText.createEl('div', {
+                    cls: 'data-link-text'
+                })
+
+                divEmoji.createEl('p', {
+                    text: `${itemCategory.emoji}`
+                })
+                divEmoji.createEl('span', {
+                    text: `${itemBill.emoji}`
+                })
+
+                if(e.comment === '') {
+                    divText.createEl('p', {
                         text: `${itemCategory.name}`
                     })
-                } else {
-                    dataItem.createEl('p', {
-                        text: `Error: Plan not found by id`
-                    })
-                }
-                const { item: itemBill, status: statusBill } = await searchElementById(e.bill.id, 'Archive bills')
-                if(statusBill === 'success') {
-                    dataItem.createEl('span', {
-                        text: itemBill.name
+                    divText.createEl('span', {
+                        text: `${itemBill.name}`
                     })
                 } else {
-                    dataItem.createEl('span', {
-                        text: 'Error: Bill not found by id'
+                    divText.createEl('p', {
+                        text: `${e.comment}`
+                    })
+                    divText.createEl('span', {
+                        text: `${itemCategory.name} • ${itemBill.name}`
                     })
                 }
-                const itemAmount = dataItem.createEl('p', {
-                    text: checkExpenceOrIncome(e.amount, e.type)
+
+                const dataAmount = dataItem.createEl('div', {
+                    cls: 'data-link'
+                })
+                dataAmount.createEl('p', {
+                    text: `${checkExpenceOrIncome(e.amount, e.type)} ${getCurrencySymbol(itemBill.currency)}`
                 })
             })
         })

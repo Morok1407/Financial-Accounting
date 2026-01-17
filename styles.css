@@ -1,3 +1,7 @@
+.disable-mobile-nav-bar {
+  display: none !important;
+}
+
 .finance-container {
   max-width: 380px;
   min-width: 360px;
@@ -406,17 +410,53 @@
   justify-content: space-between;
   background: #17212b;
   padding: 2px 12px;
+  min-height: 60px;
   cursor: pointer;
 }
-.data-item span {
-  z-index: 10;
-  position: absolute;
-  bottom: 3px;
-  left: 16px;
-  font-size: 12px;
+
+.data-link {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.data-item p {
+.data-link span {
+  font-size: 24px;
+}
+.data-link p {
   font-size: 16px;
+  margin: 0;
+}
+
+.data-link-emoji {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.data-link-emoji p {
+  font-size: 24px;
+  margin: 0;
+}
+.data-link-emoji span {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  font-size: 14px;
+}
+
+.data-link-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.data-link-text p {
+  margin: 0;
+  font-size: 16px;
+}
+.data-link-text span {
+  font-size: 14px;
+  color: #a0a5ac;
 }
 
 .calendar-main {

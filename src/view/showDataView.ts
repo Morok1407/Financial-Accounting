@@ -117,39 +117,50 @@ async function generationHistoryContent(historyContent: any, mainContentBody: an
                 dataItem.onclick = async (e: any) => {
                     await editingHistory(e);
                 };
+
                 const { item: itemCategory, status: statusPlan } = await searchElementById(e.category.id, e.type)
-                if(statusPlan === 'success') {
-                    if(e.comment === '') {
-                        dataItem.createEl('p', {
-                            text: `${itemCategory.emoji} ${itemCategory.name}`
-                        })
-                    } else {
-                        dataItem.createEl('p', {
-                            text: `${itemCategory.emoji} ${e.comment}`
-                        })
-                    }
-                } else {
-                    dataItem.createEl('p', {
-                        text: `Error: Plan not found by id`
-                    })
-                }
                 const { item: itemBill, status: statusBill } = await searchElementById(e.bill.id, 'Archive bills')
-                if(statusBill === 'success') {
-                    if(e.comment === '') {
-                        dataItem.createEl('span', {
-                            text: `${itemBill.emoji} ${itemBill.name}`
-                        })
-                    } else {
-                        dataItem.createEl('span', {
-                            text: `${itemBill.emoji} ${itemCategory.name} • ${itemBill.name}`
-                        })
-                    }
+                if(statusPlan !== 'success') return new Notice(statusPlan)
+                if(statusBill !== 'success') return new Notice(statusBill)
+
+                const dataText = dataItem.createEl('div', {
+                    cls: 'data-link'
+                })
+
+                const divEmoji = dataText.createEl('div', {
+                    cls: 'data-link-emoji'
+                })
+                const divText = dataText.createEl('div', {
+                    cls: 'data-link-text'
+                })
+
+                divEmoji.createEl('p', {
+                    text: `${itemCategory.emoji}`
+                })
+                divEmoji.createEl('span', {
+                    text: `${itemBill.emoji}`
+                })
+
+                if(e.comment === '') {
+                    divText.createEl('p', {
+                        text: `${itemCategory.name}`
+                    })
+                    divText.createEl('span', {
+                        text: `${itemBill.name}`
+                    })
                 } else {
-                    dataItem.createEl('span', {
-                        text: 'Error: Bill not found by id'
+                    divText.createEl('p', {
+                        text: `${e.comment}`
+                    })
+                    divText.createEl('span', {
+                        text: `${itemCategory.name} • ${itemBill.name}`
                     })
                 }
-                const itemAmount = dataItem.createEl('p', {
+
+                const dataAmount = dataItem.createEl('div', {
+                    cls: 'data-link'
+                })
+                dataAmount.createEl('p', {
                     text: `${checkExpenceOrIncome(e.amount, e.type)} ${getCurrencySymbol(itemBill.currency)}`
                 })
             })
@@ -161,7 +172,7 @@ async function generationHistoryContent(historyContent: any, mainContentBody: an
         cls: 'add-button'
     })
     addHistoryButton.addEventListener('click', async () => {
-            addHistory();
+        addHistory();
     })
 }
 
@@ -225,10 +236,16 @@ export const showPlans = async (mainContentBody: any, mainContentButton: any) =>
                 dataItem.onclick = async (e: any) => {
                     await editingPlan(e);
                 };
-                const itemCategory = dataItem.createEl('p', {
-                    text: `${e.emoji} ${e.name}`
+                const dataText = dataItem.createEl('div', {
+                    cls: 'data-link'
                 })
-                const itemAmount = dataItem.createEl('p', {
+                dataText.createEl('span', {
+                    text: `${e.emoji}`
+                })
+                dataText.createEl('p', {
+                    text: `${e.name}`
+                })
+                dataItem.createEl('p', {
                     text: String(e.amount)
                 })
             })
@@ -264,10 +281,16 @@ export const showPlans = async (mainContentBody: any, mainContentButton: any) =>
                 dataItem.onclick = async (e: any) => {
                     await editingPlan(e);
                 };
-                const itemCategory = dataItem.createEl('p', {
-                    text: `${e.emoji} ${e.name}`
+                const dataText = dataItem.createEl('div', {
+                    cls: 'data-link'
                 })
-                const itemAmount = dataItem.createEl('p', {
+                dataText.createEl('span', {
+                    text: `${e.emoji}`
+                })
+                dataText.createEl('p', {
+                    text: `${e.name}`
+                })
+                dataItem.createEl('p', {
                     text: String(e.amount)
                 })
             })
@@ -342,8 +365,14 @@ export const showBills = async (mainContentBody: any, mainContentButton: any) =>
                     dataItem.onclick = async (e: any) => {
                         await editingBill(e);
                     }
-                    const itemCategory = dataItem.createEl('p', {
-                        text: `${e.emoji} ${e.name}`
+                    const dataText = dataItem.createEl('div', {
+                        cls: 'data-link'
+                    })
+                    dataText.createEl('span', {
+                        text: `${e.emoji}`
+                    })
+                    dataText.createEl('p', {
+                        text: `${e.name}`
                     })
                     const itemAmount = dataItem.createEl('p', {
                         text: `${String(e.balance)} ${getCurrencySymbol(e.currency)}`
@@ -381,10 +410,16 @@ export const showBills = async (mainContentBody: any, mainContentButton: any) =>
                     dataItem.onclick = async (e: any) => {
                         await editingBill(e);
                     }
-                    const itemCategory = dataItem.createEl('p', {
-                        text: `${e.emoji} ${e.name}`
+                    const dataText = dataItem.createEl('div', {
+                        cls: 'data-link'
                     })
-                    const itemAmount = dataItem.createEl('p', {
+                    dataText.createEl('span', {
+                        text: `${e.emoji}`
+                    })
+                    dataText.createEl('p', {
+                        text: `${e.name}`
+                    })
+                    dataItem.createEl('p', {
                         text: `${String(e.balance)} ${getCurrencySymbol(e.currency)}`
                     })
                 }

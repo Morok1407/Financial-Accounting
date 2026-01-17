@@ -1,4 +1,4 @@
-import { Plugin, ItemView, WorkspaceLeaf, Platform, PluginSettingTab, Setting, TFolder, TFile, Notice } from 'obsidian';
+import { Plugin, ItemView, WorkspaceLeaf, Platform, PluginSettingTab, Setting, TFolder, TFile, Notice, App } from 'obsidian';
 import { showInitialView, showAnotherInitialView } from './src/view/homeView'; 
 import { getCurrencyGroups } from './src/middleware/otherFunc';
 import { getDataArchiveFile } from './src/controllers/searchData';
@@ -61,6 +61,7 @@ export interface DataFileResult<T> {
 
 export default class MainPlugin extends Plugin {
     settings: any;
+    private unregisterTracking?: () => void;
     async onload(): Promise<void> {
         await this.loadSettings();
 
@@ -72,9 +73,35 @@ export default class MainPlugin extends Plugin {
         this.app.workspace.onLayoutReady(async () => {
             this.addSettingTab(new SettingsTab(this.app, this));
 
-            this.addRibbonIcon("badge-dollar-sign", "Add operation", async () => {
+            const ribbonIcon = this.addRibbonIcon("badge-dollar-sign", "Add operation", async () => {
                 await this.activateView();
             });
+            this.registerInterval(
+                window.setInterval(() => {
+                    const ribbon = document.querySelector(".workspace-ribbon.mod-left");
+                    if (!ribbon || !ribbonIcon) return;
+
+                    if (Platform.isMobile && ribbon.firstChild !== ribbonIcon) {
+                        ribbon.append(ribbonIcon);
+                    }
+                }, 1000)
+            );
+
+            this.unregisterTracking = trackActiveFinancialAccountingView(
+                this.app,
+                () => {
+                    console.log('Financial Accounting View активна');
+                    waitForMobileNavBar((mobileNavBar) => {
+                        mobileNavBar.classList.add('disable-mobile-nav-bar');
+                    });
+                },
+                () => {
+                    console.log('Financial Accounting View не активна');
+                    waitForMobileNavBar((mobileNavBar) => {
+                        mobileNavBar.classList.remove('disable-mobile-nav-bar');
+                    });
+                }
+            );
 
             this.addCommand({
                 id: "financial-accounting-view",
@@ -124,8 +151,8 @@ export default class MainPlugin extends Plugin {
 
     onunload(): void {
         this.app.workspace.detachLeavesOfType(FINANCIAL_ACCOUNTING_VIEW);
+        this.unregisterTracking?.();
     }
-
 }
 
 class FinancialAccountingView extends ItemView {
@@ -336,3 +363,45 @@ const createStateManager = () => {
 }
 
 export const stateManager = createStateManager();
+
+function trackActiveFinancialAccountingView(
+        app: App,
+        onActive: () => void,
+        onInactive: () => void
+    ) {
+    const check = () => {
+        const activeLeaf = app.workspace.activeLeaf;
+        if (!activeLeaf) {
+        onInactive();
+        return;
+        }
+
+        if (activeLeaf.view.getViewType() === FINANCIAL_ACCOUNTING_VIEW) {
+            onActive();
+        } else {
+            onInactive();
+        }
+    };
+
+    app.workspace.on('active-leaf-change', check);
+    app.workspace.on('layout-change', check); 
+
+    check();
+
+    return () => {
+        app.workspace.off('active-leaf-change', check);
+        app.workspace.off('layout-change', check);
+    };
+}
+
+function waitForMobileNavBar(callback: (el: HTMLElement) => void) {
+    const observer = new MutationObserver(() => {
+        const el = document.querySelector('.mobile-navbar');
+        if (el) {
+            callback(el as HTMLElement);
+            observer.disconnect();
+        }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+}
