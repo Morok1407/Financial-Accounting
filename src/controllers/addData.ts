@@ -2,55 +2,56 @@ import { getDataArchiveFile, getDataFile } from "./searchData";
 import { archiveExpenditurePlan, archiveIncomePlan } from "../middleware/duplicating";
 import { checkBill } from "../middleware/checkData";
 import { expenditureTransaction, incomeTransaction } from "../middleware/transferring";
-import { pluginInstance, HistoryData, PlanData, BillData } from "../../main";
+import { HistoryData, PlanData, BillData, ResultOfExecution } from "../../main";
+import MainPlugin from "../../main";
 
-export const addJsonToHistory = async (data: HistoryData) => {
-    const resultCheckBill  = await checkBill(data)
+export const addJsonToHistory = async (data: HistoryData): Promise<ResultOfExecution> => {
     if(data.type === 'expense') {
-        if(!(resultCheckBill === 'success')) {
-            return resultCheckBill
+        const resultCheckBill  = await checkBill(data)
+        if(resultCheckBill.status === 'error') {
+            return { status: 'error', error: resultCheckBill.error }
         }
     }
 
-    const { jsonData, content, file, status } = await getDataFile('History')
-    if (status !== 'success') return status;
+    const historyData = await getDataFile<HistoryData>('History')
+    if (historyData.status === 'error') return { status: 'error', error: historyData.error };
 
     if(data.type === 'expense') {
         const result = await expenditureTransaction(data, 'add')
-        if (result !== 'success') return result;
+        if (result.status === 'error') return { status: 'error', error: result.error };
     } else if (data.type === 'income') {
         const result = await incomeTransaction(data, 'add')
-        if (result !== 'success') return result;
+        if (result.status === 'error') return { status: 'error', error: result.error };
     } else {
-        return 'Error'
+        return { status: 'error', error: new Error('The specified type is not suitable') }
     }  
 
-    if (content === undefined) throw new Error('content is undefined');
-    if(file === undefined) throw new Error('file is undefined');
+    if (historyData.content === undefined) throw new Error('content is undefined');
+    if(historyData.file === undefined) throw new Error('file is undefined');
 
     try {
-        if(jsonData == null) {
+        if(historyData.jsonData == null) {
             const dataStr = JSON.stringify([data], null, 4) + "\n```";
-            const newContent = content.replace(/\```$/, dataStr);
-            await pluginInstance.app.vault.modify(file, newContent)
+            const newContent = historyData.content.replace(/\\```$/, dataStr);
+            await MainPlugin.instance.app.vault.modify(historyData.file, newContent)
 
-            return "success"
-        } else if(jsonData.length >= 1) {
+            return { status: 'success' };
+        } else if(historyData.jsonData.length >= 1) {
             const dataStr = JSON.stringify([data], null, 4) + "]\n```";
-            const index = content.lastIndexOf("}");
-            const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
-            await pluginInstance.app.vault.modify(file, newContent);
+            const index = historyData.content.lastIndexOf("}");
+            const newContent = historyData.content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
+            await MainPlugin.instance.app.vault.modify(historyData.file, newContent);
 
-            return "success"
+            return { status: 'success' };
         } else {
             throw new Error('jsonData has an unexpected format');
         }
     } catch (err) {
-        return err
+        return { status: 'error', error: new Error(`Failed to add JSON to history: ${err}`) }
     }
 }
 
-export const addJsonToPlan = async (data: PlanData) => {
+export const addJsonToPlan = async (data: PlanData): Promise<ResultOfExecution> => {
     if(data.type === 'expense') {
         const result = await addJsonToExpenditurePlan(data)
         return result
@@ -58,121 +59,111 @@ export const addJsonToPlan = async (data: PlanData) => {
         const result = await addJsonToIncomePlan(data)
         return result
     } else {
-        return 'Error'
+        return { status: 'error', error: new Error('The specified type is not suitable') }
     }
 }
 
-async function addJsonToExpenditurePlan(data: PlanData) {
-    const { jsonData, content, file, status } = await getDataFile('Expenditure plan')
-    if(!(status === 'success')) {
-        return status
-    }
-    if(jsonData === undefined) throw new Error('Archive bills is null or undefined')
-    if(content === null || content === undefined) throw new Error('Archive bills content is null or undefined')
-    if(file === null || file === undefined) throw new Error('Archive bills content is null or undefined')
+async function addJsonToExpenditurePlan(data: PlanData): Promise<ResultOfExecution> {
+    const planData = await getDataFile<PlanData>('Expenditure plan')
+    if(planData.status === 'error') return { status: 'error', error: planData.error }
+    if(planData.jsonData === undefined) return { status: 'error', error: new Error('Archive bills is null or undefined') }
+    if(planData.content === null || planData.content === undefined) return { status: 'error', error: new Error('Archive bills content is null or undefined') }
+    if(planData.file === null || planData.file === undefined) return { status: 'error', error: new Error('Archive bills content is null or undefined') }
 
     try {
-        if(jsonData === null) {
+        if(planData.jsonData === null) {
             const dataStr = JSON.stringify([data], null, 4) + "\n```";
-            const newContent = content.replace(/\```$/, dataStr);
-            await pluginInstance.app.vault.modify(file, newContent)
+            const newContent = planData.content.replace(/\\```$/, dataStr);
+            await MainPlugin.instance.app.vault.modify(planData.file, newContent)
             
             const resultArchive = await archiveExpenditurePlan()
-            if(!(resultArchive === 'success')) return 'Error archiving expenditure plan'
+            if(resultArchive.status === 'error') return { status: 'error', error: resultArchive.error } 
 
-            return "success"
-        } else if (jsonData.length >= 1) {
+            return { status: 'success' }
+        } else if (planData.jsonData.length >= 1) {
             const dataStr = JSON.stringify([data], null, 4) + "]\n```";
     
-            const index = content.lastIndexOf("}");
-            const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
-            await pluginInstance.app.vault.modify(file, newContent);
+            const index = planData.content.lastIndexOf("}");
+            const newContent = planData.content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
+            await MainPlugin.instance.app.vault.modify(planData.file, newContent);
     
             const resultArchive = await archiveExpenditurePlan()
-            if(!(resultArchive === 'success')) {
-                return 'Error archiving expenditure plan'
-            }
+            if (resultArchive.status === 'error') return { status: 'error', error: resultArchive.error }
     
-            return "success"
+            return { status: 'success' }
         } else {
-            return 'Error with jsonData expenditure plan'
+            return { status: 'error', error: new Error('Error with jsonData expenditure plan') }
         }
     } catch (err) {
-        return err
+        return { status: 'error', error: new Error(`Error creating expediture plans: ${err}`)  }
     }
 }
 
-async function addJsonToIncomePlan(data: PlanData) {
-    const { jsonData, content, file, status } = await getDataFile('Income plan')
-    if(!(status === 'success')) {
-        return status
-    }
-    if(jsonData === undefined) throw new Error('Archive bills is null or undefined')
-    if(content === null || content === undefined) throw new Error('Archive bills content is null or undefined')
-    if(file === null || file === undefined) throw new Error('Archive bills content is null or undefined')
+async function addJsonToIncomePlan(data: PlanData): Promise<ResultOfExecution> {
+    const planData = await getDataFile<PlanData>('Income plan')
+    if(planData.status === 'error') return { status: 'error', error: planData.error }
+    if(planData.jsonData === undefined) return { status: 'error', error: new Error('Archive bills is null or undefined') }
+    if(planData.content === null || planData.content === undefined) return { status: 'error', error: new Error('Archive bills content is null or undefined') }
+    if(planData.file === null || planData.file === undefined) return { status: 'error', error: new Error('Archive bills content is null or undefined') }
     
     try {
-        if(jsonData === null) {
+        if(planData.jsonData === null) {
             const dataStr = JSON.stringify([data], null, 4) + "\n```";
-            const newContent = content.replace(/\```$/, dataStr);
-            await pluginInstance.app.vault.modify(file, newContent)
+            const newContent = planData.content.replace(/\\```$/, dataStr);
+            await MainPlugin.instance.app.vault.modify(planData.file, newContent)
 
             const resultArchive = await archiveIncomePlan()
-            if(!(resultArchive === 'success')) return 'Error archiving income plan'
+            if(resultArchive.status === 'error') return { status: 'error', error: new Error('Error archiving income plan') }
 
-            return "success"
-        } else if(jsonData.length >= 1) {
+            return { status: 'success' }
+        } else if(planData.jsonData.length >= 1) {
             const dataStr = JSON.stringify([data], null, 4) + "]\n```";
 
-            const index = content.lastIndexOf("}");
-            const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
-            await pluginInstance.app.vault.modify(file, newContent);
+            const index = planData.content.lastIndexOf("}");
+            const newContent = planData.content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
+            await MainPlugin.instance.app.vault.modify(planData.file, newContent);
 
             const resultArchive = await archiveIncomePlan()
-            if(!(resultArchive === 'success')) {
-                return 'Error archiving income plan'
-            }
+            if (resultArchive.status === 'error') return { status: 'error', error: new Error('Error archiving income plan') }
 
-            return "success"
+            return { status: 'success' }
         } else {
-            return ('Error with jsonData income plan')
+            return { status: 'error', error: new Error('Error with jsonData income plan')}
         }
     } catch (err) {
-        return err
+        return { status: 'error', error: new Error(`Error creating income plans: ${err}`) }
     }
 }
 
-export const addJsonToBills = async (data: BillData) => {    
+export const addJsonToBills = async (data: BillData): Promise<ResultOfExecution> => {    
     if(data.balance === '') {
         data.balance = '0'
     }
 
-    const { jsonData, content, file, status } = await getDataArchiveFile('Archive bills')
-    if(!(status === 'success')) {
-        return status
-    }
-    if(jsonData === undefined) throw new Error('Archive bills is null or undefined')
-    if(content === null || content === undefined) throw new Error('Archive bills content is null or undefined')
-    if(file === null || file === undefined) throw new Error('Archive bills content is null or undefined')
+    const billData = await getDataArchiveFile('Archive bills')
+    if(billData.status === 'error') return { status: 'error', error: billData.error }
+    if(billData.jsonData === undefined) return { status: 'error', error: new Error('Archive bills is null or undefined') }
+    if(billData.content === null || billData.content === undefined) return { status: 'error', error: new Error('Archive bills content is null or undefined') }
+    if(billData.file === null || billData.file === undefined) return { status: 'error', error: new Error('Archive bills content is null or undefined') }
 
     try {
-        if(jsonData === null) {
+        if(billData.jsonData === null) {
             const dataStr = JSON.stringify([data], null, 4) + "\n```";
-            const newContent = content.replace(/\```$/, dataStr);
-            await pluginInstance.app.vault.modify(file, newContent)
+            const newContent = billData.content.replace(/\\```$/, dataStr);
+            await MainPlugin.instance.app.vault.modify(billData.file, newContent)
 
-            return "success"
-        } else if(jsonData.length >= 1) {
+            return { status: 'success' }
+        } else if(billData.jsonData.length >= 1) {
             const dataStr = JSON.stringify([data], null, 4) + "]\n```";
-            const index = content.lastIndexOf("}");
-            const newContent = content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
-            await pluginInstance.app.vault.modify(file, newContent);
+            const index = billData.content.lastIndexOf("}");
+            const newContent = billData.content.slice(0, index + 1) + ",\n" + dataStr.replace(/\[/, '').replace(/\]/, '');
+            await MainPlugin.instance.app.vault.modify(billData.file, newContent);
             
-            return "success"
+            return { status: 'success'}
         } else {
-            return ('Error with jsonData archive bills')
+            return { status: 'error', error: new Error('Error with jsonData bills')}
         }
     } catch (err) {
-        return err
+        return { status: 'error', error: new Error(`Error creating bills: ${err}`) }
     }
 }

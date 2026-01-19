@@ -1,7 +1,9 @@
 import { Notice, setIcon } from 'obsidian';
+import MainPlugin from '../../main';
+import { FinancialAccountingView } from '../../main'
 import { deleteBill, deletePlan, deleteHistory } from '../controllers/deleteData';
 import { searchElementById, getDataArchiveFile, getDataFile } from '../controllers/searchData';
-import { viewInstance, pluginInstance, HistoryData, PlanData, BillData, TransferData } from '../../main';
+import { HistoryData, PlanData, BillData, TransferData } from '../../main';
 import { fillMonthDates, humanizeDate, checkExpenceOrIncome, SummarizingDataForTheDay, getCurrencySymbol } from '../middleware/otherFunc';
 import { editingJsonToHistory, editingJsonToPlan, editingJsonToBill } from '../controllers/editingData';
 import { transferBetweenBills } from '../middleware/transferring'
@@ -12,12 +14,14 @@ export const editingHistory = async (e: any) => {
         return 'Element not found'
     }
 
-    const { item, status } = await searchElementById(id, 'History')
-    if(!(status === 'success')) {
-        return status
+    const history = await searchElementById<HistoryData>(id, 'History')
+    if(history.status === 'error') {
+        new Notice(history.error.message)
+        console.error(history.error)
+        return;
     }
 
-    const { contentEl } = viewInstance;
+    const { contentEl } = FinancialAccountingView.instance;
     contentEl.empty()
 
     const header = contentEl.createEl('div', {
@@ -35,7 +39,7 @@ export const editingHistory = async (e: any) => {
     })
     setIcon(exitButton, 'arrow-left')
     exitButton.addEventListener('click', () => {
-        viewInstance.onOpen()
+        FinancialAccountingView.instance.onOpen()
     })
 
     const deleteButton = contentEl.createEl('div', {
@@ -46,14 +50,15 @@ export const editingHistory = async (e: any) => {
     })
     setIcon(deleteButton, 'trash-2')
     deleteButton.addEventListener('click', async () => {
-        const redultOfDelete = await deleteHistory(item);
-        if(redultOfDelete === "success") {
+        const redultOfDelete = await deleteHistory(history.item);
+        if(redultOfDelete.status === "success") {
             setTimeout(() => {
-                viewInstance.onOpen()
+                FinancialAccountingView.instance.onOpen()
                 new Notice('The operation is remote.')
             }, 100)
         } else {
-            new Notice(redultOfDelete)
+            new Notice(redultOfDelete.error.message)
+            console.error(redultOfDelete.error)
         }
     })
 
@@ -74,7 +79,7 @@ export const editingHistory = async (e: any) => {
             placeholder: 'Sum',
             id: 'input-sum',
             type: 'number',
-            value: item.amount,
+            value: history.item.amount,
             inputmode: "decimal"
         }
     })
@@ -88,18 +93,20 @@ export const editingHistory = async (e: any) => {
         }
     })
     
-    const { jsonData: resultBills, status: archiveStatus } = await getDataArchiveFile<BillData>('Archive bills')
-    if(!(archiveStatus === 'success')) {
-        return archiveStatus
+    const bills = await getDataArchiveFile<BillData>('Archive bills')
+    if(bills.status === 'error') {
+        new Notice(bills.error.message)
+        console.error(bills.error)
+        return
     }
-    if(resultBills === null || resultBills === undefined) throw new Error('Bill is null or undefined')
+    if(bills.jsonData === null || bills.jsonData === undefined) throw new Error('Bill is null or undefined')
 
     // --- Main ---
-    if(resultBills.some(i => i.generalBalance === true)) {
+    if(bills.jsonData.some(i => i.generalBalance === true)) {
         const mainGroup = document.createElement("optgroup");
         mainGroup.label = "Main";
         
-        resultBills.forEach(bill => {
+        bills.jsonData.forEach(bill => {
             if(bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
@@ -112,11 +119,11 @@ export const editingHistory = async (e: any) => {
     }
 
     // --- Additional ---
-    if(resultBills.some(i => i.generalBalance === false)) {
+    if(bills.jsonData.some(i => i.generalBalance === false)) {
         const additionalGroup = document.createElement("optgroup");
         additionalGroup.label = "Additional";
     
-        resultBills.forEach(bill => {
+        bills.jsonData.forEach(bill => {
             if(!bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
@@ -128,7 +135,7 @@ export const editingHistory = async (e: any) => {
         selectBills.appendChild(additionalGroup);
     }
 
-    selectBills.value = item.bill.id;
+    selectBills.value = history.item.bill.id;
     
     const selectCategory = mainFormInput.createEl('select', {
         cls: 'form-selects',
@@ -140,48 +147,58 @@ export const editingHistory = async (e: any) => {
     createOptionCategory()
     
     async function createOptionCategory() {
-        if(item.type === 'expense'){
+        if(history.status === 'error') {
+            new Notice(history.error.message)
+            console.error(history.error)
+            return;
+        }
+
+        if(history.item.type === 'expense'){
             selectCategory.empty()
             
-            const { jsonData: resultCategory, status } = await getDataFile<PlanData>('Expenditure plan');
-            if(!(status === 'success')) {
-                return status
+            const expensePlan = await getDataFile<PlanData>('Expenditure plan');
+            if (expensePlan.status === 'error') {
+                new Notice(expensePlan.error.message)
+                console.error(expensePlan.error)
+                return;
             }
-            if(resultCategory === null || resultCategory === undefined) throw new Error('Expenditure plan is null or undefined') 
+            if(expensePlan.jsonData === null || expensePlan.jsonData === undefined) throw new Error('Expenditure plan is null or undefined') 
 
-            resultCategory.sort((a, b) => Number(b.amount) - Number(a.amount))
-            resultCategory.forEach(plan => {
-                if(plan.id === item.category.id) {
+            expensePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
+            expensePlan.jsonData.forEach(plan => {
+                if(plan.id === history.item.category.id) {
                     selectCategory.createEl('option', {
-                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
                         attr: { value: plan.id, selected: 'selected' }
                     })
                     return
                 }
                 selectCategory.createEl('option', {
-                    text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                    text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
                     attr: { value: plan.id }
                 })
             })
-        } else if (item.type === 'income') {
+        } else if (history.item.type === 'income') {
             selectCategory.empty()
-            const { jsonData: resultCategory, status } = await getDataFile<PlanData>('Income plan');
-            if(!(status === 'success')) {
-                return status
+            const incomePlan = await getDataFile<PlanData>('Income plan');
+            if (incomePlan.status === 'error') {
+                new Notice(incomePlan.error.message)
+                console.error(incomePlan.error)
+                return;
             }
-            if(resultCategory === null || resultCategory === undefined) throw new Error('Expenditure plan is null or undefined') 
+            if(incomePlan.jsonData === null || incomePlan.jsonData === undefined) throw new Error('Expenditure plan is null or undefined') 
 
-            resultCategory.sort((a, b) => Number(b.amount) - Number(a.amount))
-            resultCategory.forEach(plan => {
-                if(plan.id === item.category.id) {
+            incomePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
+            incomePlan.jsonData.forEach(plan => {
+                if(plan.id === history.item.category.id) {
                     selectCategory.createEl('option', {
-                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
                         attr: { value: plan.id, selected: 'selected' }
                     })
                     return
                 }
                 selectCategory.createEl('option', {
-                    text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                    text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
                     attr: { value: plan.id }
                 })
             })
@@ -196,7 +213,7 @@ export const editingHistory = async (e: any) => {
             placeholder: 'Note',
             id: 'input-comment',
             type: 'text',
-            value: item.comment,
+            value: history.item.comment ?? '',
         }
     })
 
@@ -207,8 +224,8 @@ export const editingHistory = async (e: any) => {
             id: 'select-date'
         }
     })
-    fillMonthDates(selectDate, item.date)
-    selectDate.value = item.date.split('T')[0]
+    fillMonthDates(selectDate, history.item.date)
+    selectDate.value = history.item.date.split('T')[0]
 
     // const selectDateButtonDiv = mainFormInput.createEl('div', {
     //     cls: 'form-selects-date-buttons'
@@ -259,13 +276,18 @@ export const editingHistory = async (e: any) => {
             return new Notice('Enter the amount')
         }
 
-        const { item: billOption } = await searchElementById(selectBills.value, 'Archive bills')
-        if(billOption.currency !== pluginInstance.settings.baseCurrency) {
+        const billOption = await searchElementById<BillData>(selectBills.value, 'Archive bills')
+        if(billOption.status === 'error') {
+            new Notice(billOption.error.message)
+            console.error(billOption.error)
+            return
+        }
+        if(billOption.item.currency !== MainPlugin.instance.settings.baseCurrency) {
             return new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
         }
 
         const data: HistoryData = {
-            id: item.id,
+            id: history.item.id,
             amount: String(inputSum.value),
             bill: {
                 id: selectBills.value
@@ -274,17 +296,18 @@ export const editingHistory = async (e: any) => {
                 id: selectCategory.value
             },
             comment: commentInput.value,
-            date: `${selectDate.value}T${item.date.split('T')[1]}`,
-            type: item.type,
+            date: `${selectDate.value}T${history.item.date.split('T')[1]}`,
+            type: history.item.type,
         }
-        const resultOfEditing = await editingJsonToHistory(data, item)
-        if(resultOfEditing === "success") {
+        const resultOfEditing = await editingJsonToHistory(data, history.item)
+        if(resultOfEditing.status === "success") {
             setTimeout(() => {
-                viewInstance.onOpen()
+                FinancialAccountingView.instance.onOpen()
                 new Notice('Operation changed')
             }, 100)
         } else {
-            new Notice(resultOfEditing)
+            new Notice(resultOfEditing.error.message)
+            console.error(resultOfEditing.error)
         }
     })
 }
@@ -295,12 +318,14 @@ export const editingPlan = async (e: any) => {
         return 'Element not found'
     }
     
-    const { item, status } = await searchElementById(id, type)
-    if(!(status === 'success')) {
-        return status
+    const plan = await searchElementById<PlanData>(id, type)
+    if(plan.status === 'error') {
+        new Notice(plan.error.message)
+        console.error(plan.error)
+        return
     }
     
-    const { contentEl } = viewInstance;
+    const { contentEl } = FinancialAccountingView.instance;
     contentEl.empty()
 
     const exitButton = contentEl.createEl('div', {
@@ -311,7 +336,7 @@ export const editingPlan = async (e: any) => {
     })
     setIcon(exitButton, 'arrow-left')
     exitButton.addEventListener('click', () => {
-        viewInstance.onOpen()
+        FinancialAccountingView.instance.onOpen()
     })
 
     const deleteButton = contentEl.createEl('div', {
@@ -322,14 +347,15 @@ export const editingPlan = async (e: any) => {
     })
     setIcon(deleteButton, 'trash-2')
     deleteButton.addEventListener('click', async () => {
-        const redultOfDelete = await deletePlan(item);
-        if(redultOfDelete === "success") {
+        const redultOfDelete = await deletePlan(plan.item);
+        if(redultOfDelete.status === "success") {
             setTimeout(() => {
-                viewInstance.onOpen()
+                FinancialAccountingView.instance.onOpen()
                 new Notice('The plan has been removed.')
             }, 100)
         } else {
-            new Notice(redultOfDelete)
+            new Notice(redultOfDelete.error.message)
+            console.error(redultOfDelete.error)
         }
     })
 
@@ -357,7 +383,7 @@ export const editingPlan = async (e: any) => {
             placeholder: 'Name',
             id: 'input-name',
             type: 'text',
-            value: item.name,
+            value: plan.item.name,
         }
     })
 
@@ -367,7 +393,7 @@ export const editingPlan = async (e: any) => {
             placeholder: 'Emoji',
             id: 'input-emoji',
             type: 'text',
-            value: item.emoji
+            value: plan.item.emoji ?? ''
         }
     })
     inputEmoji.addEventListener('input', () => {
@@ -385,7 +411,7 @@ export const editingPlan = async (e: any) => {
             placeholder: 'Note',
             id: 'input-comment',
             type: 'text',
-            value: item.comment,
+            value: plan.item.comment ?? '',
         }
     })
 
@@ -406,28 +432,34 @@ export const editingPlan = async (e: any) => {
         }
 
         const data: PlanData = {
-            id: item.id,
+            id: plan.item.id,
             name: inputName.value.trim(),
             emoji: inputEmoji.value,
-            amount: item.amount,
+            amount: plan.item.amount,
             comment: commentInput.value.trim(),
-            type: item.type,
+            type: plan.item.type,
         }
         const resultOfadd = await editingJsonToPlan(data)
-        if(resultOfadd === "success") {
+        if(resultOfadd.status === "success") {
             setTimeout(() => {
-                viewInstance.onOpen()
+                FinancialAccountingView.instance.onOpen()
                 new Notice('The plan has been edited.')
             }, 100)
         } else {
-            new Notice(resultOfadd)
+            new Notice(resultOfadd.error.message)
+            console.error(resultOfadd.error)
         }
     })
 
-    let { jsonData: historyInfo } = await getDataFile<HistoryData>('History');
-    if(historyInfo === undefined) throw new Error('History is undefined')
-    if(historyInfo !== null) {
-        const filterHistoryInfo = historyInfo.filter(item => item.category.id === id)
+    const history = await getDataFile<HistoryData>('History');
+    if(history.status === 'error') {
+        new Notice(history.error.message)
+        console.error(history.error)
+        return
+    }
+    if(history.jsonData === undefined) throw new Error('History is undefined')
+    if(history.jsonData !== null) {
+        const filterHistoryInfo = history.jsonData.filter(item => item.category.id === id)
         if(filterHistoryInfo.length < 1) {
             return
         }
@@ -444,7 +476,7 @@ export const editingPlan = async (e: any) => {
             dayGroup.sort((a: any, b: any) => Math.abs(new Date(a.date).getTime() - now) - Math.abs(new Date(b.date).getTime() - now))
         );
 
-        const historyPlanTitle = contentEl.createEl('h1', {
+        contentEl.createEl('h1', {
             text: 'History of the plan'
         })
 
@@ -460,10 +492,10 @@ export const editingPlan = async (e: any) => {
             const dateBlock = historyBlock.createEl('div', {
                 cls: 'full-data-block'
             })
-            const dateSpan = dateBlock.createEl('span', {
+            dateBlock.createEl('p', {
                 text: humanizeDate(e[0].date.split("T")[0])
             })
-            const matchSpan = dateBlock.createEl('span', {
+            dateBlock.createEl('span', {
                 text: SummarizingDataForTheDay(e)
             })
             const dataList = historyBlock.createEl('ul', {
@@ -480,10 +512,18 @@ export const editingPlan = async (e: any) => {
                     await editingHistory(e);
                 };
                 
-                const { item: itemCategory, status: statusPlan } = await searchElementById(e.category.id, e.type)
-                const { item: itemBill, status: statusBill } = await searchElementById(e.bill.id, 'Archive bills')
-                if(statusPlan !== 'success') return new Notice(statusPlan)
-                if(statusBill !== 'success') return new Notice(statusBill)
+                const category = await searchElementById<PlanData>(e.category.id, e.type)
+                if(category.status === 'error') {
+                    new Notice(category.error.message)
+                    console.error(category.error)
+                    return
+                }
+                const bill = await searchElementById<BillData>(e.bill.id, 'Archive bills')
+                if(bill.status === 'error') {
+                    new Notice(bill.error.message)
+                    console.error(bill.error)
+                    return
+                }
 
                 const dataText = dataItem.createEl('div', {
                     cls: 'data-link'
@@ -497,25 +537,25 @@ export const editingPlan = async (e: any) => {
                 })
 
                 divEmoji.createEl('p', {
-                    text: `${itemCategory.emoji}`
+                    text: `${category.item.emoji}`
                 })
                 divEmoji.createEl('span', {
-                    text: `${itemBill.emoji}`
+                    text: `${bill.item.emoji}`
                 })
 
                 if(e.comment === '') {
                     divText.createEl('p', {
-                        text: `${itemCategory.name}`
+                        text: `${category.item.name}`
                     })
                     divText.createEl('span', {
-                        text: `${itemBill.name}`
+                        text: `${bill.item.name}`
                     })
                 } else {
                     divText.createEl('p', {
                         text: `${e.comment}`
                     })
                     divText.createEl('span', {
-                        text: `${itemCategory.name} • ${itemBill.name}`
+                        text: `${category.item.name} • ${bill.item.name}`
                     })
                 }
 
@@ -523,7 +563,7 @@ export const editingPlan = async (e: any) => {
                     cls: 'data-link'
                 })
                 dataAmount.createEl('p', {
-                    text: `${checkExpenceOrIncome(e.amount, e.type)} ${getCurrencySymbol(itemBill.currency)}`
+                    text: `${checkExpenceOrIncome(e.amount, e.type)} ${getCurrencySymbol(bill.item.currency)}`
                 })
             })
         })
@@ -536,12 +576,14 @@ export const editingBill = async (e: any) => {
         return 'Element not found'
     }
 
-    const { item, status } = await searchElementById(id, 'Archive bills')
-    if(!status) {
-        return status
+    const bill = await searchElementById<BillData>(id, 'Archive bills')
+    if(bill.status === 'error') {
+        new Notice(bill.error.message)
+        console.error(bill.error)
+        return
     }
 
-    const { contentEl } = viewInstance
+    const { contentEl } = FinancialAccountingView.instance
     contentEl.empty()
 
     const exitButton = contentEl.createEl('div', {
@@ -552,7 +594,7 @@ export const editingBill = async (e: any) => {
     });
     setIcon(exitButton, 'arrow-left')
     exitButton.addEventListener('click', () => {
-        viewInstance.onOpen()
+        FinancialAccountingView.instance.onOpen()
     })
 
     const deleteButton = contentEl.createEl('div', {
@@ -563,21 +605,22 @@ export const editingBill = async (e: any) => {
     })
     setIcon(deleteButton, 'trash-2')
     deleteButton.addEventListener('click', async () => {
-        const redultOfDelete = await deleteBill(item);
-        if(redultOfDelete === "success") {
+        const redultOfDelete = await deleteBill(bill.item);
+        if(redultOfDelete.status === "success") {
             setTimeout(() => {
-                viewInstance.onOpen()
+                FinancialAccountingView.instance.onOpen()
                 new Notice('The bill has been removed.')
             }, 100)
         } else {
-            new Notice(redultOfDelete)
+            new Notice(redultOfDelete.error.message)
+            console.error(redultOfDelete.error)
         }
     })
 
     const header = contentEl.createEl('div', {
         cls: 'main-header'
     })
-    const headerTitle = header.createEl('h1', {
+    header.createEl('h1', {
         text: 'Categories'
     })
     const mainAddForm = contentEl.createEl('form', {
@@ -597,7 +640,7 @@ export const editingBill = async (e: any) => {
             placeholder: 'Name',
             id: 'input-name',
             type: 'text',
-            value: item.name,
+            value: bill.item.name,
         }
     })
 
@@ -607,7 +650,7 @@ export const editingBill = async (e: any) => {
             placeholder: 'Emoji',
             id: 'input-emoji',
             type: 'text',
-            value: item.emoji
+            value: bill.item.emoji ?? ''
         }
     })
     inputEmoji.addEventListener('input', () => {
@@ -625,7 +668,7 @@ export const editingBill = async (e: any) => {
             placeholder: 'Current balance',
             id: 'input-current-balance',
             type: 'number',
-            value: item.balance,
+            value: bill.item.balance,
             inputmode: "decimal"
         }
     })
@@ -636,27 +679,29 @@ export const editingBill = async (e: any) => {
             placeholder: 'Note',
             id: 'input-comment',
             type: 'text',
-            value: item.comment,
+            value: bill.item.comment ?? '',
         }
     })
 
-    const { jsonData: fullDataBills, status: archiveStatus } = await getDataArchiveFile('Archive bills')
-    if(!(archiveStatus === 'success')) {
-        return archiveStatus
+    const bills = await getDataArchiveFile('Archive bills')
+    if(bills.status === 'error') {
+        new Notice(bills.error.message)
+        console.error(bills.error)
+        return
     }
-    if(fullDataBills === null || fullDataBills === undefined) throw new Error('Bills is null or undefined')
+    if(bills.jsonData === null || bills.jsonData === undefined) throw new Error('Bills is null or undefined')
 
-    if(fullDataBills.length > 1) {
+    if(bills.jsonData.length > 1) {
         const transferUploadDiv = mainFormInput.createEl('div', {
             cls: 'form-transfer-expense-div'
         })
         setIcon(transferUploadDiv, 'upload')
-        const transferUploadText = transferUploadDiv.createEl('span', {
+        transferUploadDiv.createEl('span', {
             text: 'Transactions between bills',
             cls: 'form-text-transfer',
         })
         transferUploadDiv.addEventListener('click', async () => {
-            await transferBetweenBillsView(item.id)
+            await transferBetweenBillsView(bill.item.id)
         })
     }
 
@@ -664,7 +709,7 @@ export const editingBill = async (e: any) => {
         cls: 'form-checkbox-div'
     })
 
-    if(item.currency !== pluginInstance.settings.baseCurrency) {
+    if(bill.item.currency !== MainPlugin.instance.settings.baseCurrency) {
         chechboxDiv.style.display = 'none'
     }
     
@@ -673,10 +718,10 @@ export const editingBill = async (e: any) => {
         attr: {
             id: 'input-checkbox',
             type: 'checkbox',
-            checked: item.generalBalance ? 'checked' : null,
+            checked: bill.item.generalBalance ? 'checked' : null,
         }
     })
-    const chechboxText = chechboxDiv.createEl('span', {
+    chechboxDiv.createEl('span', {
         text: 'Take into account in the general balance',
         cls: 'form-text',
     })
@@ -696,22 +741,23 @@ export const editingBill = async (e: any) => {
             return new Notice('Enter the name')
         }
         const data: BillData = {
-            id: item.id,
+            id: bill.item.id,
             name: inputName.value.trim(),
             emoji: inputEmoji.value,
             balance: String(currentBalance.value.trim()),
-            currency: item.currency,
+            currency: bill.item.currency,
             generalBalance: checkboxInput.checked,
             comment: commentInput.value.trim(),
         }
         const resultOfadd = await editingJsonToBill(data)
-        if(resultOfadd === "success") {
+        if(resultOfadd.status === "success") {
             setTimeout(() => {
-                viewInstance.onOpen()
+                FinancialAccountingView.instance.onOpen()
                 new Notice('The bill has been edited.')
             }, 100)
         } else {
-            new Notice(resultOfadd)
+            new Notice(resultOfadd.error.message)
+            console.error(resultOfadd.error)
         }
     })
 }
@@ -721,11 +767,15 @@ export const transferBetweenBillsView = async (billId: string) => {
         return 'Element not found'
     }
 
-    const { jsonData: resultBills, status } = await getDataArchiveFile<BillData>('Archive bills')
-    if(!status) return status
-    if(!resultBills) return 'Bill is null or undifined'
+    const bills = await getDataArchiveFile<BillData>('Archive bills')
+    if(bills.status === 'error') {
+        new Notice(bills.error.message)
+        console.error(bills.error)
+        return
+    }
+    if(!bills.jsonData) return 'Bill is null or undifined'
 
-    const { contentEl } = viewInstance
+    const { contentEl } = FinancialAccountingView.instance
     contentEl.empty()
 
     const exitButton = contentEl.createEl('div', {
@@ -736,13 +786,13 @@ export const transferBetweenBillsView = async (billId: string) => {
     });
     setIcon(exitButton, 'arrow-left')
     exitButton.addEventListener('click', () => {
-        viewInstance.onOpen()
+        FinancialAccountingView.instance.onOpen()
     })
 
     const header = contentEl.createEl('div', {
         cls: 'main-header'
     })
-    const headerTitle = header.createEl('h1', {
+    header.createEl('h1', {
         text: 'Transfer'
     })
     const mainAddForm = contentEl.createEl('form', {
@@ -766,11 +816,11 @@ export const transferBetweenBillsView = async (billId: string) => {
     })
 
     // --- Main ---
-    if(resultBills.some(i => i.generalBalance === true)) {
+    if(bills.jsonData.some(i => i.generalBalance === true)) {
         const fromBillMainGroup = document.createElement("optgroup");
         fromBillMainGroup.label = "Main";
         
-        resultBills.forEach(bill => {
+        bills.jsonData.forEach(bill => {
             if(bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
@@ -784,11 +834,11 @@ export const transferBetweenBillsView = async (billId: string) => {
     }
 
     // --- Additional ---
-    if(resultBills.some(i => i.generalBalance === false)) {
+    if(bills.jsonData.some(i => i.generalBalance === false)) {
         const fromBillAdditionalGroup = document.createElement("optgroup");
         fromBillAdditionalGroup.label = "Additional";
     
-        resultBills.forEach(bill => {
+        bills.jsonData.forEach(bill => {
             if(!bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
@@ -831,11 +881,11 @@ export const transferBetweenBillsView = async (billId: string) => {
     })
 
     // --- Main ---
-    if(resultBills.some(i => i.generalBalance === true)) {
+    if(bills.jsonData.some(i => i.generalBalance === true)) {
         const toBillmainGroup = document.createElement("optgroup");
         toBillmainGroup.label = "Main";
         
-        resultBills.forEach(bill => {
+        bills.jsonData.forEach(bill => {
             if(bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
@@ -849,11 +899,11 @@ export const transferBetweenBillsView = async (billId: string) => {
     }
 
     // --- Additional ---
-    if(resultBills.some(i => i.generalBalance === false)) {
+    if(bills.jsonData.some(i => i.generalBalance === false)) {
         const toBilladditionalGroup = document.createElement("optgroup");
         toBilladditionalGroup.label = "Additional";
     
-        resultBills.forEach(bill => {
+        bills.jsonData.forEach(bill => {
             if(!bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
@@ -975,13 +1025,14 @@ export const transferBetweenBillsView = async (billId: string) => {
 
         const result = await transferBetweenBills(transferData);
 
-        if (result === 'success') {
+        if (result.status === 'success') {
             setTimeout(() => {
-                viewInstance.onOpen();
+                FinancialAccountingView.instance.onOpen();
                 new Notice('Transfer completed');
             }, 100);
         } else {
-            new Notice(result);
+            new Notice(result.error.message);
+            console.error(result.error)
         }
     });
 }

@@ -1,17 +1,19 @@
 import Big from 'big.js'
 import { App, TFolder, TFile } from 'obsidian'
 import { getDataArchiveFile } from "../controllers/searchData";
-import { pluginInstance, BillData, HistoryData } from "../../main";
+import { BillData, HistoryData, ResultOfExecution } from "../../main";
+import MainPlugin from "../../main";
 
 declare const app: App;
 
-export const checkBill = async (data: HistoryData, oldData?: HistoryData ) => {
-    const { jsonData } = await getDataArchiveFile<BillData>("Archive bills")
-    if(jsonData === null || jsonData === undefined) throw new Error('Bill is null or undefined')
-    const bill = jsonData.find(b => b.id === data.bill.id);
+export const checkBill = async (data: HistoryData, oldData?: HistoryData ): Promise<ResultOfExecution> => {
+    const bills = await getDataArchiveFile<BillData>("Archive bills")
+    if(bills.status === 'error') return { status: 'error', error: bills.error};
+    if(bills.jsonData === null || bills.jsonData === undefined) throw new Error('Bill is null or undefined')
+    const bill = bills.jsonData.find(b => b.id === data.bill.id);
 
     if (!bill) {
-        return `Bill ${data.bill.id} not found`;
+        return { status: 'error', error: new Error(`Bill ${data.bill.id} not found`)};
     }
 
     const currentBalance = oldData
@@ -19,10 +21,10 @@ export const checkBill = async (data: HistoryData, oldData?: HistoryData ) => {
         : new Big(bill.balance);
 
     if (new Big(data.amount).gt(currentBalance)) {
-        return `On bill ${bill.name} insufficient funds`;
+        return { status: 'error', error: new Error(`On bill ${bill.name} insufficient funds`)};
     }
 
-    return "success";
+    return { status: "success" };
 }
 
 export const checkForDeletionData = async (
@@ -31,7 +33,7 @@ export const checkForDeletionData = async (
 ): Promise<boolean> => {
 
     const financeFolder = app.vault.getAbstractFileByPath(
-        pluginInstance.settings.targetFolder
+        MainPlugin.instance.settings.targetFolder
     );
 
     if (!financeFolder || !(financeFolder instanceof TFolder)) {

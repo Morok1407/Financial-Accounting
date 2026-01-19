@@ -83,7 +83,6 @@ export function fillMonthDates(selectEl: any, oldDate?: string) {
         const convertMonth: any = new Date(`${selectedMonth} 1, ${selectedYear}`);
         const selectedMonthNumber = isNaN(convertMonth) ? null : convertMonth.getMonth();
 
-        const today = new Date();
         const year = Number(selectedYear);
         const month = selectedMonthNumber;
 
@@ -96,10 +95,10 @@ export function fillMonthDates(selectEl: any, oldDate?: string) {
             const weekday = dayNames[date.getDay()];
             const monthName = monthNames[month];
     
-            let label = `${day} ${monthName}, ${weekday}`;
+            const label = `${day} ${monthName}, ${weekday}`;
 
             const value = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-            const option = selectEl.createEl("option", {
+            selectEl.createEl("option", {
                 text: label,
                 attr: { value }
             });
@@ -215,12 +214,14 @@ export function switchBalanceLine(billsInfo: BillData[] | null, expenditurePlanI
 }
 export function humanizeDate(dateStr: string) {
     const [year, month, day] = dateStr.split("-").map(Number);
-    const date: any = new Date(year, month - 1, day);
+    const date = new Date(year, month - 1, day);
 
-    const today: any = new Date();
+    const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const diffDays = Math.round((today - date) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.round(
+        (today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
     const weekdays = [
         "Sunday", "Monday", "Tuesday", "Wednesday",
@@ -235,26 +236,30 @@ export function humanizeDate(dateStr: string) {
     let prefix = "";
     if (diffDays === 0) prefix = "Today";
     else if (diffDays === 1) prefix = "Yesterday";
+    else if (diffDays === -1) prefix = "Tomorrow";
+    else if (diffDays === 2) prefix = "The day before yesterday";
+    else if (diffDays === -2) prefix = "The day after tomorrow";
 
-    const formatted = `${months[date.getMonth()]} ${date.getDate()}, ${weekdays[date.getDay()]}`;
+    const currentYear = today.getFullYear();
+    const showYear = date.getFullYear() !== currentYear;
 
-    return prefix ? `${prefix}, ${formatted}` : formatted;
+    const formattedDate = showYear
+        ? `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}, ${weekdays[date.getDay()]}`
+        : `${months[date.getMonth()]} ${date.getDate()}, ${weekdays[date.getDay()]}`;
+
+    return prefix ? `${prefix}, ${formattedDate}` : formattedDate;
 }
 export async function IncomeAndExpensesForTheMonth(month: string, year: string, div: any) {
-    const { jsonData: expenseData, status: expenseStatus } = await getSpecificFile<PlanData>('Expenditure plan', year, month)
-    if(!(expenseStatus === 'success')) {
-        return
-    }
-    if(expenseData === undefined) throw new Error('Expesnse plan is undefined')
+    const expensePlan = await getSpecificFile<PlanData>('Expenditure plan', year, month)
+    if(expensePlan.status === 'error') return expensePlan.error
+    if(expensePlan.jsonData === undefined) throw new Error('Expesnse plan is undefined')
 
-    const { jsonData: incomeData, status: incomeStatus } = await getSpecificFile<PlanData>('Income plan', year, month)
-    if(!(incomeStatus === 'success')) {
-        return
-    }
-    if(incomeData === undefined) throw new Error('Expesnse plan is undefined')
+    const incomePlan = await getSpecificFile<PlanData>('Income plan', year, month)
+    if(incomePlan.status === 'error') return incomePlan.error
+    if(incomePlan.jsonData === undefined) throw new Error('Expesnse plan is undefined')
 
-    const totalExpense = SummarizingDataForTheDayExpense(expenseData)
-    const totalIncome = SummarizingDataForTheDayIncome(incomeData)
+    const totalExpense = SummarizingDataForTheDayExpense(expensePlan.jsonData)
+    const totalIncome = SummarizingDataForTheDayIncome(incomePlan.jsonData)
 
     if(totalIncome >= totalExpense) {
             div.createEl('span', {
@@ -281,22 +286,16 @@ export async function TheSumOfExpensesAndIncomeForTheYear(year: string) {
     let totalIncome = 0
 
     for(let m = 1; m <= 12; m++) {
-        const { jsonData: expenseData, status: expenseStatus } = await getSpecificFile<PlanData>('Expenditure plan', year, months[m])
-        if(expenseStatus === 'File not found') {
-            continue
-        } else if (expenseStatus === 'File is empty') {
-            continue
-        }
-        if(expenseData === undefined) throw new Error('Expesnse plan is undefined')
-        const { jsonData: incomeData, status: incomeStatus } = await getSpecificFile<PlanData>('Income plan', year, months[m])
-        if(incomeStatus === 'File not found') {
-            continue
-        } else if (incomeStatus === 'File is empty') {
-            continue
-        }
-        if(incomeData === undefined) throw new Error('Expesnse plan is undefined')
-        totalExpense += SummarizingDataForTheDayExpense(expenseData)
-        totalIncome += SummarizingDataForTheDayIncome(incomeData)
+        const expensePlan = await getSpecificFile<PlanData>('Expenditure plan', year, months[m])
+        if(expensePlan.status === 'error') return 
+        if(expensePlan.jsonData === undefined) throw new Error('Expesnse plan is undefined')
+        
+        const incomePlan = await getSpecificFile<PlanData>('Income plan', year, months[m])
+        if(incomePlan.status === 'error') return 
+        if(incomePlan.jsonData === undefined) throw new Error('Expesnse plan is undefined')
+        
+        totalExpense += SummarizingDataForTheDayExpense(expensePlan.jsonData)
+        totalIncome += SummarizingDataForTheDayIncome(incomePlan.jsonData)
     }
 
     return `-${totalExpense} +${totalIncome}`

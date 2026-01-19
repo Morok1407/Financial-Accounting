@@ -1,5 +1,7 @@
 import { setIcon, Notice } from "obsidian";
-import { pluginInstance, viewInstance, stateManager, BillData, PlanData } from "../../main";
+import MainPlugin from "../../main";
+import { FinancialAccountingView } from '../../main'
+import { stateManager, BillData, PlanData } from "../../main";
 import { getDate } from "../middleware/otherFunc";
 import { createDirectory, createOtherMonthDirectory, months } from "../controllers/createDirectory";
 import { showHistory, showPlans, showBills } from "./showDataView";
@@ -7,7 +9,7 @@ import { getDataFile, getDataArchiveFile } from "../controllers/searchData";
 import { SummarizingDataForTheDayExpense, SummarizingDataForTheTrueBills, divideByRemainingDays, switchBalanceLine, SummarizingDataForTheDayIncome, getCurrencySymbol, TheSumOfExpensesAndIncomeForTheYear, IncomeAndExpensesForTheMonth } from "../middleware/otherFunc";
 
 export const showInitialView = async (): Promise<void> => {
-    if (!viewInstance || !pluginInstance) return;
+    if (!FinancialAccountingView.instance || !MainPlugin.instance) return;
 
     stateManager({ selectedMonth: null, selectedYear: null });
 
@@ -16,29 +18,32 @@ export const showInitialView = async (): Promise<void> => {
         return showInitialView();
     }
 
-    const { contentEl } = viewInstance;
+    const { contentEl } = FinancialAccountingView.instance;
     const { month } = getDate();
 
-    const { jsonData: billsInfo, status: billStatus } = await getDataArchiveFile<BillData>("Archive bills");
-    if (billStatus !== "success") {
-        new Notice(billStatus);
-        console.error(billStatus);
+    const bills = await getDataArchiveFile<BillData>("Archive bills");
+    if (bills.status === "error") {
+        new Notice(bills.error.message);
+        console.error(bills.error);
+        return
     }
-    if (billsInfo === undefined) throw new Error('billsInfo is undefined');
+    if (bills.jsonData === undefined) throw new Error('billsInfo is undefined');
 
-    const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await getDataFile<PlanData>("Expenditure plan");
-    if (expenditurePlanStatus !== "success") {
-        new Notice(expenditurePlanStatus);
-        console.error(expenditurePlanStatus);
+    const expensePlan = await getDataFile<PlanData>("Expenditure plan");
+    if (expensePlan.status === "error") {
+        new Notice(expensePlan.error.message);
+        console.error(expensePlan.error);
+        return
     }
-    if (expenditurePlanInfo === undefined) throw new Error('expenditurePlanInfo is undefined');
+    if (expensePlan.jsonData === undefined) throw new Error('expenditurePlanInfo is undefined');
 
-    const { jsonData: incomePlanInfo, status: incomePlanStatus } = await getDataFile<PlanData>("Income plan");
-    if (incomePlanStatus !== "success") {
-        new Notice(incomePlanStatus);
-        console.error(incomePlanStatus);
+    const incomePlan = await getDataFile<PlanData>("Income plan");
+    if (incomePlan.status === "error") {
+        new Notice(incomePlan.error.message);
+        console.error(incomePlan.error);
+        return
     }
-    if (incomePlanInfo === undefined) throw new Error('incomePlanInfo is undefined');
+    if (incomePlan.jsonData === undefined) throw new Error('incomePlanInfo is undefined');
 
     contentEl.empty();
     contentEl.addClass("finance-content");
@@ -79,17 +84,17 @@ export const showInitialView = async (): Promise<void> => {
     });
 
     balanceTop.createEl("p", {
-        text: `${SummarizingDataForTheTrueBills(billsInfo)} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+        text: `${SummarizingDataForTheTrueBills(bills.jsonData)} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
     });
 
     balanceTop.createEl("span", {
-        text: `~${divideByRemainingDays(SummarizingDataForTheTrueBills(billsInfo))} for a day`,
+        text: `~${divideByRemainingDays(SummarizingDataForTheTrueBills(bills.jsonData))} for a day`,
     });
 
     const balanceLine = balance.createEl("div", {
         cls: "balance-line",
     });
-    balanceLine.style.setProperty("--after-width", `${switchBalanceLine(billsInfo, expenditurePlanInfo)}%`);
+    balanceLine.style.setProperty("--after-width", `${switchBalanceLine(bills.jsonData, expensePlan.jsonData)}%`);
 
     const balanceBody = balance.createEl("div", {
         cls: "balance-body",
@@ -109,7 +114,7 @@ export const showInitialView = async (): Promise<void> => {
 
     setIcon(balanceExpensesCheck, "upload");
     balanceExpensesCheck.createEl("p", {
-        text: String(SummarizingDataForTheDayExpense(expenditurePlanInfo)),
+        text: String(SummarizingDataForTheDayExpense(expensePlan.jsonData)),
     });
 
     const balanceIncome = balanceBody.createEl("div", {
@@ -126,14 +131,14 @@ export const showInitialView = async (): Promise<void> => {
 
     setIcon(balanceIncomeCheck, "download");
     balanceIncomeCheck.createEl("p", {
-        text: String(SummarizingDataForTheDayIncome(incomePlanInfo)),
+        text: String(SummarizingDataForTheDayIncome(incomePlan.jsonData)),
     });
 
     homeButtons();
 }
 
 const homeButtons = async () => {
-    const { contentEl } = viewInstance;
+    const { contentEl } = FinancialAccountingView.instance;
     const { openPageNow } = stateManager()
 
     const homeNav = contentEl.createEl("div", {
@@ -222,7 +227,7 @@ const homeButtons = async () => {
 }
 
 const showAllMonths = async () => {
-    const { contentEl } = viewInstance;
+    const { contentEl } = FinancialAccountingView.instance;
     contentEl.empty();
 
     const { year } = getDate();
@@ -235,7 +240,7 @@ const showAllMonths = async () => {
     });
     setIcon(exitButton, "arrow-left");
     exitButton.addEventListener("click", () => {
-        viewInstance?.onOpen();
+        FinancialAccountingView.instance?.onOpen();
     });
 
     const calendarHead = contentEl.createEl("div", {
@@ -262,7 +267,7 @@ const showAllMonths = async () => {
         "❄️ December",
     ];
 
-    for (let i = Number(year); i >= pluginInstance.settings.startYear; i--) {
+    for (let i = Number(year); i >= MainPlugin.instance.settings.startYear; i--) {
         const calendarUlTitle = calendarMain.createEl("div", {
         cls: "calendar-list-title",
         });
@@ -307,7 +312,7 @@ export const initOtherMonth = async (e: any): Promise<void> => {
     const dataYear = String(target?.dataset?.year);
 
     if (months[dataMonth - 1] === month && dataYear === year) {
-        return viewInstance?.onOpen();
+        return FinancialAccountingView.instance?.onOpen();
     }
 
     stateManager({ selectedMonth: months[dataMonth - 1], selectedYear: dataYear });
@@ -321,25 +326,27 @@ export const initOtherMonth = async (e: any): Promise<void> => {
 }
 
 export const showAnotherInitialView = async (): Promise<void> => {
-    if (!viewInstance || !pluginInstance) return;
+    if (!FinancialAccountingView.instance || !MainPlugin.instance) return;
 
     const { selectedMonth } = stateManager();
 
-    const { jsonData: expenditurePlanInfo, status: expenditurePlanStatus } = await getDataFile<PlanData>("Expenditure plan");
-    if (expenditurePlanStatus !== "success") {
-        new Notice(expenditurePlanStatus);
-        console.error(expenditurePlanStatus);
+    const expensePlan = await getDataFile<PlanData>("Expenditure plan");
+    if (expensePlan.status === "error") {
+        new Notice(expensePlan.error.message);
+        console.error(expensePlan.error);
+        return
     }
-    if (expenditurePlanInfo == null) throw new Error('expenditurePlanInfo is null or undefined');
+    if (expensePlan.jsonData == null) throw new Error('expenditurePlanInfo is null or undefined');
 
-    const { jsonData: incomePlanInfo, status: incomePlanStatus } = await getDataFile<PlanData>("Income plan");
-    if (incomePlanStatus !== "success") {
-        new Notice(incomePlanStatus);
-        console.error(incomePlanStatus);
+    const incomePlan = await getDataFile<PlanData>("Income plan");
+    if (incomePlan.status === "error") {
+        new Notice(incomePlan.error.message);
+        console.error(incomePlan.error);
+        return
     }
-    if (incomePlanInfo == null) throw new Error('incomePlanInfo is null or undefined');
+    if (incomePlan.jsonData == null) throw new Error('incomePlanInfo is null or undefined');
 
-    const { contentEl } = viewInstance;
+    const { contentEl } = FinancialAccountingView.instance;
     contentEl.empty();
 
     const exitButton = contentEl.createEl("div", {
@@ -351,7 +358,7 @@ export const showAnotherInitialView = async (): Promise<void> => {
     setIcon(exitButton, "arrow-left");
     exitButton.addEventListener("click", () => {
         stateManager({ selectedMonth: null, selectedYear: null });
-        viewInstance?.onOpen();
+        FinancialAccountingView.instance?.onOpen();
     });
 
     const financeHeader = contentEl.createEl("div", {
@@ -396,7 +403,7 @@ export const showAnotherInitialView = async (): Promise<void> => {
 
     setIcon(balanceExpensesCheck, "upload");
     balanceExpensesCheck.createEl("p", {
-        text: String(SummarizingDataForTheDayExpense(expenditurePlanInfo)),
+        text: String(SummarizingDataForTheDayExpense(expensePlan.jsonData)),
     });
 
     const balanceIncome = balanceBody.createEl("div", {
@@ -413,14 +420,14 @@ export const showAnotherInitialView = async (): Promise<void> => {
 
     setIcon(balanceIncomeCheck, "download");
     balanceIncomeCheck.createEl("p", {
-        text: String(SummarizingDataForTheDayIncome(incomePlanInfo)),
+        text: String(SummarizingDataForTheDayIncome(expensePlan.jsonData)),
     });
 
     otherMonthHomeButtons();
 }
 
 const otherMonthHomeButtons = async () => {
-    const { contentEl } = viewInstance;
+    const { contentEl } = FinancialAccountingView.instance;
 
     const homeNav = contentEl.createEl("div", { cls: "main-nav" });
     const mainContent = contentEl.createEl("div", { cls: "main-content" });

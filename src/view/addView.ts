@@ -1,39 +1,65 @@
 import { Notice, setIcon } from "obsidian";
+import MainPlugin from "../../main";
+import { FinancialAccountingView } from "../../main";
 import { addJsonToHistory, addJsonToPlan, addJsonToBills } from "../controllers/addData";
 import { getDataArchiveFile, getDataFile, searchElementById } from "../controllers/searchData";
-import { pluginInstance, viewInstance, stateManager } from "../../main";
+import { stateManager } from "../../main";
 import { HistoryData, PlanData, BillData  } from "../../main";
 import { getCurrencySymbol, fillMonthDates, getLocalTimeISO, selectRelativeDate, getCurrencyGroups, generateUUID } from "../middleware/otherFunc";
 
 export const addHistory = async () => {
-    const { jsonData: resultBills, status: archiveStatus } = await getDataArchiveFile<BillData>('Archive bills')
-    if(!(archiveStatus === 'success')) {
-        return archiveStatus
+    const bills = await getDataArchiveFile<BillData>('Archive bills')
+    if (bills.status === 'error') {
+        new Notice(bills.error.message)
+        console.error(bills.error)
+        return
     }
-    if (resultBills === undefined) throw new Error('Bill is undefined');
-    if(resultBills === null) return new Notice('Add a bill')
+    if(bills.jsonData === undefined) {
+        new Notice('Bills is undefined')
+        console.error('Bills is null or undefined')
+        return
+    }
+    if(bills.jsonData === null) return new Notice('Add a bill')
 
-    const { jsonData: resultExpenditurePlan, status: statusExpenditurePlan } = await getDataFile<PlanData>('Expenditure plan')
-    if(!(statusExpenditurePlan === 'success')) {
-        return statusExpenditurePlan
+    const expensePlan = await getDataFile<PlanData>('Expenditure plan')
+    if (expensePlan.status === 'error') {
+        new Notice(expensePlan.error.message)
+        console.error(expensePlan.error)
+        return
     }
-    if (resultExpenditurePlan === undefined) throw new Error('Expediture Plan is undefined')
-    if(resultExpenditurePlan === null) return new Notice('Add a expenditure plan')
+    if(expensePlan.jsonData === undefined) {
+        new Notice('Expenditure plan is undefined')
+        console.error('Expenditure plan is undefined')
+        return
+    }
+    if(expensePlan.jsonData === null) return new Notice('Add a expenditure plan')
 
-    const { jsonData: resultIncomePlan, status: statusIncomePlan } = await getDataFile<PlanData>('Income plan')
-    if(!(statusIncomePlan === 'success')) {
-        return statusExpenditurePlan
+    const incomePlan = await getDataFile<PlanData>('Income plan')
+    if (incomePlan.status === 'error') {
+        new Notice(incomePlan.error.message)
+        console.error(incomePlan.error)
+        return
     }
-    if (resultIncomePlan === undefined) throw new Error('Income Plan is undefined')
-    if(resultIncomePlan === null) return new Notice('Add a income plan')
+    if(incomePlan.jsonData === undefined) {
+        new Notice('Income plan is undefined')
+        console.error('Income plan is undefined')
+        return
+    }
+    if(incomePlan.jsonData === null) return new Notice('Add a income plan')
     
-    const { jsonData: resultHistory, status: statusHistory } = await getDataFile<HistoryData>('History')
-    if(!(statusHistory === 'success')) {
-        return statusHistory
+    const history = await getDataFile<HistoryData>('History')
+    if (history.status === 'error') {
+        new Notice(history.error.message)
+        console.error(history.error)
+        return
     }
-    if(resultHistory === undefined) throw new Error('History is undefined')
+    if(history.jsonData === undefined) {
+        new Notice('History is undefined')
+        console.error('History is undefined')
+        return
+    }
 
-    const { contentEl } = viewInstance;
+    const { contentEl } = FinancialAccountingView.instance;
     const { selectedYear, selectedMonth } = stateManager();
     contentEl.empty()
 
@@ -52,7 +78,7 @@ export const addHistory = async () => {
     })
     setIcon(exitButton, 'arrow-left')
     exitButton.addEventListener('click', () => {
-        viewInstance.onOpen()
+        FinancialAccountingView.instance.onOpen()
     })
 
     const mainAddForm = contentEl.createEl('form', {
@@ -133,11 +159,11 @@ export const addHistory = async () => {
     })
 
     // --- Main ---
-    if(resultBills.some(i => i.generalBalance === true)) {
+    if(bills.jsonData.some(i => i.generalBalance === true)) {
         const mainGroup = document.createElement("optgroup");
         mainGroup.label = "Main";
         
-        (resultBills).forEach(bill => {
+        (bills.jsonData).forEach(bill => {
             if(bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
@@ -150,11 +176,11 @@ export const addHistory = async () => {
     }
 
     // --- Additional ---
-    if(resultBills.some(i => i.generalBalance === false)) {
+    if(bills.jsonData.some(i => i.generalBalance === false)) {
         const additionalGroup = document.createElement("optgroup");
         additionalGroup.label = "Additional";
         
-        (resultBills).forEach(bill => {
+        (bills.jsonData).forEach(bill => {
             if(!bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
@@ -166,13 +192,12 @@ export const addHistory = async () => {
         selectBills.appendChild(additionalGroup);
     }
 
-    if(resultHistory === null) {
-        resultBills.sort((a, b) => Number(b.balance) - Number(a.balance))
-        selectBills.value = resultBills[0].id;
+    if(history.jsonData === null) {
+        bills.jsonData.sort((a, b) => Number(b.balance) - Number(a.balance))
+        selectBills.value = bills.jsonData[0].id;
     } else {
-        // Sort by number of uses
-        let counts: any = {};
-        resultHistory.forEach(item => {
+        const counts: any = {};
+        history.jsonData.forEach(item => {
             const billId = item.bill.id;
             counts[billId] = (counts[billId] || 0) + 1;
         });
@@ -183,12 +208,12 @@ export const addHistory = async () => {
                 maxCount = counts[billId];
                 mostFrequentBillId = billId;
             } else if (counts[billId] === maxCount) {
-                resultBills.sort((a, b) => Number(b.balance) - Number(a.balance))
-                selectBills.value = resultBills[0].id;
+                bills.jsonData.sort((a, b) => Number(b.balance) - Number(a.balance))
+                selectBills.value = bills.jsonData[0].id;
             }
         }
 
-        const sorted = resultBills.sort((a, b) => {
+        const sorted = bills.jsonData.sort((a, b) => {
             if (a.id === mostFrequentBillId) return -1;
             if (b.id === mostFrequentBillId) return 1;
             return 0;
@@ -205,14 +230,25 @@ export const addHistory = async () => {
     })
     createOptionCategory()
 
-    async function createOptionCategory() {
+    function createOptionCategory() {
+        if (expensePlan.status === 'error') {
+            new Notice(expensePlan.error.message)
+            console.error(expensePlan.error)
+            return
+        }
+        if (incomePlan.status === 'error') {
+            new Notice(incomePlan.error.message)
+            console.error(incomePlan.error)
+            return
+        }
+
         if(resultRadio === 'expense'){
             selectCategory.empty()
-            if(resultExpenditurePlan) {
-                resultExpenditurePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
-                resultExpenditurePlan.forEach(plan => {
+            if(expensePlan.jsonData) {
+                expensePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
+                expensePlan.jsonData.forEach(plan => {
                     selectCategory.createEl('option', {
-                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
                         attr: { 
                             value: plan.id
                         }
@@ -221,11 +257,11 @@ export const addHistory = async () => {
             }
         } else {
             selectCategory.empty()
-            if(resultIncomePlan) {
-                resultIncomePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
-                resultIncomePlan.forEach(plan => {
+            if(incomePlan.jsonData) {
+                incomePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
+                incomePlan.jsonData.forEach(plan => {
                     selectCategory.createEl('option', {
-                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(pluginInstance.settings.baseCurrency)}`,
+                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
                         attr: { 
                             value: plan.id
                         }
@@ -310,8 +346,13 @@ export const addHistory = async () => {
             return new Notice('Enter the amount')
         }
 
-        const { item: billOption } = await searchElementById(selectBills.value, 'Archive bills')
-        if(billOption.currency !== pluginInstance.settings.baseCurrency) {
+        const billOption = await searchElementById<BillData>(selectBills.value, 'Archive bills')
+        if(billOption.status === 'error') {
+            new Notice(billOption.error.message)
+            console.error(billOption.error)
+            return
+        }
+        if(billOption.item.currency !== MainPlugin.instance.settings.baseCurrency) {
             return new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
         }
 
@@ -329,19 +370,20 @@ export const addHistory = async () => {
             type: resultRadio,
         }
         const resultOfadd = await addJsonToHistory(data)
-        if(resultOfadd === "success") {
+        if(resultOfadd.status === "success") {
             setTimeout(() => {
-                viewInstance.onOpen()
+                FinancialAccountingView.instance.onOpen()
                 new Notice('Operation added')
             }, 100)
         } else {
-            new Notice(resultOfadd)
+            new Notice(resultOfadd.error.message)
+            console.error(resultOfadd.error)
         }
     })
 }
 
 export const addPlan = () => {
-    const { contentEl } = viewInstance;
+    const { contentEl } = FinancialAccountingView.instance;
     contentEl.empty()
 
     const exitButton = contentEl.createEl('div', {
@@ -352,7 +394,7 @@ export const addPlan = () => {
     })
     setIcon(exitButton, 'arrow-left')
     exitButton.addEventListener('click', () => {
-        viewInstance.onOpen()
+        FinancialAccountingView.instance.onOpen()
     })
 
     const header = contentEl.createEl('div', {
@@ -480,19 +522,20 @@ export const addPlan = () => {
             type: resultRadio,
         }
         const resultOfadd = await addJsonToPlan(data)
-        if(resultOfadd === "success") {
+        if(resultOfadd.status === "success") {
             setTimeout(() => {
-                viewInstance.onOpen()
+                FinancialAccountingView.instance.onOpen()
                 new Notice('The plan has been added.')
             }, 100)
         } else {
-            new Notice(resultOfadd)
+            new Notice(resultOfadd.error.message)
+            console.error(resultOfadd.error)
         }
     })
 }
 
 export const addBills = () => {
-    const { contentEl } = viewInstance;
+    const { contentEl } = FinancialAccountingView.instance;
     contentEl.empty()
 
     const exitButton = contentEl.createEl('div', {
@@ -503,7 +546,7 @@ export const addBills = () => {
     })
     setIcon(exitButton, 'arrow-left')
     exitButton.addEventListener('click', () => {
-        viewInstance.onOpen()
+        FinancialAccountingView.instance.onOpen()
     })
 
     const header = contentEl.createEl('div', {
@@ -586,7 +629,7 @@ export const addBills = () => {
     currencySelect.appendChild(popularGroup);
     currencySelect.appendChild(otherGroup);
 
-    currencySelect.value = pluginInstance.settings.baseCurrency;
+    currencySelect.value = MainPlugin.instance.settings.baseCurrency;
 
     const currentBalance = mainFormInput.createEl('input', {
         cls: 'form-inputs',
@@ -626,7 +669,7 @@ export const addBills = () => {
     })
 
     currencySelect.addEventListener('change', () => {
-        if(currencySelect.value !== pluginInstance.settings.baseCurrency) {
+        if(currencySelect.value !== MainPlugin.instance.settings.baseCurrency) {
             checkboxInput.checked = false
             checboxDiv.style.display = 'none'
         } else {
@@ -661,13 +704,14 @@ export const addBills = () => {
             comment: commentInput.value.trim(),
         }
         const resultOfadd = await addJsonToBills(data)
-        if(resultOfadd === "success") {
+        if(resultOfadd.status === "success") {
             setTimeout(() => {
-                viewInstance.onOpen()
+                FinancialAccountingView.instance.onOpen()
                 new Notice('The bill has been added.')
             }, 100)
         } else {
-            new Notice(resultOfadd)
+            new Notice(resultOfadd.error.message)
+            console.error(resultOfadd.error)
         }
     })
 }

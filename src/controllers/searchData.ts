@@ -1,7 +1,8 @@
 import { App, TFile } from 'obsidian'
-import { pluginInstance, stateManager, DataFileResult, HistoryData, PlanData, BillData } from "../../main";
+import { stateManager, DataFileResult, HistoryData, PlanData, BillData, DataItemResult } from "../../main";
 import { getDate } from "../middleware/otherFunc";
 import { createDirectory } from "./createDirectory";
+import MainPlugin from "../../main";
 
 declare const app: App;
 
@@ -11,19 +12,19 @@ export const getDataFile = async <T>(fileName: 'History' | 'Expenditure plan' | 
     selectedYear && selectedMonth
         ? { year: selectedYear, month: selectedMonth }
         : getDate();
-    const filePath = `${pluginInstance.settings.targetFolder}/${year}/${month}/${fileName}.md`;
+    const filePath = `${MainPlugin.instance.settings.targetFolder}/${year}/${month}/${fileName}.md`;
     const file = app.vault.getAbstractFileByPath(filePath);
     if(!(file instanceof TFile)) {
         await createDirectory()
-        return { status: `File not found: ${filePath}. Please try again` }
+        return { status: 'error', error: new Error(`File not found: ${filePath}. Please try again`) }
     }
-    const content = await app.vault.read(file);
+    const content: string = await app.vault.read(file);
     if(!content) {
-        return { status: `File is empty: ${filePath}` }
+        return { status: 'error', error: new Error(`File is empty: ${filePath}`) }
     }
     const jsonMatch = content.match(/```json([\s\S]*?)```/);
     if(jsonMatch === null) throw new Error('jsonMatch file is null')
-    let jsonData;
+    let jsonData: T[] | null;
     if(jsonMatch[1].length > 3) {
         jsonData = JSON.parse(jsonMatch[1].trim());
     } else {
@@ -36,14 +37,14 @@ export const getDataFile = async <T>(fileName: 'History' | 'Expenditure plan' | 
 }
 
 export const getSpecificFile = async <T>(fileName: string, year: string, month: string): Promise<DataFileResult<T>> => {
-    const filePath = `${pluginInstance.settings.targetFolder}/${year}/${month}/${fileName}.md`
+    const filePath = `${MainPlugin.instance.settings.targetFolder}/${year}/${month}/${fileName}.md`
     const file = app.vault.getAbstractFileByPath(filePath);
     if(!(file instanceof TFile)) {
-        return { status: `File not found` }
+        return { status: 'error', error: new Error(`File not found: ${filePath}`) }
     }
     const content = await app.vault.read(file);
     if(!content) {
-        return { status: `File is empty` }
+        return { status: 'error', error: new Error(`File is empty: ${filePath}`) }
     }
     const jsonMatch = content.match(/```json([\s\S]*?)```/);
     if(jsonMatch === null) throw new Error('jsonMatch file is null')
@@ -60,15 +61,15 @@ export const getSpecificFile = async <T>(fileName: string, year: string, month: 
 }
 
 export const getDataArchiveFile = async <T>(fileName: 'Archive bills' | 'Archive expenditure plan' | 'Archive income plan'): Promise<DataFileResult<T>> => {
-    const filePath = `${pluginInstance.settings.targetFolder}/Archive/${fileName}.md`
+    const filePath = `${MainPlugin.instance.settings.targetFolder}/Archive/${fileName}.md`
     const file = app.vault.getAbstractFileByPath(filePath);
     if(!(file instanceof TFile)) {
         await createDirectory()
-        return { status: `File not found: ${filePath}. Please try again` }
+        return { status: 'error', error: new Error(`File not found: ${filePath}. Please try again`) }
     }
     const content = await app.vault.read(file);
     if(!content) {
-        return { status: `File is empty: ${filePath}` }
+        return { status: 'error', error: new Error(`File is empty: ${filePath}`) }
     }
     const jsonMatch = content.match(/```json([\s\S]*?)```/);
     if(jsonMatch === null) throw new Error('jsonMatch file is null')
@@ -84,33 +85,32 @@ export const getDataArchiveFile = async <T>(fileName: 'Archive bills' | 'Archive
     return dataFile
 }
 
-export const searchElementById = async (id: string, modifier: 'History' | 'expense' | 'income' | 'Archive bills') => {
+export const searchElementById = async <T extends HistoryData | PlanData | BillData>(id: string, modifier: 'History' | 'expense' | 'income' | 'Archive bills'): Promise<DataItemResult<T>> => {
     const sourceMap = {
-        History: () => getDataFile<HistoryData>('History'),
-        expense: () => getDataFile<PlanData>('Expenditure plan'),
-        income: () => getDataFile<PlanData>('Income plan'),
-        'Archive bills': () => getDataArchiveFile<BillData>('Archive bills')
+        History: () => getDataFile<T>('History'),
+        expense: () => getDataFile<T>('Expenditure plan'),
+        income: () => getDataFile<T>('Income plan'),
+        'Archive bills': () => getDataArchiveFile<T>('Archive bills')
     } as const;
 
     try {
         const loader = sourceMap[modifier];
-        if (!loader) return 'Element not found'
+        if (!loader) return { status: 'error', error: new Error('Element not found') };
 
-        const { jsonData, status } = await loader();
-        if (status !== 'success') return status;
+        const result = await loader();
+        if (result.status === 'error') return { status: 'error', error: result.error };
 
-        if (!jsonData) {
-            throw new Error('jsonData is null or undefined');
+        if (!result.jsonData) return { status: 'error', error: new Error('jsonData is null or undefined') };
+
+        const item = result.jsonData.find(item => item.id === id);
+        if(item === undefined) return { status: 'error', error: new Error('Item is undefined') };
+        const dataItem: DataItemResult<T> = {
+            item, status: 'success',
         }
-
-        const item = (jsonData as Array<{ id: string }>).find(item => item.id === id);
-
-        return item
-            ? { status: 'success', item }
-            : { status: 'Item not found' };
+        return dataItem;
 
     } catch (err) {
-        return { status: err };
+        return { status: 'error', error: err instanceof Error ? err : new Error(String(err))};
     }
 };
 
@@ -132,15 +132,19 @@ export const searchHistory = async (
             getDataArchiveFile<BillData>('Archive bills')
         ]);
 
-        if (history.status !== 'success') {
-            return { status: history.status };
+        if (history.status === 'error') {
+            return history
         }
 
         if (!history.jsonData) {
             throw new Error('History jsonData is null or undefined');
         }
 
-        if (!expenditure.jsonData || !income.jsonData || !bills.jsonData) {
+        if(expenditure.status === 'error' || income.status === 'error' || bills.status === 'error') {
+            throw new Error('One of the additional data files returned an error');
+        }
+
+        if (!expenditure.jsonData|| !income.jsonData || !bills.jsonData) {
             throw new Error('Additional data is null or undefined');
         }
 
@@ -177,6 +181,6 @@ export const searchHistory = async (
         };
 
     } catch (err) {
-        return { status: err };
+        return { status: 'error', error: err instanceof Error ? err : new Error(String(err))};
     }
 };

@@ -1,5 +1,6 @@
 import Big from 'big.js';
-import { pluginInstance, TransferData, BillData, PlanData, HistoryData } from "../../main";
+import MainPlugin from '../../main';
+import { TransferData, BillData, PlanData, HistoryData, ResultOfExecution } from "../../main";
 import { getDataArchiveFile, getDataFile } from "../controllers/searchData";
 import { updateFile } from "../controllers/editingData";
 
@@ -10,32 +11,36 @@ export const expenditureTransaction = async (
     data: HistoryData,
     modifier: 'add' | 'remove' | 'edit',
     oldData?: HistoryData
-) => {
+): Promise<ResultOfExecution> => {
     const amount = new Big(data.amount);
 
     const billsRes = await getDataArchiveFile<BillData>('Archive bills');
-    if (billsRes.status !== 'success') return billsRes.status;
-    if (!billsRes.jsonData || !billsRes.file || !billsRes.content) {
-        return 'Bills data error';
-    }
+    if (billsRes.status === 'error') return { status: 'error', error: billsRes.error };
+    if(billsRes.jsonData === undefined || billsRes.jsonData === null) return { status: 'error', error: new Error('Bill jsonData is undefined') }
+    
 
     const plansRes = await getDataFile<PlanData>('Expenditure plan');
-    if (plansRes.status !== 'success') return plansRes.status;
-    if (!plansRes.jsonData || !plansRes.file || !plansRes.content) {
-        return 'Plans data error';
-    }
+    if (plansRes.status === 'error') return { status: 'error', error: plansRes.error };
+    if(plansRes.jsonData === undefined || plansRes.jsonData === null) return { status: 'error', error: new Error('Plan jsonData is undefined') }
+    
 
     let bills = billsRes.jsonData;
     let plans = plansRes.jsonData;
 
-    const update = async () => {
+    const update = async (): Promise<ResultOfExecution> => {
+        if(billsRes.file === undefined) return { status: 'error', error: new Error('Bill file is undefined') }
+        if(billsRes.content === undefined) return { status: 'error', error: new Error('Bill content is undefined') }
+        if(plansRes.file === undefined) return { status: 'error', error: new Error('Plan file is undefined') }
+        if(plansRes.content === undefined) return { status: 'error', error: new Error('Plan content is undefined') }
+
+
         const billUpdate = await updateFile(bills, billsRes.file, billsRes.content);
-        if (billUpdate !== 'success') return billUpdate;
+        if (billUpdate.status === 'error') return { status: 'error', error: billUpdate.error };
 
         const planUpdate = await updateFile(plans, plansRes.file, plansRes.content);
-        if (planUpdate !== 'success') return planUpdate;
+        if (planUpdate.status === 'error') return { status: 'error', error: planUpdate.error };
 
-        return 'success';
+        return { status: 'success'};
     };
 
     const updateBill = (billId: string, delta: Big) => {
@@ -50,6 +55,31 @@ export const expenditureTransaction = async (
         );
     };
 
+    const caseEdit = async (): Promise<ResultOfExecution> => {
+        if (!oldData) return { status: 'error', error: new Error('Old data is required for edit') };
+            
+        const oldAmount = new Big(oldData.amount)
+
+        updateBill(oldData.bill.id, oldAmount);
+        updatePlan(oldData.category.id, oldAmount.times(-1));
+        await update();
+
+        const newBillsRes = await getDataArchiveFile<BillData>('Archive bills');
+        const newPlansRes = await getDataFile<PlanData>('Expenditure plan');
+        if(newBillsRes.status === 'error') return { status: 'error', error: newBillsRes.error };
+        if(newPlansRes.status === 'error') return { status: 'error', error: newPlansRes.error };
+        if (!newBillsRes.jsonData || !newPlansRes.jsonData) {
+            return { status: 'error', error: new Error('Reload data error') };
+        }
+
+        bills = newBillsRes.jsonData;
+        plans = newPlansRes.jsonData;
+
+        updateBill(data.bill.id, amount.times(-1));
+        updatePlan(data.category.id, amount);
+        return await update();
+    }
+
     switch (modifier) {
         case 'add':
             updateBill(data.bill.id, amount.times(-1));
@@ -62,30 +92,10 @@ export const expenditureTransaction = async (
             return await update();
 
         case 'edit':
-            if (!oldData) return 'Old data is required for edit';
-            
-            const oldAmount = new Big(oldData.amount)
-
-            updateBill(oldData.bill.id, oldAmount);
-            updatePlan(oldData.category.id, oldAmount.times(-1));
-            await update();
-
-            const newBillsRes = await getDataArchiveFile<BillData>('Archive bills');
-            const newPlansRes = await getDataFile<PlanData>('Expenditure plan');
-
-            if (!newBillsRes.jsonData || !newPlansRes.jsonData) {
-                return 'Reload data error';
-            }
-
-            bills = newBillsRes.jsonData;
-            plans = newPlansRes.jsonData;
-
-            updateBill(data.bill.id, amount.times(-1));
-            updatePlan(data.category.id, amount);
-            return await update();
+            return await caseEdit();
 
         default:
-            return 'Invalid modifier';
+            return { status: 'error', error: new Error('Invalid modifier') }
     }
 };
 
@@ -93,32 +103,33 @@ export const incomeTransaction = async (
     data: HistoryData,
     modifier: 'add' | 'remove' | 'edit',
     oldData?: HistoryData
-) => {
+): Promise<ResultOfExecution> => {
     const amount = new Big(data.amount);
 
     const billsRes = await getDataArchiveFile<BillData>('Archive bills');
-    if (billsRes.status !== 'success') return billsRes.status;
-    if (!billsRes.jsonData || !billsRes.file || !billsRes.content) {
-        return 'Bills data error';
-    }
+    if (billsRes.status === 'error') return { status: 'error', error: billsRes.error };
+    if(billsRes.jsonData === undefined || billsRes.jsonData === null) return { status: 'error', error: new Error('Bill jsonData is undefined') }
 
     const plansRes = await getDataFile<PlanData>('Income plan');
-    if (plansRes.status !== 'success') return plansRes.status;
-    if (!plansRes.jsonData || !plansRes.file || !plansRes.content) {
-        return 'Plans data error';
-    }
+    if (plansRes.status === 'error') return { status: 'error', error: plansRes.error };
+    if(plansRes.jsonData === undefined || plansRes.jsonData === null) return { status: 'error', error: new Error('Plan jsonData is undefined') }
 
     let bills = billsRes.jsonData;
     let plans = plansRes.jsonData;
 
-    const update = async () => {
+    const update = async (): Promise<ResultOfExecution> => {
+        if(billsRes.file === undefined) return { status: 'error', error: new Error('Bill file is undefined') }
+        if(billsRes.content === undefined) return { status: 'error', error: new Error('Bill content is undefined') }
+        if(plansRes.file === undefined) return { status: 'error', error: new Error('Plan file is undefined') }
+        if(plansRes.content === undefined) return { status: 'error', error: new Error('Plan content is undefined') }
+
         const billRes = await updateFile(bills, billsRes.file, billsRes.content);
-        if (billRes !== 'success') return billRes;
+        if (billRes.status === 'error') return { status: 'error', error: billRes.error };
 
         const planRes = await updateFile(plans, plansRes.file, plansRes.content);
-        if (planRes !== 'success') return planRes;
+        if (planRes.status === 'error') return { status: 'error', error: planRes.error };
 
-        return 'success';
+        return { status: 'success' };
     };
 
     const updateBill = (billId: string, delta: Big) => {
@@ -137,6 +148,31 @@ export const incomeTransaction = async (
         );
     };
 
+    const caseEdit = async (): Promise<ResultOfExecution> => {
+        if (!oldData) return { status: 'error', error: new Error('Old data is required for edit') };
+
+        const oldAmount = new Big(oldData.amount)
+
+        updateBill(oldData.bill.id, oldAmount.times(-1));
+        updatePlan(oldData.category.id, oldAmount.times(-1));
+        await update();
+
+        const newBillsRes = await getDataArchiveFile<BillData>('Archive bills');
+        const newPlansRes = await getDataFile<PlanData>('Income plan');
+        if(newBillsRes.status === 'error') return { status: 'error', error: newBillsRes.error };
+        if(newPlansRes.status === 'error') return { status: 'error', error: newPlansRes.error };
+        if (!newBillsRes.jsonData || !newPlansRes.jsonData) {
+            return { status: 'error', error: new Error('Reload data error') };
+        }
+
+        bills = newBillsRes.jsonData;
+        plans = newPlansRes.jsonData;
+
+        updateBill(data.bill.id, amount);
+        updatePlan(data.category.id, amount);
+        return await update();
+    }
+
     switch (modifier) {
         case 'add':
             updateBill(data.bill.id, amount);
@@ -149,51 +185,30 @@ export const incomeTransaction = async (
             return await update();
 
         case 'edit':
-            if (!oldData) return 'Old data is required for edit';
-
-            const oldAmount = new Big(oldData.amount)
-
-            updateBill(oldData.bill.id, oldAmount.times(-1));
-            updatePlan(oldData.category.id, oldAmount.times(-1));
-            await update();
-
-            const newBillsRes = await getDataArchiveFile<BillData>('Archive bills');
-            const newPlansRes = await getDataFile<PlanData>('Income plan');
-
-            if (!newBillsRes.jsonData || !newPlansRes.jsonData) {
-                return 'Reload data error';
-            }
-
-            bills = newBillsRes.jsonData;
-            plans = newPlansRes.jsonData;
-
-            updateBill(data.bill.id, amount);
-            updatePlan(data.category.id, amount);
-            return await update();
+            return await caseEdit();
 
         default:
-            return 'Invalid modifier';
+            return { status: 'error', error: new Error('Invalid modifier') };
     }
 };
 
-export const transferBetweenBills = async (data: TransferData) => {
+export const transferBetweenBills = async (data: TransferData): Promise<ResultOfExecution> => {
     if (data.fromBillId === data.toBillId) {
-        return 'Cannot transfer to the same bill';
+        return { status: 'error', error: new Error('Cannot transfer to the same bill') };
     }
 
-    const { jsonData: bills, file, content, status } =
-        await getDataArchiveFile<BillData>('Archive bills');
+    const archiveBills = await getDataArchiveFile<BillData>('Archive bills');
 
-    if (status !== 'success') return status;
-    if (!bills || !file || !content) {
-        return 'Bills data is corrupted or missing';
+    if (archiveBills.status === 'error') return { status: 'error', error: archiveBills.error };
+    if (!archiveBills.jsonData || !archiveBills.file || !archiveBills.content) {
+        return { status: 'error', error: new Error('Archive bills data is incomplete') };
     }
 
-    const fromBill = bills.find(b => b.id === data.fromBillId);
-    const toBill = bills.find(b => b.id === data.toBillId);
+    const fromBill = archiveBills.jsonData.find(b => b.id === data.fromBillId);
+    const toBill = archiveBills.jsonData.find(b => b.id === data.toBillId);
 
     if (!fromBill || !toBill) {
-        return 'One of the bills was not found';
+        return { status: 'error', error: new Error('One or both bills not found') };
     }
 
     const fromBalance = new Big(fromBill.balance);
@@ -211,13 +226,13 @@ export const transferBetweenBills = async (data: TransferData) => {
     }
 
     if (debit.gt(fromBalance)) {
-        return `Insufficient funds in the ${fromBill.name}`;
+        return { status: 'error', error: new Error(`Insufficient funds in bill ${fromBill.name}`) };
     }
 
     const newFromBalance = fromBalance.minus(debit);
     const newToBalance = toBalance.plus(credit);
 
-    const newBills = bills.map(bill => {
+    const newBills = archiveBills.jsonData.map(bill => {
         if (bill.id === fromBill.id) {
             return { ...bill, balance: newFromBalance.toFixed(2) };
         }
@@ -227,15 +242,15 @@ export const transferBetweenBills = async (data: TransferData) => {
         return bill;
     });
 
-    const newContent = content.replace(
+    const newContent = archiveBills.content.replace(
         /```json[\s\S]*?```/,
         `\`\`\`json\n${JSON.stringify(newBills, null, 4)}\n\`\`\``
     );
 
     try {
-        await pluginInstance.app.vault.modify(file, newContent);
-        return 'success';
-    } catch (e) {
-        return String(e);
+        await MainPlugin.instance.app.vault.modify(archiveBills.file, newContent);
+        return { status: 'success' };
+    } catch (error) {
+        return { status: 'error', error: new Error(`Error tranfer berween bills: ${error}`)}
     }
 };

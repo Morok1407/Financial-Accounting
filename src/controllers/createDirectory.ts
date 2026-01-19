@@ -1,6 +1,6 @@
-import { pluginInstance } from "../../main";
+import MainPlugin from "../../main";
 import { getDate } from "../middleware/otherFunc";
-import { newMonthExpenditurePlan, checkingExpensePlanForCompliance, newMonthIncomePlan, checkingIncomePlanForCompliance, archiveExpenditurePlan, archiveIncomePlan } from "../middleware/duplicating";
+import { newMonthExpenditurePlan, checkingExpensePlanForCompliance, newMonthIncomePlan, checkingIncomePlanForCompliance } from "../middleware/duplicating";
 
 export const months: string[] = [
     "January",
@@ -22,64 +22,64 @@ export const createDirectory = async () => {
 
     let result = false
 
-    const fileContent = `---\ntags:\n  - ${pluginInstance.settings.defaultTag}\n---\n\`\`\`json\n\`\`\``;
-    const archiveFolder = `${pluginInstance.settings.targetFolder}/Archive`;
+    const fileContent = `---\ntags:\n  - ${MainPlugin.instance.settings.defaultTag}\n---\n\`\`\`json\n\`\`\``;
+    const archiveFolder = `${MainPlugin.instance.settings.targetFolder}/Archive`;
     const archiveExpenditurePlan = `${archiveFolder}/Archive expenditure plan.md`;
     const archiveIncomePlan = `${archiveFolder}/Archive income plan.md`;
     const archiveBills = `${archiveFolder}/Archive bills.md`;
-    const yearFolder = `${pluginInstance.settings.targetFolder}/${year}`;
+    const yearFolder = `${MainPlugin.instance.settings.targetFolder}/${year}`;
     const monthFolder = `${yearFolder}/${month}`;
     const historyPath = `${monthFolder}/History.md`;
     const expenditurePlanPath = `${monthFolder}/Expenditure plan.md`;
     const incomePlanPath = `${monthFolder}/Income plan.md`;
 
     try {
-        if (!(await pluginInstance.app.vault.adapter.exists(pluginInstance.settings.targetFolder))) {
-            await pluginInstance.app.vault.createFolder(pluginInstance.settings.targetFolder);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(MainPlugin.instance.settings.targetFolder))) {
+            await MainPlugin.instance.app.vault.createFolder(MainPlugin.instance.settings.targetFolder);
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(yearFolder))) {
-            await pluginInstance.app.vault.createFolder(yearFolder);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(yearFolder))) {
+            await MainPlugin.instance.app.vault.createFolder(yearFolder);
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(monthFolder))) {
-            await pluginInstance.app.vault.createFolder(monthFolder);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(monthFolder))) {
+            await MainPlugin.instance.app.vault.createFolder(monthFolder);
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(historyPath))) {
-            await pluginInstance.app.vault.create(historyPath, fileContent);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(historyPath))) {
+            await MainPlugin.instance.app.vault.create(historyPath, fileContent);
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(expenditurePlanPath))) {
-            await pluginInstance.app.vault.create(expenditurePlanPath, fileContent);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(expenditurePlanPath))) {
+            await MainPlugin.instance.app.vault.create(expenditurePlanPath, fileContent);
             await newMonthExpenditurePlan();
         } else {
             await checkingExpensePlanForCompliance();
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(incomePlanPath))) {
-            await pluginInstance.app.vault.create(incomePlanPath, fileContent);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(incomePlanPath))) {
+            await MainPlugin.instance.app.vault.create(incomePlanPath, fileContent);
             await newMonthIncomePlan();
         } else {
             await checkingIncomePlanForCompliance();
         }
         
-        if (!(await pluginInstance.app.vault.adapter.exists(archiveFolder))) {
-            await pluginInstance.app.vault.createFolder(archiveFolder);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(archiveFolder))) {
+            await MainPlugin.instance.app.vault.createFolder(archiveFolder);
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(archiveExpenditurePlan))) {
-            await pluginInstance.app.vault.create(archiveExpenditurePlan, fileContent);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(archiveExpenditurePlan))) {
+            await MainPlugin.instance.app.vault.create(archiveExpenditurePlan, fileContent);
             // await archiveExpenditurePlan();
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(archiveIncomePlan))) {
-            await pluginInstance.app.vault.create(archiveIncomePlan, fileContent);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(archiveIncomePlan))) {
+            await MainPlugin.instance.app.vault.create(archiveIncomePlan, fileContent);
             // await archiveIncomePlan();
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(archiveBills))) {
-            await pluginInstance.app.vault.create(archiveBills, fileContent);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(archiveBills))) {
+            await MainPlugin.instance.app.vault.create(archiveBills, fileContent);
         }
 
         result = true;
@@ -91,39 +91,39 @@ export const createDirectory = async () => {
 }
 
 export const createOtherMonthDirectory = async (numMonth: number, year: string) => {
-    const fileContent = `---\ntags:\n  - ${pluginInstance.settings.defaultTag}\n---\n\`\`\`json\n\`\`\``;
-    const yearFolder = `${pluginInstance.settings.targetFolder}/${year}`;
+    const fileContent = `---\ntags:\n  - ${MainPlugin.instance.settings.defaultTag}\n---\n\`\`\`json\n\`\`\``;
+    const yearFolder = `${MainPlugin.instance.settings.targetFolder}/${year}`;
     const monthFolder = `${yearFolder}/${months[numMonth]}`;
     const historyPath = `${monthFolder}/History.md`;
     const expenditurePlanPath = `${monthFolder}/Expenditure plan.md`;
     const incomePlanPath = `${monthFolder}/Income plan.md`;
 
     try {
-        if (!(await pluginInstance.app.vault.adapter.exists(pluginInstance.settings.targetFolder))) {
-            await pluginInstance.app.vault.createFolder(pluginInstance.settings.targetFolder);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(MainPlugin.instance.settings.targetFolder))) {
+            await MainPlugin.instance.app.vault.createFolder(MainPlugin.instance.settings.targetFolder);
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(yearFolder))) {
-            await pluginInstance.app.vault.createFolder(yearFolder);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(yearFolder))) {
+            await MainPlugin.instance.app.vault.createFolder(yearFolder);
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(monthFolder))) {
-            await pluginInstance.app.vault.createFolder(monthFolder);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(monthFolder))) {
+            await MainPlugin.instance.app.vault.createFolder(monthFolder);
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(historyPath))) {
-            await pluginInstance.app.vault.create(historyPath, fileContent);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(historyPath))) {
+            await MainPlugin.instance.app.vault.create(historyPath, fileContent);
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(expenditurePlanPath))) {
-            await pluginInstance.app.vault.create(expenditurePlanPath, fileContent);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(expenditurePlanPath))) {
+            await MainPlugin.instance.app.vault.create(expenditurePlanPath, fileContent);
             await newMonthExpenditurePlan();
         } else {
             await checkingExpensePlanForCompliance();
         }
 
-        if (!(await pluginInstance.app.vault.adapter.exists(incomePlanPath))) {
-            await pluginInstance.app.vault.create(incomePlanPath, fileContent);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(incomePlanPath))) {
+            await MainPlugin.instance.app.vault.create(incomePlanPath, fileContent);
             await newMonthIncomePlan();
         } else {
             await checkingIncomePlanForCompliance();

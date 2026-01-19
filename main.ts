@@ -4,8 +4,6 @@ import { getCurrencyGroups } from './src/middleware/otherFunc';
 import { getDataArchiveFile } from './src/controllers/searchData';
 
 const FINANCIAL_ACCOUNTING_VIEW = "financial-accounting-view";
-export let pluginInstance: MainPlugin;
-export let viewInstance: FinancialAccountingView;
 
 export interface BillData {
     id: string;
@@ -36,6 +34,16 @@ export interface HistoryData {
     type: 'expense' | 'income';
 }
 
+export type ResultOfExecution = 
+    | {
+        status: 'success';
+    }
+    | {
+        status: 'error';
+        error: Error;
+    };
+
+
 export type TransferData =
     | {
         type: 'same-currency';
@@ -52,17 +60,36 @@ export type TransferData =
     };
 
 
-export interface DataFileResult<T> {
-    jsonData?: T[] | null;
-    content?: string;
-    file?: TFile;
-    status: 'success' | 'error' | string | any;
-}
+export type DataFileResult<T> =
+    | {
+        status: 'success';
+        jsonData: T[] | null;
+        file?: TFile;
+        content?: string;
+    }
+    | {
+        status: 'error';
+        error: Error;
+    };
+
+export type DataItemResult<T> =
+    | {
+        status: 'success';
+        item: T;
+    }
+    | {
+        status: 'error';
+        error: Error;
+    };
 
 export default class MainPlugin extends Plugin {
-    settings: any;
+    static instance: MainPlugin;
+    settings: DefaultSettings = new DefaultSettings();
     private unregisterTracking?: () => void;
+
     async onload(): Promise<void> {
+        MainPlugin.instance = this;
+
         await this.loadSettings();
 
         this.registerView(
@@ -70,7 +97,7 @@ export default class MainPlugin extends Plugin {
             (leaf: WorkspaceLeaf) => new FinancialAccountingView(leaf)
         );
 
-        this.app.workspace.onLayoutReady(async () => {
+        this.app.workspace.onLayoutReady(() => {
             this.addSettingTab(new SettingsTab(this.app, this));
 
             const ribbonIcon = this.addRibbonIcon("badge-dollar-sign", "Add operation", async () => {
@@ -102,15 +129,11 @@ export default class MainPlugin extends Plugin {
             );
 
             this.addCommand({
-                id: "financial-accounting-view",
+                id: "view-finance",
                 name: "Open the finance panel",
                 callback: () => this.activateView(),
             });
         });
-
-        pluginInstance = this;
-        
-        console.log('Financial accounting plugin loaded');
     }
 
     async activateView(): Promise<void> {
@@ -148,12 +171,13 @@ export default class MainPlugin extends Plugin {
     }
 
     onunload(): void {
-        this.app.workspace.detachLeavesOfType(FINANCIAL_ACCOUNTING_VIEW);
         this.unregisterTracking?.();
     }
 }
 
-class FinancialAccountingView extends ItemView {
+export class FinancialAccountingView extends ItemView {
+    static instance: FinancialAccountingView;
+
     constructor(leaf: WorkspaceLeaf) {
         super(leaf);
     }
@@ -170,8 +194,8 @@ class FinancialAccountingView extends ItemView {
         return "chart-pie";
     }
 
-    async onOpen(): Promise<void> {
-        viewInstance = this
+    async onOpen(): Promise<void> {  
+        FinancialAccountingView.instance = this;
         
         const { selectedYear, selectedMonth } = stateManager();
         if (selectedMonth === null && selectedYear === null) {
@@ -209,7 +233,9 @@ class SettingsTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        containerEl.createEl("h1", { text: "Plugin settings" });
+        new Setting(containerEl)
+            .setName("Financial Accounting Plugin Settings")
+            .setHeading();
 
         const folders = this.app.vault.getAllLoadedFiles().filter((f: any) => f instanceof TFolder).map((f: any) => f.path);
 
@@ -295,14 +321,30 @@ class SettingsTab extends PluginSettingTab {
 
         selectEl.addEventListener("change", async (event: any) => {
             const bills = await getDataArchiveFile<BillData>('Archive bills');
-            if(bills.jsonData === null || bills.jsonData === undefined || bills.jsonData.length === 0) {
-                this.plugin.settings.baseCurrency = event.target.value;
-                await this.plugin.saveSettings();
-                new Notice(`The main currency has been changed to ${event.target.value}`);
-            } else {
-                selectEl.value = this.plugin.settings.baseCurrency;
-                return new Notice('You can change the base currency only if there are no accounts created yet.');
+            if(bills.status === 'error') {
+                return new Notice(`Error fetching archive bills: ${bills.error.message}`);
             }
+
+            const newCurrency = event.target.value;
+            const generalBalanceBills = bills.jsonData?.filter(
+                bill => bill.generalBalance && bill.currency !== newCurrency
+            );
+
+            if (generalBalanceBills && generalBalanceBills.length > 0) {
+                const bill = generalBalanceBills[0];
+
+                selectEl.value = this.plugin.settings.baseCurrency;
+
+                new Notice(
+                    `Cannot change base currency. Bill "${bill.name}" is set to general balance with currency ${bill.currency}. Please change or disable general balance on this bill first.`
+                );
+
+                return;
+            }
+
+            this.plugin.settings.baseCurrency = newCurrency;
+            this.plugin.saveSettings();
+            new Notice(`Base currency changed to ${newCurrency}`);
         });
 
         new Setting(containerEl)
@@ -311,29 +353,29 @@ class SettingsTab extends PluginSettingTab {
         .addText((text) => {
             text.setPlaceholder("For example: Finances").setValue(this.plugin.settings.defaultTag || "");
 
-            text.inputEl.addEventListener("keydown", async (e: KeyboardEvent) => {
-            if ((e as any).key === "Enter") {
-                (e as any).preventDefault();
-                text.inputEl.blur();
-            }
+            text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
+                if ((e as any).key === "Enter") {
+                    (e as any).preventDefault();
+                    text.inputEl.blur();
+                }
             });
 
             text.inputEl.addEventListener("blur", async () => {
-            let value = text.getValue().trim();
+                const value = text.getValue().trim();
 
-            if (/\s/.test(value)) {
-                new Notice("Error: Tag must not contain spaces.");
-                return;
-            }
+                if (/\s/.test(value)) {
+                    new Notice("Error: Tag must not contain spaces.");
+                    return;
+                }
 
-            if (!/^[\w\-а-яА-ЯёЁ]+$/.test(value)) {
-                new Notice("The tag can only contain letters, numbers, underscores and hyphens.");
-                return;
-            }
+                if (!/^[\w\-а-яА-ЯёЁ]+$/.test(value)) {
+                    new Notice("The tag can only contain letters, numbers, underscores and hyphens.");
+                    return;
+                }
 
-            this.plugin.settings.defaultTag = value;
-            await this.plugin.saveSettings();
-            new Notice(`The tag "${value}" has been saved.`);
+                this.plugin.settings.defaultTag = value;
+                await this.plugin.saveSettings();
+                new Notice(`The tag "${value}" has been saved.`);
             });
         });
     }
@@ -363,18 +405,13 @@ const createStateManager = () => {
 export const stateManager = createStateManager();
 
 function trackActiveFinancialAccountingView(
-        app: App,
-        onActive: () => void,
-        onInactive: () => void
-    ) {
+    app: App,
+    onActive: () => void,
+    onInactive: () => void
+) {
     const check = () => {
-        const activeLeaf = app.workspace.activeLeaf;
-        if (!activeLeaf) {
-        onInactive();
-        return;
-        }
-
-        if (activeLeaf.view.getViewType() === FINANCIAL_ACCOUNTING_VIEW) {
+        const activeView = app.workspace.getActiveViewOfType(FinancialAccountingView);
+        if (activeView) {
             onActive();
         } else {
             onInactive();
@@ -382,7 +419,7 @@ function trackActiveFinancialAccountingView(
     };
 
     app.workspace.on('active-leaf-change', check);
-    app.workspace.on('layout-change', check); 
+    app.workspace.on('layout-change', check);
 
     check();
 
