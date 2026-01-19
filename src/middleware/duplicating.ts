@@ -22,7 +22,7 @@ export const newMonthExpenditurePlan = async (): Promise<ResultOfExecution> => {
 
             return { status: 'success' };
         } catch (error) {
-            return { status: 'error', error: new Error(`Failed to create new month expenditure plan: ${error}`) }
+            return { status: 'error', error: error instanceof Error ? error : new Error(`Failed to create new month expenditure plan: ${String(error)}`) }
         }
     } else {
         return { status: 'success' };
@@ -49,7 +49,7 @@ export const newMonthIncomePlan = async (): Promise<ResultOfExecution> => {
             
             return { status: 'success' };
         } catch (error) {
-            return { status: 'error', error: new Error(`Failed to create new month income plan: ${error}`) }
+            return { status: 'error', error: error instanceof Error ? error : new Error(`Failed to create new month income plan: ${String(error)}`) }
         }
     } else {
         return { status: 'success' };
@@ -81,7 +81,7 @@ export const checkingExpensePlanForCompliance = async (): Promise<ResultOfExecut
 
             return { status: 'success' };
         } catch (error) {
-            return { status: 'error', error: new Error(`Failed to check expense plan for compliance: ${error}`)}
+            return { status: 'error', error: error instanceof Error ? error : new Error(`Failed to check expense plan for compliance: ${String(error)}`)}
         }
     } else if (expensePlanJsonData.length > archivePlan.jsonData.length) {
         try {
@@ -94,7 +94,7 @@ export const checkingExpensePlanForCompliance = async (): Promise<ResultOfExecut
 
             return { status: 'success' };
         } catch (error) {
-            return { status: 'error', error: new Error(`Failed to check expense plan for compliance: ${error}`)}
+            return { status: 'error', error: error instanceof Error ? error : new Error(`Failed to check expense plan for compliance: ${String(error)}`)}
         }
     } else {
         return { status: 'success' };
@@ -128,7 +128,7 @@ export const checkingIncomePlanForCompliance = async(): Promise<ResultOfExecutio
 
             return { status: 'success' };
         } catch (error) {
-            return { status: 'error', error: new Error(`Failed to check income plan for compliance: ${error}`) }
+            return { status: 'error', error: error instanceof Error ? error : new Error(`Failed to check income plan for compliance: ${String(error)}`) }
         }
     } else if (incomePlanInfo.length > archivePlan.jsonData.length) {
         try {
@@ -141,7 +141,7 @@ export const checkingIncomePlanForCompliance = async(): Promise<ResultOfExecutio
 
             return { status: 'success' };
         } catch (error) {
-            return { status: 'error', error: new Error(`Failed to check income plan for compliance: ${error}`) }
+            return { status: 'error', error: error instanceof Error ? error : new Error(`Failed to check income plan for compliance: ${String(error)}`) }
         }
     } else {
         return { status: 'success' };
@@ -165,7 +165,7 @@ export const archiveExpenditurePlan = async (): Promise<ResultOfExecution> => {
 
             return { status: 'success' };
         } catch (error) {
-            return { status: 'error', error: new Error(`Failed to archive expenditure plan: ${error}`)}
+            return { status: 'error', error: error instanceof Error ? error : new Error(`Failed to archive expenditure plan: ${String(error)}`)}
         }
     } else {
         try {
@@ -176,7 +176,7 @@ export const archiveExpenditurePlan = async (): Promise<ResultOfExecution> => {
 
             return { status: 'success' };
         } catch (error) {
-            return { status: 'error', error: new Error(`Failed to archive expenditure plan: ${error}`)}
+            return { status: 'error', error: error instanceof Error ? error : new Error(`Failed to archive expenditure plan: ${String(error)}`)}
         }
     }
 }
@@ -198,7 +198,7 @@ export const archiveIncomePlan = async (): Promise<ResultOfExecution> => {
 
             return { status: 'success' };
         } catch (error) {
-            return { status: 'error', error: new Error(`Failed to archive income plan: ${error}`)}
+            return { status: 'error', error: error instanceof Error ? error : new Error(`Failed to archive income plan: ${String(error)}`)}
         }
     } else {
         try {
@@ -209,7 +209,7 @@ export const archiveIncomePlan = async (): Promise<ResultOfExecution> => {
 
             return { status: 'success' };
         } catch (error) {
-            return { status: 'error', error: new Error(`Failed to archive income plan: ${error}`)}
+            return { status: 'error', error: error instanceof Error ? error : new Error(`Failed to archive income plan: ${String(error)}`)}
         }
     }
 }

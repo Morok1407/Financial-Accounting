@@ -251,6 +251,6 @@ export const transferBetweenBills = async (data: TransferData): Promise<ResultOf
         await MainPlugin.instance.app.vault.modify(archiveBills.file, newContent);
         return { status: 'success' };
     } catch (error) {
-        return { status: 'error', error: new Error(`Error tranfer berween bills: ${error}`)}
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Error tranfer berween bills: ${String(error)}`)}
     }
 };

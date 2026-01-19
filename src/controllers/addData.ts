@@ -46,8 +46,8 @@ export const addJsonToHistory = async (data: HistoryData): Promise<ResultOfExecu
         } else {
             throw new Error('jsonData has an unexpected format');
         }
-    } catch (err) {
-        return { status: 'error', error: new Error(`Failed to add JSON to history: ${err}`) }
+    } catch (error) {
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Failed to add JSON to history: ${String(error)}`) }
     }
 }
 
@@ -94,8 +94,8 @@ async function addJsonToExpenditurePlan(data: PlanData): Promise<ResultOfExecuti
         } else {
             return { status: 'error', error: new Error('Error with jsonData expenditure plan') }
         }
-    } catch (err) {
-        return { status: 'error', error: new Error(`Error creating expediture plans: ${err}`)  }
+    } catch (error) {
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Error creating expediture plans: ${String(error)}`)  }
     }
 }
 
@@ -130,8 +130,8 @@ async function addJsonToIncomePlan(data: PlanData): Promise<ResultOfExecution> {
         } else {
             return { status: 'error', error: new Error('Error with jsonData income plan')}
         }
-    } catch (err) {
-        return { status: 'error', error: new Error(`Error creating income plans: ${err}`) }
+    } catch (error) {
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Error creating income plans: ${String(error)}`) }
     }
 }
 
@@ -163,7 +163,7 @@ export const addJsonToBills = async (data: BillData): Promise<ResultOfExecution>
         } else {
             return { status: 'error', error: new Error('Error with jsonData bills')}
         }
-    } catch (err) {
-        return { status: 'error', error: new Error(`Error creating bills: ${err}`) }
+    } catch (error) {
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Error creating bills: ${String(error)}`) }
     }
 }

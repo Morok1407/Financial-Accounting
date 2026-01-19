@@ -35,8 +35,8 @@ export const editingJsonToHistory = async (data: HistoryData, oldData: HistoryDa
         await MainPlugin.instance.app.vault.modify(history.file, newContent)
 
         return { status: "success"}
-    } catch (err) {
-        return {status: 'error', error: new Error(`Failed to editing JSON to history: ${err}`)}
+    } catch (error) {
+        return {status: 'error', error: error instanceof Error ? error : new Error(`Failed to editing JSON to history: ${String(error)}`)}
     }
 }
 
@@ -70,8 +70,8 @@ export const editingJsonToPlan = async (data: PlanData): Promise<ResultOfExecuti
         }
 
         return { status: "success" }
-    } catch (err) {
-        return { status: 'error', error: new Error(`Failed to editing JSON to plan: ${err}`) }
+    } catch (error) {
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Failed to editing JSON to plan: ${String(error)}`) }
     }
 }
 
@@ -93,8 +93,8 @@ export const editingJsonToBill = async (data: BillData): Promise<ResultOfExecuti
         await MainPlugin.instance.app.vault.modify(bills.file, newContent)
 
         return { status: "success" }
-    } catch (err) {
-        return { status: 'error', error: new Error(`Failed to editing JSON to bill: ${err}`) }
+    } catch (error) {
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Failed to editing JSON to bill: ${String(error)}`) }
     }
 }
 
@@ -106,6 +106,6 @@ export const updateFile = async (newData: BillData[] | HistoryData[] | PlanData[
 
         return { status: 'success' };
     } catch (error) {
-        return { status: 'error', error: new Error(`Error update ${file.name}: ${error}`) };
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Error update ${file.name}: ${String(error)}`) };
     }
 }

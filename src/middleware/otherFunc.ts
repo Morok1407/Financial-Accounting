@@ -261,24 +261,26 @@ export async function IncomeAndExpensesForTheMonth(month: string, year: string, 
     const totalExpense = SummarizingDataForTheDayExpense(expensePlan.jsonData)
     const totalIncome = SummarizingDataForTheDayIncome(incomePlan.jsonData)
 
-    if(totalIncome >= totalExpense) {
-            div.createEl('span', {
-                text: `-${totalExpense}`,
-                cls: 'expense-all-month-success'
-            }),
-            div.createEl('span', {
-                text: `+${totalIncome}`,
-                cls: 'income-all-month'
-            })
+    if (totalIncome >= totalExpense) {
+        div.createEl('span', {
+            text: `-${totalExpense}`,
+            cls: 'expense-all-month-success'
+        });
+
+        div.createEl('span', {
+            text: `+${totalIncome}`,
+            cls: 'income-all-month'
+        });
     } else {
-            div.createEl('span', {
-                text: `-${totalExpense}`,
-                cls: 'expense-all-month-failure'
-            }),
-            div.createEl('span', {
-                text: `+${totalIncome}`,
-                cls: 'income-all-month'
-            })
+        div.createEl('span', {
+            text: `-${totalExpense}`,
+            cls: 'expense-all-month-failure'
+        });
+
+        div.createEl('span', {
+            text: `+${totalIncome}`,
+            cls: 'income-all-month'
+        });
     }
 }
 export async function TheSumOfExpensesAndIncomeForTheYear(year: string) {

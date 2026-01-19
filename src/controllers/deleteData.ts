@@ -31,7 +31,7 @@ export const deleteHistory = async (element: HistoryData): Promise<ResultOfExecu
             
             return { status: 'success' }
         } catch (error) {
-            return { status: 'error', error: new Error(`Error deleting item: ${error}`)}
+            return { status: 'error', error: error instanceof Error ? error : new Error(`Error deleting item: ${String(error)}`)}
         }
     } else {
         try {
@@ -42,7 +42,7 @@ export const deleteHistory = async (element: HistoryData): Promise<ResultOfExecu
         
             return { status: 'success' }
         } catch (error) {
-            return { status: 'error', error: new Error(`Error deleting item: ${error}`)}
+            return { status: 'error', error: error instanceof Error ? error : new Error(`Error deleting item: ${String(error)}`)}
         }
     }
 }
@@ -68,7 +68,7 @@ export const deletePlan = async (item: PlanData): Promise<ResultOfExecution> => 
 
         if(await checkForDeletionData(id, 'plan')) return { status: 'error', error: new Error(`The category ${emoji} • ${name} cannot be deleted because it is used in history.`)};
         
-        let newContent: string | 'Error';
+        let newContent: string;
 
         if (data.jsonData.length <= 1) {
             newContent = data.content.replace(/```json[\s\S]*?```/, "```json\n```");
@@ -95,7 +95,7 @@ export const deletePlan = async (item: PlanData): Promise<ResultOfExecution> => 
 
         return { status: 'success'}
     } catch (error) {
-        return { status: 'error', error: new Error(`Error deleting item: ${error}`)}
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Error deleting item: ${String(error)}`)}
     }
 }
 
@@ -112,7 +112,7 @@ export const deleteBill = async (item: BillData): Promise<ResultOfExecution> => 
     try {
         if(await checkForDeletionData(id, 'bill')) return { status: 'error', error: new Error(`The bill ${emoji} • ${name} cannot be deleted because it is in use in history.`)}
 
-        let newContent: string | 'Error';
+        let newContent: string;
 
         if (billData.jsonData.length <= 1) {
             newContent = billData.content.replace(/```json[\s\S]*?```/, "```json\n```");
@@ -130,6 +130,6 @@ export const deleteBill = async (item: BillData): Promise<ResultOfExecution> => 
         return { status: 'success'}
 
     } catch (error) {
-        return { status: 'error', error: new Error(`Error deleting item: ${error}`)}
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Error deleting item: ${String(error)}`)}
     }
 }

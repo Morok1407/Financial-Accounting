@@ -62,7 +62,7 @@ export const showInitialView = async (): Promise<void> => {
         text: month,
     });
 
-    showAllMonthsButton.addEventListener("click", async () => {
+    showAllMonthsButton.addEventListener("click", async (): Promise<void> => {
         if (contentEl.dataset.page === "home") {
         contentEl.setAttribute("data-page", "months");
         await showAllMonths();
@@ -134,10 +134,10 @@ export const showInitialView = async (): Promise<void> => {
         text: String(SummarizingDataForTheDayIncome(incomePlan.jsonData)),
     });
 
-    homeButtons();
+    await homeButtons();
 }
 
-const homeButtons = async () => {
+const homeButtons = async (): Promise<void> => {
     const { contentEl } = FinancialAccountingView.instance;
     const { openPageNow } = stateManager()
 
@@ -162,7 +162,7 @@ const homeButtons = async () => {
         href: "#",
         },
     });
-    historyButton.addEventListener("click", async () => {
+    historyButton.addEventListener("click", async (): Promise<void> => {
         planButton.removeClass("home_button--active");
         billsButton.removeClass("home_button--active");
         historyButton.addClass("home_button--active");
@@ -178,7 +178,7 @@ const homeButtons = async () => {
         href: "#",
         },
     });
-    planButton.addEventListener("click", async () => {
+    planButton.addEventListener("click", async (): Promise<void> => {
         historyButton.removeClass("home_button--active");
         billsButton.removeClass("home_button--active");
         planButton.addClass("home_button--active");
@@ -194,7 +194,7 @@ const homeButtons = async () => {
         href: "#",
         },
     });
-    billsButton.addEventListener("click", async () => {
+    billsButton.addEventListener("click", async (): Promise<void> => {
         historyButton.removeClass("home_button--active");
         planButton.removeClass("home_button--active");
         billsButton.addClass("home_button--active");
@@ -226,7 +226,7 @@ const homeButtons = async () => {
     }
 }
 
-const showAllMonths = async () => {
+const showAllMonths = async (): Promise<void> => {
     const { contentEl } = FinancialAccountingView.instance;
     contentEl.empty();
 
@@ -240,7 +240,7 @@ const showAllMonths = async () => {
     });
     setIcon(exitButton, "arrow-left");
     exitButton.addEventListener("click", () => {
-        FinancialAccountingView.instance?.onOpen();
+        FinancialAccountingView.instance?.onOpen().catch(console.error);
     });
 
     const calendarHead = contentEl.createEl("div", {
@@ -299,7 +299,7 @@ const showAllMonths = async () => {
             const storyMonth = calendarItem.createEl("div", {
                 cls: "story-month",
             });
-            IncomeAndExpensesForTheMonth(months[k], String(i), storyMonth);
+            await IncomeAndExpensesForTheMonth(months[k], String(i), storyMonth);
         }
     }
 }
@@ -358,7 +358,7 @@ export const showAnotherInitialView = async (): Promise<void> => {
     setIcon(exitButton, "arrow-left");
     exitButton.addEventListener("click", () => {
         stateManager({ selectedMonth: null, selectedYear: null });
-        FinancialAccountingView.instance?.onOpen();
+        FinancialAccountingView.instance?.onOpen().catch(console.error);
     });
 
     const financeHeader = contentEl.createEl("div", {
@@ -372,7 +372,7 @@ export const showAnotherInitialView = async (): Promise<void> => {
         },
     });
 
-    showAllMonthsButton.addEventListener("click", async () => {
+    showAllMonthsButton.addEventListener("click", async (): Promise<void> => {
         if (contentEl.dataset.page === "home") {
         contentEl.setAttribute("data-page", "months");
         await showAllMonths();
@@ -423,10 +423,10 @@ export const showAnotherInitialView = async (): Promise<void> => {
         text: String(SummarizingDataForTheDayIncome(expensePlan.jsonData)),
     });
 
-    otherMonthHomeButtons();
+    await otherMonthHomeButtons();
 }
 
-const otherMonthHomeButtons = async () => {
+const otherMonthHomeButtons = async (): Promise<void> => {
     const { contentEl } = FinancialAccountingView.instance;
 
     const homeNav = contentEl.createEl("div", { cls: "main-nav" });
@@ -440,7 +440,7 @@ const otherMonthHomeButtons = async () => {
         attr: { id: "history-button", href: "#" },
     });
 
-    historyButton.addEventListener("click", async () => {
+    historyButton.addEventListener("click", async (): Promise<void> => {
         planButton.removeClass("home_button--active");
         historyButton.addClass("home_button--active");
         mainContentBody.empty();
@@ -452,7 +452,7 @@ const otherMonthHomeButtons = async () => {
         text: "Plan",
         attr: { id: "plan-button", href: "#" },
     });
-    planButton.addEventListener("click", async () => {
+    planButton.addEventListener("click", async (): Promise<void> => {
         historyButton.removeClass("home_button--active");
         planButton.addClass("home_button--active");
         mainContentBody.empty();

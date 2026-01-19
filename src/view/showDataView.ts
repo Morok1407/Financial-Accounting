@@ -35,10 +35,10 @@ export const showHistory = async (mainContentBody: HTMLDivElement, mainContentBu
             attr: {
                 id: 'input-search',
                 type: 'search',
-                placeholder: '🔎 Search by operations'
+                placeholder: "🔎 Search by operations"
             }
         })
-        searchInput.addEventListener('input', async (e: any) => {
+        searchInput.addEventListener('input', async (e: any): Promise<void> => {
             const searchValue = e.target.value;
             const result = await searchHistory(searchValue);
             if(result.status === 'error') {
@@ -182,8 +182,8 @@ function generationHistoryContent(historyContent: HTMLDivElement, mainContentBod
         text: 'Add an expense or income',
         cls: 'add-button'
     })
-    addHistoryButton?.addEventListener('click', () => {
-        addHistory();
+    addHistoryButton?.addEventListener('click', async (): Promise<void> => {
+        await addHistory();
     })
 }
 
@@ -330,7 +330,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
         text: 'Create a category',
         cls: 'add-button'
     })
-    addPlanButton.addEventListener('click', () => {
+    addPlanButton.addEventListener('click', (): void => {
         addPlan();
     })
 }
@@ -469,7 +469,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
         text: 'Add a bill',
         cls: 'add-button'
     })
-    addBillButton.addEventListener('click', () => {
+    addBillButton.addEventListener('click', (): void => {
         addBills();
     })
 }

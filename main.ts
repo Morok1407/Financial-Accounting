@@ -157,7 +157,7 @@ export default class MainPlugin extends Plugin {
         }
 
         if (leaf) {
-            workspace.revealLeaf(leaf);
+            await workspace.revealLeaf(leaf).catch(console.error);
         }
     }
 
@@ -234,7 +234,7 @@ class SettingsTab extends PluginSettingTab {
         containerEl.empty();
 
         new Setting(containerEl)
-            .setName("Financial Accounting Plugin Settings")
+            .setName("Preferences")
             .setHeading();
 
         const folders = this.app.vault.getAllLoadedFiles().filter((f: any) => f instanceof TFolder).map((f: any) => f.path);
@@ -319,10 +319,11 @@ class SettingsTab extends PluginSettingTab {
 
         selectEl.value = this.plugin.settings.baseCurrency;
 
-        selectEl.addEventListener("change", async (event: any) => {
+        selectEl.addEventListener("change", async (event: any): Promise<void> => {
             const bills = await getDataArchiveFile<BillData>('Archive bills');
             if(bills.status === 'error') {
-                return new Notice(`Error fetching archive bills: ${bills.error.message}`);
+                new Notice(`Error fetching archive bills: ${bills.error.message}`);
+                return
             }
 
             const newCurrency = event.target.value;
@@ -343,7 +344,7 @@ class SettingsTab extends PluginSettingTab {
             }
 
             this.plugin.settings.baseCurrency = newCurrency;
-            this.plugin.saveSettings();
+            await this.plugin.saveSettings().catch(console.error);
             new Notice(`Base currency changed to ${newCurrency}`);
         });
 
@@ -351,7 +352,10 @@ class SettingsTab extends PluginSettingTab {
         .setName("Default tag for Obsidian")
         .setDesc("Enter one word to use as a tag (no spaces).")
         .addText((text) => {
-            text.setPlaceholder("For example: Finances").setValue(this.plugin.settings.defaultTag || "");
+            text
+            .setPlaceholder("For example: finances")
+            .setValue(this.plugin.settings.defaultTag || "");
+
 
             text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
                 if ((e as any).key === "Enter") {
@@ -360,11 +364,11 @@ class SettingsTab extends PluginSettingTab {
                 }
             });
 
-            text.inputEl.addEventListener("blur", async () => {
+            text.inputEl.addEventListener("blur", async (): Promise<void> => {
                 const value = text.getValue().trim();
 
                 if (/\s/.test(value)) {
-                    new Notice("Error: Tag must not contain spaces.");
+                    new Notice("Tag must not contain spaces.");
                     return;
                 }
 

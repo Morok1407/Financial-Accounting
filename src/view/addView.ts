@@ -78,7 +78,7 @@ export const addHistory = async () => {
     })
     setIcon(exitButton, 'arrow-left')
     exitButton.addEventListener('click', () => {
-        FinancialAccountingView.instance.onOpen()
+        FinancialAccountingView.instance.onOpen().catch(console.error);
     })
 
     const mainAddForm = contentEl.createEl('form', {
@@ -338,12 +338,13 @@ export const addHistory = async () => {
         }
     })
 
-    addButton.addEventListener('click', async (e) => {
+    addButton.addEventListener('click', async (e): Promise<void> => {
         e.preventDefault();
         
         if(!(Number(inputSum.value) >= 1)) {
             inputSum.focus()
-            return new Notice('Enter the amount')
+            new Notice('Enter the amount')
+            return
         }
 
         const billOption = await searchElementById<BillData>(selectBills.value, 'Archive bills')
@@ -353,7 +354,8 @@ export const addHistory = async () => {
             return
         }
         if(billOption.item.currency !== MainPlugin.instance.settings.baseCurrency) {
-            return new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
+            new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
+            return
         }
 
         const data: HistoryData = {
@@ -372,7 +374,7 @@ export const addHistory = async () => {
         const resultOfadd = await addJsonToHistory(data)
         if(resultOfadd.status === "success") {
             setTimeout(() => {
-                FinancialAccountingView.instance.onOpen()
+                FinancialAccountingView.instance.onOpen().catch(console.error)
                 new Notice('Operation added')
             }, 100)
         } else {
@@ -394,7 +396,7 @@ export const addPlan = () => {
     })
     setIcon(exitButton, 'arrow-left')
     exitButton.addEventListener('click', () => {
-        FinancialAccountingView.instance.onOpen()
+        FinancialAccountingView.instance.onOpen().catch(console.error)
     })
 
     const header = contentEl.createEl('div', {
@@ -505,12 +507,13 @@ export const addPlan = () => {
         }
     })
 
-    addButton.addEventListener('click', async (e) => {
+    addButton.addEventListener('click', async (e): Promise<void> => {
         e.preventDefault();
 
         if(!inputName.value) {
             inputName.focus()
-            return new Notice('Enter the name')
+            new Notice('Enter the name')
+            return
         }
 
         const data: PlanData = {
@@ -524,7 +527,7 @@ export const addPlan = () => {
         const resultOfadd = await addJsonToPlan(data)
         if(resultOfadd.status === "success") {
             setTimeout(() => {
-                FinancialAccountingView.instance.onOpen()
+                FinancialAccountingView.instance.onOpen().catch(console.error)
                 new Notice('The plan has been added.')
             }, 100)
         } else {
@@ -546,7 +549,7 @@ export const addBills = () => {
     })
     setIcon(exitButton, 'arrow-left')
     exitButton.addEventListener('click', () => {
-        FinancialAccountingView.instance.onOpen()
+        FinancialAccountingView.instance.onOpen().catch(console.error)
     })
 
     const header = contentEl.createEl('div', {
@@ -671,9 +674,9 @@ export const addBills = () => {
     currencySelect.addEventListener('change', () => {
         if(currencySelect.value !== MainPlugin.instance.settings.baseCurrency) {
             checkboxInput.checked = false
-            checboxDiv.style.display = 'none'
+            checboxDiv.classList.add('disable-element')
         } else {
-            checboxDiv.style.display = 'flex'
+            checboxDiv.classList.remove('disable-element')
             checkboxInput.checked = true
         }
     })
@@ -686,12 +689,13 @@ export const addBills = () => {
         }
     })
 
-    addButton.addEventListener('click', async (e) => {
+    addButton.addEventListener('click', async (e): Promise<void> => {
         e.preventDefault();
 
         if(!inputName.value) {
             inputName.focus()
-            return new Notice('Enter the name')
+            new Notice('Enter the name')
+            return
         }
 
         const data: BillData = {
@@ -706,7 +710,7 @@ export const addBills = () => {
         const resultOfadd = await addJsonToBills(data)
         if(resultOfadd.status === "success") {
             setTimeout(() => {
-                FinancialAccountingView.instance.onOpen()
+                FinancialAccountingView.instance.onOpen().catch(console.error)
                 new Notice('The bill has been added.')
             }, 100)
         } else {
