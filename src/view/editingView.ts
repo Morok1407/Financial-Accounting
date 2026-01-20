@@ -8,8 +8,13 @@ import { fillMonthDates, humanizeDate, checkExpenceOrIncome, SummarizingDataForT
 import { editingJsonToHistory, editingJsonToPlan, editingJsonToBill } from '../controllers/editingData';
 import { transferBetweenBills } from '../middleware/transferring'
 
-export const editingHistory = async (e: any) => {
-    const { id } = e.target.closest('li').dataset;
+export const editingHistory = async (e: MouseEvent) => {
+    if (!(e.target instanceof HTMLElement)) return;
+
+    const li = e.target.closest('li');
+    if (!li) return;
+
+    const { id } = li.dataset;
     if(!id) {
         return 'Element not found'
     }
@@ -49,7 +54,7 @@ export const editingHistory = async (e: any) => {
         }
     })
     setIcon(deleteButton, 'trash-2')
-    deleteButton.addEventListener('click', async (): Promise<void> => {
+    deleteButton.addEventListener('click', async () => {
         const redultOfDelete = await deleteHistory(history.item);
         if(redultOfDelete.status === "success") {
             setTimeout(() => {
@@ -268,7 +273,7 @@ export const editingHistory = async (e: any) => {
         }
     })
 
-    addButton.addEventListener('click', async (e): Promise<void> => {
+    addButton.addEventListener('click', async (e) => {
         e.preventDefault();
 
         if(!(Number(inputSum.value) >= 1)) {
@@ -314,8 +319,19 @@ export const editingHistory = async (e: any) => {
     })
 }
 
-export const editingPlan = async (e: any) => {
-    const { id, type } = e.target.closest('li').dataset;
+export const editingPlan = async (e: MouseEvent) => {
+    if (!(e.target instanceof HTMLElement)) return;
+
+    const li = e.target.closest('li');
+    if (!li) return; 
+
+    if (!li.dataset.id || !li.dataset.type) {
+        throw new Error("Missing id or type in dataset");
+    }
+
+    const id = li.dataset.id;
+    const type = li.dataset.type as "expense" | "income";
+
     if(!id) {
         return 'Element not found'
     }
@@ -348,7 +364,7 @@ export const editingPlan = async (e: any) => {
         }
     })
     setIcon(deleteButton, 'trash-2')
-    deleteButton.addEventListener('click', async (): Promise<void> => {
+    deleteButton.addEventListener('click', async () => {
         const redultOfDelete = await deletePlan(plan.item);
         if(redultOfDelete.status === "success") {
             setTimeout(() => {
@@ -425,7 +441,7 @@ export const editingPlan = async (e: any) => {
         }
     })
 
-    addButton.addEventListener('click', async (e): Promise<void> => {
+    addButton.addEventListener('click', async (e) => {
         e.preventDefault();
 
         if(!inputName.value) {
@@ -462,21 +478,34 @@ export const editingPlan = async (e: any) => {
     }
     if(history.jsonData === undefined) throw new Error('History is undefined')
     if(history.jsonData !== null) {
-        const filterHistoryInfo = history.jsonData.filter(item => item.category.id === id)
-        if(filterHistoryInfo.length < 1) {
-            return
-        }
-        const now: any = new Date();
+        const now = new Date().getTime();
+
         const groupedByDay = Object.values(
-            filterHistoryInfo.reduce((acc: any, item: any) => {
-                const day = item.date.split('T')[0]; 
-                if (!acc[day]) acc[day] = [];
-                acc[day].push(item);
-                return acc;
-            }, {})
-        ).sort((a: any, b: any) => new Date(b[0].date).getTime() - new Date(a[0].date).getTime());
-        const result = groupedByDay.map((dayGroup: any) => 
-            dayGroup.sort((a: any, b: any) => Math.abs(new Date(a.date).getTime() - now) - Math.abs(new Date(b.date).getTime() - now))
+            history.jsonData.reduce<Record<string, HistoryData[]>>(
+                (acc, item) => {
+                    const day = item.date.split('T')[0];
+
+                    if (!acc[day]) {
+                        acc[day] = [];
+                    }
+
+                    acc[day].push(item);
+                    return acc;
+                },
+                {}
+            )
+        ).sort(
+            (a, b) =>
+                new Date(b[0].date).getTime() -
+                new Date(a[0].date).getTime()
+        );
+
+        const result = groupedByDay.map(dayGroup =>
+            dayGroup.sort(
+                (a, b) =>
+                    Math.abs(new Date(a.date).getTime() - now) -
+                    Math.abs(new Date(b.date).getTime() - now)
+            )
         );
 
         contentEl.createEl('h1', {
@@ -510,7 +539,7 @@ export const editingPlan = async (e: any) => {
             const dataList = historyBlock.createEl('ul', {
                 cls: 'data-list'
             })
-            e.forEach(async (e: any, i: any) => {
+            e.forEach(async (e: HistoryData) => {
                 const dataItem = dataList.createEl('li', {
                     cls: 'data-item',
                     attr: {
@@ -579,8 +608,14 @@ export const editingPlan = async (e: any) => {
     }
 }
 
-export const editingBill = async (e: any) => {
-    const { id } = e.target.closest('li').dataset;
+export const editingBill = async (e: MouseEvent) => {
+    if (!(e.target instanceof HTMLElement)) return;
+
+    const li = e.target.closest('li');
+    if (!li) return;
+
+    const { id } = li.dataset;
+    
     if(!id) {
         return 'Element not found'
     }
@@ -613,7 +648,7 @@ export const editingBill = async (e: any) => {
         }
     })
     setIcon(deleteButton, 'trash-2')
-    deleteButton.addEventListener('click', async (): Promise<void> => {
+    deleteButton.addEventListener('click', async () => {
         const redultOfDelete = await deleteBill(bill.item);
         if(redultOfDelete.status === "success") {
             setTimeout(() => {
@@ -709,8 +744,8 @@ export const editingBill = async (e: any) => {
             text: 'Transactions between bills',
             cls: 'form-text-transfer',
         })
-        transferUploadDiv.addEventListener('click', async (): Promise<void> => {
-            await transferBetweenBillsView(bill.item.id)
+        transferUploadDiv.addEventListener('click', async () => {
+            void transferBetweenBillsView(bill.item.id)
         })
     }
 
@@ -742,7 +777,7 @@ export const editingBill = async (e: any) => {
             type: 'submit'
         }
     })
-    addButton.addEventListener('click', async (): Promise<void> => {
+    addButton.addEventListener('click', async () => {
         e.preventDefault();
 
         if(!inputName.value) {
@@ -989,7 +1024,7 @@ export const transferBetweenBillsView = async (billId: string) => {
             type: 'submit'
         }
     })
-    addButton.addEventListener('click', async (e): Promise<void> => {
+    addButton.addEventListener('click', async (e) => {
         e.preventDefault();
 
         if (!selectToBill.value) {

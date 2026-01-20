@@ -15,7 +15,7 @@ export const newMonthExpenditurePlan = async (): Promise<ResultOfExecution> => {
     
     if (archivePlan.jsonData.length > 0) {
         try {
-            const data = archivePlan.jsonData.map((obj: any) => ({ ...obj, amount: 0 }));
+            const data = archivePlan.jsonData.map((obj: PlanData) => ({ ...obj, amount: 0 }));
             const dataStr = JSON.stringify(data, null, 4);
             const newContent = archivePlan.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await MainPlugin.instance.app.vault.modify(expensePlan.file, newContent);
@@ -42,7 +42,7 @@ export const newMonthIncomePlan = async (): Promise<ResultOfExecution> => {
 
     if (archivePlan.jsonData.length > 0) {
         try {
-            const data = archivePlan.jsonData.map((obj: any) => ({ ...obj, amount: 0 }));
+            const data = archivePlan.jsonData.map((obj: PlanData) => ({ ...obj, amount: 0 }));
             const dataStr = JSON.stringify(data, null, 4);
             const newContent = archivePlan.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await MainPlugin.instance.app.vault.modify(incomePlan.file, newContent);
@@ -73,7 +73,7 @@ export const checkingExpensePlanForCompliance = async (): Promise<ResultOfExecut
         return await newMonthExpenditurePlan();
     } else if (expensePlanJsonData.length < archivePlan.jsonData.length) {
         try {
-            const missingItems = archivePlan.jsonData.filter((archiveItem: any) => !expensePlanJsonData.some((currentItem: any) => currentItem.id === archiveItem.id)).map((obj: any) => ({ ...obj, amount: 0 }));
+            const missingItems = archivePlan.jsonData.filter((archiveItem: PlanData) => !expensePlanJsonData.some((currentItem: PlanData) => currentItem.id === archiveItem.id)).map((obj: PlanData) => ({ ...obj, amount: 0 }));
             const updatedData = [...expensePlanJsonData, ...missingItems];
             const dataStr = JSON.stringify(updatedData, null, 4);
             const newContent = expensePlan.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
@@ -86,8 +86,8 @@ export const checkingExpensePlanForCompliance = async (): Promise<ResultOfExecut
     } else if (expensePlanJsonData.length > archivePlan.jsonData.length) {
         try {
             const updatedArchiveData = archivePlan.jsonData
-                .filter((archiveItem: any) => expensePlanJsonData.some((currentItem: any) => currentItem.id === archiveItem.id))
-                .map((obj: any) => ({ ...obj, amount: 0 }));
+                .filter((archiveItem: PlanData) => expensePlanJsonData.some((currentItem: PlanData) => currentItem.id === archiveItem.id))
+                .map((obj: PlanData) => ({ ...obj, amount: 0 }));
             const dataStr = JSON.stringify(updatedArchiveData, null, 4);
             const newContent = expensePlan.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await MainPlugin.instance.app.vault.modify(expensePlan.file, newContent);
@@ -119,8 +119,8 @@ export const checkingIncomePlanForCompliance = async(): Promise<ResultOfExecutio
     } else if (incomePlanInfo.length < archivePlan.jsonData.length) {
         try {
             const missingItems = archivePlan.jsonData
-                .filter((archiveItem: any) => !incomePlanInfo.some((currentItem: any) => currentItem.id === archiveItem.id))
-                .map((obj: any) => ({ ...obj, amount: 0 }));
+                .filter((archiveItem: PlanData) => !incomePlanInfo.some((currentItem: PlanData) => currentItem.id === archiveItem.id))
+                .map((obj: PlanData) => ({ ...obj, amount: 0 }));
             const updatedData = [...incomePlanInfo, ...missingItems];
             const dataStr = JSON.stringify(updatedData, null, 4);
             const newContent = incomePlan.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
@@ -133,8 +133,8 @@ export const checkingIncomePlanForCompliance = async(): Promise<ResultOfExecutio
     } else if (incomePlanInfo.length > archivePlan.jsonData.length) {
         try {
             const updatedArchiveData = archivePlan.jsonData
-                .filter((archiveItem: any) => incomePlanInfo.some((currentItem: any) => currentItem.id === archiveItem.id))
-                .map((obj: any) => ({ ...obj, amount: 0 }));
+                .filter((archiveItem: PlanData) => incomePlanInfo.some((currentItem: PlanData) => currentItem.id === archiveItem.id))
+                .map((obj: PlanData) => ({ ...obj, amount: 0 }));
             const dataStr = JSON.stringify(updatedArchiveData, null, 4);
             const newContent = incomePlan.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
             await MainPlugin.instance.app.vault.modify(incomePlan.file, newContent);

@@ -62,10 +62,10 @@ export const showInitialView = async (): Promise<void> => {
         text: month,
     });
 
-    showAllMonthsButton.addEventListener("click", async (): Promise<void> => {
+    showAllMonthsButton.addEventListener("click", async () => {
         if (contentEl.dataset.page === "home") {
         contentEl.setAttribute("data-page", "months");
-        await showAllMonths();
+        void showAllMonths();
         }
     });
 
@@ -162,13 +162,13 @@ const homeButtons = async (): Promise<void> => {
         href: "#",
         },
     });
-    historyButton.addEventListener("click", async (): Promise<void> => {
+    historyButton.addEventListener("click", async () => {
         planButton.removeClass("home_button--active");
         billsButton.removeClass("home_button--active");
         historyButton.addClass("home_button--active");
         mainContentBody.empty();
         mainContentButton.empty();
-        await showHistory(mainContentBody, mainContentButton);
+        void showHistory(mainContentBody, mainContentButton);
     });
 
     const planButton = homeNav.createEl("a", {
@@ -178,13 +178,13 @@ const homeButtons = async (): Promise<void> => {
         href: "#",
         },
     });
-    planButton.addEventListener("click", async (): Promise<void> => {
+    planButton.addEventListener("click", async () => {
         historyButton.removeClass("home_button--active");
         billsButton.removeClass("home_button--active");
         planButton.addClass("home_button--active");
         mainContentBody.empty();
         mainContentButton.empty();
-        await showPlans(mainContentBody, mainContentButton);
+        void showPlans(mainContentBody, mainContentButton);
     });
 
     const billsButton = homeNav.createEl("a", {
@@ -194,13 +194,13 @@ const homeButtons = async (): Promise<void> => {
         href: "#",
         },
     });
-    billsButton.addEventListener("click", async (): Promise<void> => {
+    billsButton.addEventListener("click", async () => {
         historyButton.removeClass("home_button--active");
         planButton.removeClass("home_button--active");
         billsButton.addClass("home_button--active");
         mainContentBody.empty();
         mainContentButton.empty();
-        await showBills(mainContentBody, mainContentButton);
+        void showBills(mainContentBody, mainContentButton);
     });
 
     if (!openPageNow || openPageNow === "History" || openPageNow === null) {
@@ -290,7 +290,7 @@ const showAllMonths = async (): Promise<void> => {
                 "data-year": `${i}`,
                 },
             });
-            calendarItem.onclick = async (ev: object) => {
+            calendarItem.onclick = async (ev: MouseEvent) => {
                 await initOtherMonth(ev);
             };
             calendarItem.createEl("p", {
@@ -304,10 +304,10 @@ const showAllMonths = async (): Promise<void> => {
     }
 }
 
-export const initOtherMonth = async (e: any): Promise<void> => {
+export const initOtherMonth = async (e: MouseEvent): Promise<void> => {
     const { year, month } = getDate();
 
-    const target = e.target?.closest?.("[data-month]") || e.target;
+    const target = (e.target as HTMLElement)?.closest<HTMLElement>("[data-month]") ?? (e.target as HTMLElement);
     const dataMonth = Number(target?.dataset?.month);
     const dataYear = String(target?.dataset?.year);
 
@@ -372,10 +372,10 @@ export const showAnotherInitialView = async (): Promise<void> => {
         },
     });
 
-    showAllMonthsButton.addEventListener("click", async (): Promise<void> => {
+    showAllMonthsButton.addEventListener("click", async () => {
         if (contentEl.dataset.page === "home") {
         contentEl.setAttribute("data-page", "months");
-        await showAllMonths();
+        void showAllMonths();
         }
     });
     contentEl.setAttribute("data-page", "home");
@@ -440,24 +440,24 @@ const otherMonthHomeButtons = async (): Promise<void> => {
         attr: { id: "history-button", href: "#" },
     });
 
-    historyButton.addEventListener("click", async (): Promise<void> => {
+    historyButton.addEventListener("click", async () => {
         planButton.removeClass("home_button--active");
         historyButton.addClass("home_button--active");
         mainContentBody.empty();
         mainContentButton.empty();
-        await showHistory(mainContentBody, mainContentButton);
+        void showHistory(mainContentBody, mainContentButton);
     });
 
     const planButton = homeNav.createEl("a", {
         text: "Plan",
         attr: { id: "plan-button", href: "#" },
     });
-    planButton.addEventListener("click", async (): Promise<void> => {
+    planButton.addEventListener("click", async () => {
         historyButton.removeClass("home_button--active");
         planButton.addClass("home_button--active");
         mainContentBody.empty();
         mainContentButton.empty();
-        await showPlans(mainContentBody, mainContentButton);
+        void showPlans(mainContentBody, mainContentButton);
     });
 
     const { openPageNow } = stateManager()

@@ -82,6 +82,12 @@ export type DataItemResult<T> =
         error: Error;
     };
 
+export interface CurrencyType {
+    code: string;
+    name: string;
+    symbol: string;
+}
+
 export default class MainPlugin extends Plugin {
     static instance: MainPlugin;
     settings: DefaultSettings = new DefaultSettings();
@@ -224,7 +230,7 @@ class DefaultSettings {
 
 class SettingsTab extends PluginSettingTab {
     plugin: MainPlugin;
-    constructor(app: any, plugin: MainPlugin) {
+    constructor(app: App, plugin: MainPlugin) {
         super(app, plugin);
         this.plugin = plugin;
     }
@@ -237,7 +243,10 @@ class SettingsTab extends PluginSettingTab {
             .setName("Preferences")
             .setHeading();
 
-        const folders = this.app.vault.getAllLoadedFiles().filter((f: any) => f instanceof TFolder).map((f: any) => f.path);
+        const folders = this.app.vault
+            .getAllLoadedFiles()
+            .filter((f): f is TFolder => f instanceof TFolder)
+            .map(f => f.path);
 
         const defaultFolder = this.plugin.settings.targetFolder || "Finances/";
         const hasDefault = folders.includes(defaultFolder);
@@ -296,7 +305,7 @@ class SettingsTab extends PluginSettingTab {
         const popularGroup = document.createElement("optgroup");
         popularGroup.label = "Popular";
 
-        popularCurrencies.forEach((cur: any) => {
+        popularCurrencies.forEach((cur: CurrencyType) => {
             const option = document.createElement("option");
             option.value = cur.code;
             option.textContent = `${cur.code} • ${cur.name} • ${cur.symbol}`;
@@ -307,7 +316,7 @@ class SettingsTab extends PluginSettingTab {
         const otherGroup = document.createElement("optgroup");
         otherGroup.label = "All currencies";
 
-        otherCurrencies.forEach((cur: any) => {
+        otherCurrencies.forEach((cur: CurrencyType) => {
             const option = document.createElement("option");
             option.value = cur.code;
             option.textContent = `${cur.code} ${cur.name} • ${cur.symbol}`;
@@ -319,14 +328,16 @@ class SettingsTab extends PluginSettingTab {
 
         selectEl.value = this.plugin.settings.baseCurrency;
 
-        selectEl.addEventListener("change", async (event: any): Promise<void> => {
+        selectEl.addEventListener("change", async (event: Event) => {
+            const target = event.target as HTMLSelectElement;
+            const newCurrency = target.value;
+
             const bills = await getDataArchiveFile<BillData>('Archive bills');
-            if(bills.status === 'error') {
+            if (bills.status === 'error') {
                 new Notice(`Error fetching archive bills: ${bills.error.message}`);
-                return
+                return;
             }
 
-            const newCurrency = event.target.value;
             const generalBalanceBills = bills.jsonData?.filter(
                 bill => bill.generalBalance && bill.currency !== newCurrency
             );
@@ -339,12 +350,11 @@ class SettingsTab extends PluginSettingTab {
                 new Notice(
                     `Cannot change base currency. Bill "${bill.name}" is set to general balance with currency ${bill.currency}. Please change or disable general balance on this bill first.`
                 );
-
                 return;
             }
 
             this.plugin.settings.baseCurrency = newCurrency;
-            await this.plugin.saveSettings().catch(console.error);
+            void this.plugin.saveSettings().catch(console.error);
             new Notice(`Base currency changed to ${newCurrency}`);
         });
 
@@ -358,13 +368,13 @@ class SettingsTab extends PluginSettingTab {
 
 
             text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
-                if ((e as any).key === "Enter") {
-                    (e as any).preventDefault();
+                if (e.key === "Enter") {
+                    e.preventDefault();
                     text.inputEl.blur();
                 }
             });
 
-            text.inputEl.addEventListener("blur", async (): Promise<void> => {
+            text.inputEl.addEventListener("blur", async () => {
                 const value = text.getValue().trim();
 
                 if (/\s/.test(value)) {
@@ -378,7 +388,7 @@ class SettingsTab extends PluginSettingTab {
                 }
 
                 this.plugin.settings.defaultTag = value;
-                await this.plugin.saveSettings();
+                void this.plugin.saveSettings();
                 new Notice(`The tag "${value}" has been saved.`);
             });
         });

@@ -196,19 +196,22 @@ export const addHistory = async () => {
         bills.jsonData.sort((a, b) => Number(b.balance) - Number(a.balance))
         selectBills.value = bills.jsonData[0].id;
     } else {
-        const counts: any = {};
+        const counts: Record<string, number> = {};
+
         history.jsonData.forEach(item => {
             const billId = item.bill.id;
             counts[billId] = (counts[billId] || 0) + 1;
         });
+
         let maxCount = 0;
-        let mostFrequentBillId: any = null;
+        let mostFrequentBillId: string | null = null;
+
         for (const billId in counts) {
             if (counts[billId] > maxCount) {
                 maxCount = counts[billId];
                 mostFrequentBillId = billId;
             } else if (counts[billId] === maxCount) {
-                bills.jsonData.sort((a, b) => Number(b.balance) - Number(a.balance))
+                bills.jsonData.sort((a, b) => Number(b.balance) - Number(a.balance));
                 selectBills.value = bills.jsonData[0].id;
             }
         }
@@ -338,7 +341,7 @@ export const addHistory = async () => {
         }
     })
 
-    addButton.addEventListener('click', async (e): Promise<void> => {
+    addButton.addEventListener('click', async (e) => {
         e.preventDefault();
         
         if(!(Number(inputSum.value) >= 1)) {
@@ -507,7 +510,7 @@ export const addPlan = () => {
         }
     })
 
-    addButton.addEventListener('click', async (e): Promise<void> => {
+    addButton.addEventListener('click', async (e) => {
         e.preventDefault();
 
         if(!inputName.value) {
@@ -689,7 +692,7 @@ export const addBills = () => {
         }
     })
 
-    addButton.addEventListener('click', async (e): Promise<void> => {
+    addButton.addEventListener('click', async (e) => {
         e.preventDefault();
 
         if(!inputName.value) {

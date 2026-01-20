@@ -35,37 +35,39 @@ export const showHistory = async (mainContentBody: HTMLDivElement, mainContentBu
             attr: {
                 id: 'input-search',
                 type: 'search',
-                placeholder: "🔎 Search by operations"
+                placeholder: "Search by operations"
             }
         })
-        searchInput.addEventListener('input', async (e: any): Promise<void> => {
-            const searchValue = e.target.value;
+        searchInput.addEventListener('input', async (e: Event) => {
+            const target = e.target as HTMLInputElement;
+            const searchValue = target.value;
+
             const result = await searchHistory(searchValue);
-            if(result.status === 'error') {
-                new Notice(result.error.message)
-                console.error(result.error)
-                return
+
+            if (result.status === 'error') {
+                new Notice(result.error.message);
+                console.error(result.error);
+                return;
             }
+
             if (result.jsonData === undefined) throw new Error('jsonData is null or undefined');
-            historyContent.empty()
-            if(result.jsonData === null) {
+
+            historyContent.empty();
+
+            if (result.jsonData === null) {
                 const undefinedContent = historyContent.createEl('div', {
                     cls: 'undefined-content'
-                })
-                historyContent.addClass('main-content-body--undefined')
-                undefinedContent.createEl('span', {
-                    text: '🍕 🎮 👕'
-                })
+                });
+                historyContent.addClass('main-content-body--undefined');
 
-                undefinedContent.createEl('p', {
-                    text: 'No matching operations found.'
-                })
-            } else if(result.jsonData.length >= 1) {
-                historyContent.removeClass('main-content-body--undefined')
-                generationHistoryContent(historyContent, mainContentBody, result)
+                undefinedContent.createEl('span', { text: '🍕 🎮 👕' });
+                undefinedContent.createEl('p', { text: 'No matching operations found.' });
+            } else if (result.jsonData.length >= 1) {
+                historyContent.removeClass('main-content-body--undefined');
+                void generationHistoryContent(historyContent, mainContentBody, result);
             } else {
-                historyContent.removeClass('main-content-body--undefined')
-                generationHistoryContent(historyContent, mainContentBody,  result)
+                historyContent.removeClass('main-content-body--undefined');
+                void generationHistoryContent(historyContent, mainContentBody, result);
             }
         });
     }
@@ -79,22 +81,40 @@ export const showHistory = async (mainContentBody: HTMLDivElement, mainContentBu
 function generationHistoryContent(historyContent: HTMLDivElement, mainContentBody: HTMLDivElement, historyData: DataFileResult<HistoryData>, mainContentButton?: HTMLDivElement) {
     if(historyData.status === 'error') return historyData.error;
     if(historyData.jsonData !== null) {
-        const now: any = new Date();
-        const groupedByDay: any = Object.values(
-            historyData.jsonData.reduce((acc: any, item: HistoryData) => {
-                const day = item.date.split('T')[0]; 
-                if (!acc[day]) acc[day] = [];
-                acc[day].push(item);
-                return acc;
-            }, {})
-        ).sort((a: any, b: any) => new Date(b[0].date).getTime() - new Date(a[0].date).getTime());
-        const result = groupedByDay.map((dayGroup: any) => 
-            dayGroup.sort((a: any, b: any) => Math.abs(new Date(a.date).getTime() - now) - Math.abs(new Date(b.date).getTime() - now))
+        const now = new Date().getTime();
+
+        const groupedByDay = Object.values(
+            historyData.jsonData.reduce<Record<string, HistoryData[]>>(
+                (acc, item) => {
+                    const day = item.date.split('T')[0];
+
+                    if (!acc[day]) {
+                        acc[day] = [];
+                    }
+
+                    acc[day].push(item);
+                    return acc;
+                },
+                {}
+            )
+        ).sort(
+            (a, b) =>
+                new Date(b[0].date).getTime() -
+                new Date(a[0].date).getTime()
         );
+
+        const result = groupedByDay.map(dayGroup =>
+            dayGroup.sort(
+                (a, b) =>
+                    Math.abs(new Date(a.date).getTime() - now) -
+                    Math.abs(new Date(b.date).getTime() - now)
+            )
+        );
+
         if(historyData.jsonData.length >= 5) {
             mainContentBody.addClass('main-content-body--padding')
         }
-        result.forEach((e: any) => {
+        result.forEach((e: HistoryData[]) => {
             const historyBlock = historyContent.createEl('div', {
                 cls: 'history-block'
             })
@@ -117,15 +137,15 @@ function generationHistoryContent(historyContent: HTMLDivElement, mainContentBod
             const dataList = historyBlock.createEl('ul', {
                 cls: 'data-list'
             })
-            e.forEach(async (e: any, i: any) => {
+            e.forEach(async (e: HistoryData) => {
                 const dataItem = dataList.createEl('li', {
                     cls: 'data-item',
                     attr: {
                         'data-id': e.id
                     }
                 })
-                dataItem.onclick = async (e: any) => {
-                    await editingHistory(e);
+                dataItem.onclick = async (e: MouseEvent) => {
+                    void editingHistory(e);
                 };
 
                 const searchCategory = await searchElementById<PlanData>(e.category.id, e.type)
@@ -182,8 +202,8 @@ function generationHistoryContent(historyContent: HTMLDivElement, mainContentBod
         text: 'Add an expense or income',
         cls: 'add-button'
     })
-    addHistoryButton?.addEventListener('click', async (): Promise<void> => {
-        await addHistory();
+    addHistoryButton?.addEventListener('click', async () => {
+        void addHistory();
     })
 }
 
@@ -244,7 +264,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
             const expenseDataList = expensePlanBlock.createEl('ul', {
                 cls: 'data-list'
             })
-            resultExpense.forEach((e: any, i: any) => {
+            resultExpense.forEach((e: PlanData) => {
                 const dataItem = expenseDataList.createEl('li', {
                     cls: 'data-item',
                     attr: {
@@ -252,8 +272,8 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                             'data-type': e.type
                         }
                 })
-                dataItem.onclick = async (e: any) => {
-                    await editingPlan(e);
+                dataItem.onclick = async (e: MouseEvent) => {
+                    void editingPlan(e);
                 };
                 const dataText = dataItem.createEl('div', {
                     cls: 'data-link'
@@ -295,7 +315,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
             const incomeDataList = incomePlanBlock.createEl('ul', {
                 cls: 'data-list'
             })
-            resultIncome.forEach((e: any, i: any) => {
+            resultIncome.forEach((e: PlanData) => {
                 const dataItem = incomeDataList.createEl('li', {
                     cls: 'data-item',
                     attr: {
@@ -303,8 +323,8 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                             'data-type': e.type
                         }
                 })
-                dataItem.onclick = async (e: any) => {
-                    await editingPlan(e);
+                dataItem.onclick = async (e: MouseEvent) => {
+                    void editingPlan(e);
                 };
                 const dataText = dataItem.createEl('div', {
                     cls: 'data-link'
@@ -362,7 +382,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
         if(bills.jsonData.length > 5) {
             mainContentBody.addClass('main-content-body--padding')
         }
-        if(bills.jsonData.filter((e: any) => e.generalBalance).length >= 1) {
+        if(bills.jsonData.filter((e: BillData) => e.generalBalance).length >= 1) {
             mainContentBody.removeClass('main-content-body--undefined')
             const trueBillBlock = mainContentBody.createEl('div', {
                 cls: 'bill-block'
@@ -386,7 +406,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'data-list'
             })
 
-            bills.jsonData.forEach((e: any, i) => {
+            bills.jsonData.forEach((e: BillData) => {
                 if(e.generalBalance) {
                     const dataItem = trueDataList.createEl('li', {
                         cls: 'data-item',
@@ -394,7 +414,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                                 'data-id': e.id
                             }
                     })
-                    dataItem.onclick = async (e: any) => {
+                    dataItem.onclick = async (e: MouseEvent) => {
                         await editingBill(e);
                     }
                     const dataText = dataItem.createEl('div', {
@@ -413,7 +433,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
             })
         }
         
-        if(bills.jsonData.filter((e: any) => !e.generalBalance).length >= 1) {
+        if(bills.jsonData.filter((e: BillData) => !e.generalBalance).length >= 1) {
             mainContentBody.removeClass('main-content-body--undefined')
             const falseBillBlock = mainContentBody.createEl('div', {
                 cls: 'bill-block'
@@ -437,7 +457,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'data-list'
             })
             
-            bills.jsonData.forEach((e: any, i) => {
+            bills.jsonData.forEach((e: BillData) => {
                 if(!e.generalBalance) {
                     const dataItem = falseDataList.createEl('li', {
                         cls: 'data-item',
@@ -445,7 +465,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                                 'data-id': e.id
                             }
                     })
-                    dataItem.onclick = async (e: any) => {
+                    dataItem.onclick = async (e: MouseEvent) => {
                         await editingBill(e);
                     }
                     const dataText = dataItem.createEl('div', {

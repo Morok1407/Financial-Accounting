@@ -1,29 +1,30 @@
+import Big from 'big.js';
 import currencies from '../../currencies.json'
 import { getSpecificFile } from '../controllers/searchData';
 import { months } from '../controllers/createDirectory';
-import { stateManager, PlanData, BillData } from "../../main";
+import { stateManager, PlanData, BillData, HistoryData } from "../../main";
+import moment, { Moment } from "moment";
 
 export const popularCodes : string[] = ["USD", "EUR", "RUB", "KZT", "UZS"];
-
-declare const moment: any;
 
 export const generateUUID = (): string => {
     return crypto.randomUUID()
 }
-export const getDate = () => {
-    if (typeof moment !== "undefined") {
-        moment.locale("en");
-        const now = moment();
-        const year = now.format("YYYY");
-        const month = now.format("MMMM");
-        return { now, year, month };
-    } else {
-        const now = new Date();
-        const year = String(now.getFullYear());
-        const month = months[now.getMonth()];
-        return { now, year, month };
-    }
-}
+
+export const getDate = (): {
+    now: Moment;
+    year: string;
+    month: string;
+} => {
+    moment.locale("en");
+
+    const now = moment();
+    return {
+        now,
+        year: now.format("YYYY"),
+        month: now.format("MMMM"),
+    };
+};
 
 export const getCurrencyGroups = () => {
     const all = Object.entries(currencies).map(([code, info]) => ({
@@ -38,7 +39,7 @@ export const getCurrencyGroups = () => {
     return { popularCurrencies, otherCurrencies };
 }
 
-export function fillMonthDates(selectEl: any, oldDate?: string) {
+export function fillMonthDates(selectEl: HTMLSelectElement, oldDate?: string) {
     const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const monthNames = [
         "January", "February", "March", "April", "May", "June",
@@ -47,14 +48,14 @@ export function fillMonthDates(selectEl: any, oldDate?: string) {
     const { selectedYear, selectedMonth } = stateManager();
 
     if(selectedYear === null && selectedMonth === null) {
-        const today: any = new Date();
+        const today: Date = new Date();
         const year = today.getFullYear();
         const month = today.getMonth();
 
         const daysInMonth = new Date(year, month + 1, 0).getDate();
     
         for (let d = daysInMonth; d >= 1; d--) {
-            const date: any = new Date(year, month, d);
+            const date: Date = new Date(year, month, d);
     
             const day = date.getDate();
             const weekday = dayNames[date.getDay()];
@@ -62,7 +63,8 @@ export function fillMonthDates(selectEl: any, oldDate?: string) {
     
             let label = `${day} ${monthName}, ${weekday}`;
     
-            const diff = Math.floor((date - today) / (1000 * 60 * 60 * 24));
+            const diff = Math.floor((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
     
             if (diff === -1) label = `Today, ${label}`;
             else if (diff === 0) label = `Tomorrow, ${label}`;
@@ -80,21 +82,25 @@ export function fillMonthDates(selectEl: any, oldDate?: string) {
             else if (diff === -1) option.selected = true;
         }
     } else {
-        const convertMonth: any = new Date(`${selectedMonth} 1, ${selectedYear}`);
-        const selectedMonthNumber = isNaN(convertMonth) ? null : convertMonth.getMonth();
+        const convertMonth = new Date(`${selectedMonth} 1, ${selectedYear}`);
+        const selectedMonthNumber = isNaN(convertMonth.getTime()) ? null : convertMonth.getMonth();
+
+        if (selectedMonthNumber === null) {
+            throw new Error("Invalid month or year");
+        }
 
         const year = Number(selectedYear);
         const month = selectedMonthNumber;
 
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
+
         for (let d = daysInMonth; d >= 1; d--) {
             const date = new Date(year, month, d);
-    
+
             const day = date.getDate();
             const weekday = dayNames[date.getDay()];
             const monthName = monthNames[month];
-    
+
             const label = `${day} ${monthName}, ${weekday}`;
 
             const value = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -106,86 +112,96 @@ export function fillMonthDates(selectEl: any, oldDate?: string) {
     }
 }
 
-export function selectRelativeDate(selectEl: any, offset: number) {
+export function selectRelativeDate(selectEl: HTMLSelectElement, offset: number) {
     const now = new Date();
     const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
     const targetValue = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")}`;
-    const option = Array.from(selectEl.options).find((opt: any) => opt.value === targetValue);
+    const option = Array.from(selectEl.options).find((opt: HTMLOptionElement) => opt.value === targetValue);
     if (option) {
         selectEl.value = targetValue;
     }
 }
 
-export function checkExpenceOrIncome(amount: number, type: 'expense' | 'income') {
-    if(type === 'expense') {
-        return `- ${amount}`
-    } else if(type === 'income') {
-        return `+ ${amount}`
+export function checkExpenceOrIncome(amount: string, type: 'expense' | 'income'): string {
+    const bigAmount = new Big(amount);
+
+    if (type === 'expense') {
+        return `- ${bigAmount.toString()}`;
+    } else if (type === 'income') {
+        return `+ ${bigAmount.toString()}`;
     } else {
-        return "Error"
+        return "Error";
     }
 }
 
-export function SummarizingDataForTheDay(obj: PlanData[] | null) {
-    const expense = SummarizingDataForTheDayExpense(obj)
-    const income = SummarizingDataForTheDayIncome(obj)
-    if(expense === 0) {
-        return `+${income}`
-    } else if (income === 0) {
-        return `-${expense}`
+export function SummarizingDataForTheDay(obj: PlanData[] | HistoryData[] | null): string {
+    const expense = SummarizingDataForTheDayExpense(obj);
+    const income = SummarizingDataForTheDayIncome(obj);
+
+    if (expense.eq(0)) {
+        return `+${income.toString()}`;
+    } else if (income.eq(0)) {
+        return `-${expense.toString()}`;
     } else {
-        return `-${expense} +${income}`
+        return `-${expense.toString()} +${income.toString()}`;
     }
 }
-export function SummarizingDataForTheDayExpense(obj: PlanData[] | null) {
-    if(!obj) {
-        return 0
-    }
-    let expense = 0;
-    obj.forEach((e, i) => {
-        if(e.type === 'expense'){
-            expense += Number(e.amount)
-        } 
-    })
-    return expense
-}
-export function SummarizingDataForTheDayIncome(obj: PlanData[] | null) {
-    if(!obj) {
-        return 0
-    }
-    let income = 0;
-    obj.forEach((e, i) => {
-        if(e.type === 'income'){
-            income += Number(e.amount)
-        } 
-    })
-    return income
-}
-export function SummarizingDataForTheTrueBills(obj: BillData[] | null) {
-    if(!obj || obj === null) {
-        return 0
-    }
-    let balance = 0;
-    obj.forEach((e, i) => {
-        if(e.generalBalance) {
-            balance += Number(e.balance)
+
+export function SummarizingDataForTheDayExpense(obj: PlanData[] | HistoryData[] | null): Big {
+    if (!obj) return new Big(0);
+
+    if ((obj as HistoryData[])[0]?.type !== undefined) {
+        const arr = obj as (PlanData | HistoryData)[];
+        return arr.reduce((sum: Big, e) => {
+        if (e.type === 'expense') {
+            return sum.plus(new Big(e.amount));
         }
-    })
-    return balance
-}
-export function SummarizingDataForTheFalseBills(obj: BillData[]| null) {
-    if(!obj || obj === null) {
-        return 0
+        return sum;
+        }, new Big(0));
     }
-    let balance = 0;
-    obj.forEach((e, i) => {
-        if(!e.generalBalance) {
-            balance += Number(e.balance)
-        }
-    })
-    return balance
+
+    return new Big(0);
 }
-export function divideByRemainingDays(amount: number) {
+
+export function SummarizingDataForTheDayIncome(obj: PlanData[] | HistoryData[] | null): Big {
+    if (!obj) return new Big(0);
+
+    if ((obj as HistoryData[])[0]?.type !== undefined) {
+        const arr = obj as (PlanData | HistoryData)[];
+        return arr.reduce((sum: Big, e) => {
+        if (e.type === 'income') {
+            return sum.plus(new Big(e.amount));
+        }
+        return sum;
+        }, new Big(0));
+    }
+
+    return new Big(0);
+}
+
+export function SummarizingDataForTheTrueBills(obj: BillData[] | null): Big {
+    if (!obj) return new Big(0);
+
+    return obj.reduce((sum, e) => {
+        if (e.generalBalance) {
+            return sum.plus(new Big(e.balance));
+        }
+        return sum;
+    }, new Big(0));
+}
+
+export function SummarizingDataForTheFalseBills(obj: BillData[] | null): Big {
+    if (!obj) return new Big(0);
+
+    return obj.reduce((sum, e) => {
+        if (!e.generalBalance) {
+            return sum.plus(new Big(e.balance));
+        }
+        return sum;
+    }, new Big(0));
+}
+
+export function divideByRemainingDays(amount: Big): number {
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
@@ -194,7 +210,8 @@ export function divideByRemainingDays(amount: number) {
     const currentDay = today.getDate();
     const remainingDays = daysInMonth - currentDay + 1;
 
-    return Math.trunc(amount / remainingDays);
+    const result = new Big(amount).div(remainingDays);
+    return result.round(0, 0).toNumber();
 }
 export function getCurrencySymbol(code: string) {
     type CurrencyCode = keyof typeof currencies;
@@ -249,7 +266,7 @@ export function humanizeDate(dateStr: string) {
 
     return prefix ? `${prefix}, ${formattedDate}` : formattedDate;
 }
-export async function IncomeAndExpensesForTheMonth(month: string, year: string, div: any) {
+export async function IncomeAndExpensesForTheMonth(month: string, year: string, div: HTMLDivElement) {
     const expensePlan = await getSpecificFile<PlanData>('Expenditure plan', year, month)
     if(expensePlan.status === 'error') return expensePlan.error
     if(expensePlan.jsonData === undefined) throw new Error('Expesnse plan is undefined')
@@ -283,24 +300,24 @@ export async function IncomeAndExpensesForTheMonth(month: string, year: string, 
         });
     }
 }
-export async function TheSumOfExpensesAndIncomeForTheYear(year: string) {
-    let totalExpense = 0
-    let totalIncome = 0
+export async function TheSumOfExpensesAndIncomeForTheYear(year: string): Promise<string | undefined> {
+    let totalExpense = new Big(0);
+    let totalIncome = new Big(0);
 
-    for(let m = 1; m <= 12; m++) {
-        const expensePlan = await getSpecificFile<PlanData>('Expenditure plan', year, months[m])
-        if(expensePlan.status === 'error') return 
-        if(expensePlan.jsonData === undefined) throw new Error('Expesnse plan is undefined')
-        
-        const incomePlan = await getSpecificFile<PlanData>('Income plan', year, months[m])
-        if(incomePlan.status === 'error') return 
-        if(incomePlan.jsonData === undefined) throw new Error('Expesnse plan is undefined')
-        
-        totalExpense += SummarizingDataForTheDayExpense(expensePlan.jsonData)
-        totalIncome += SummarizingDataForTheDayIncome(incomePlan.jsonData)
+    for (let m = 0; m < 12; m++) { // исправил на 0..11 для массива months
+        const expensePlan = await getSpecificFile<PlanData>('Expenditure plan', year, months[m]);
+        if (expensePlan.status === 'error') return;
+        if (!expensePlan.jsonData) throw new Error('Expense plan is undefined');
+
+        const incomePlan = await getSpecificFile<PlanData>('Income plan', year, months[m]);
+        if (incomePlan.status === 'error') return;
+        if (!incomePlan.jsonData) throw new Error('Income plan is undefined');
+
+        totalExpense = totalExpense.plus(SummarizingDataForTheDayExpense(expensePlan.jsonData));
+        totalIncome = totalIncome.plus(SummarizingDataForTheDayIncome(incomePlan.jsonData));
     }
 
-    return `-${totalExpense} +${totalIncome}`
+    return `-${totalExpense.toString()} +${totalIncome.toString()}`;
 }
 export function getLocalTimeISO() {
     const d = new Date();

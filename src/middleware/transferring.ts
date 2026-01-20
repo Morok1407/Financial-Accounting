@@ -44,13 +44,13 @@ export const expenditureTransaction = async (
     };
 
     const updateBill = (billId: string, delta: Big) => {
-        bills = bills.map((b: any) =>
+        bills = bills.map((b: BillData) =>
             b.id === billId ? { ...b, balance: new Big(b.balance).plus(delta).toFixed(2) } : b
         );
     };
 
     const updatePlan = (planId: string, delta: Big) => {
-        plans = plans.map((p: any) =>
+        plans = plans.map((p: PlanData) =>
             p.id === planId ? { ...p, amount: new Big(p.amount).plus(delta).toFixed(2) } : p
         );
     };
@@ -133,7 +133,7 @@ export const incomeTransaction = async (
     };
 
     const updateBill = (billId: string, delta: Big) => {
-        bills = bills.map((b: any) =>
+        bills = bills.map((b: BillData) =>
             b.id === billId
                 ? { ...b, balance: new Big(b.balance).plus(delta).toFixed(2) }
                 : b
@@ -141,7 +141,7 @@ export const incomeTransaction = async (
     };
 
     const updatePlan = (planId: string, delta: Big) => {
-        plans = plans.map((p: any) =>
+        plans = plans.map((p: PlanData) =>
             p.id === planId
                 ? { ...p, amount: new Big(p.amount).plus(delta).toFixed(2) }
                 : p
