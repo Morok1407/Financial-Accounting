@@ -4,7 +4,8 @@ import { getSpecificFile } from '../controllers/searchData';
 import { months } from '../controllers/createDirectory';
 import { stateManager, PlanData, BillData, HistoryData } from "../../main";
 import { moment } from "obsidian";
-import type { Moment } from "moment";
+
+type Moment = ReturnType<typeof moment>;
 
 export const popularCodes : string[] = ["USD", "EUR", "RUB", "KZT", "UZS"];
 

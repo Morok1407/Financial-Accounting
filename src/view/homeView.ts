@@ -328,7 +328,9 @@ export const initOtherMonth = async (e: MouseEvent): Promise<void> => {
 export const showAnotherInitialView = async (): Promise<void> => {
     if (!FinancialAccountingView.instance || !MainPlugin.instance) return;
 
-    const { selectedMonth } = stateManager();
+    const nowYear: number = new Date().getFullYear()
+
+    const { selectedMonth, selectedYear } = stateManager();
 
     const expensePlan = await getDataFile<PlanData>("Expenditure plan");
     if (expensePlan.status === "error") {
@@ -366,11 +368,26 @@ export const showAnotherInitialView = async (): Promise<void> => {
     });
 
     const showAllMonthsButton = financeHeader.createEl("button", {
-        text: `🗓️ ${selectedMonth}`,
         attr: {
-        id: "showAllMonths",
+            id: "showAllMonths",
         },
     });
+    setIcon(showAllMonthsButton, "calendar-days");
+    if(Number(selectedYear) === nowYear) {
+        showAllMonthsButton.createEl("span", {
+            text: `${selectedMonth}`,
+            attr: {
+            id: "showAllMonths",
+            },
+        });
+    } else {
+        showAllMonthsButton.createEl("span", {
+            text: `${selectedMonth} ${selectedYear}`,
+            attr: {
+            id: "showAllMonths",
+            },
+        });
+    }
 
     showAllMonthsButton.addEventListener("click", () => {
         if (contentEl.dataset.page === "home") {

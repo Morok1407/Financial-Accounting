@@ -44,7 +44,7 @@ export const showHistory = async (mainContentBody: HTMLDivElement, mainContentBu
         cls: 'history-content'
     })
 
-    generationHistoryContent(historyContent, mainContentBody, history, mainContentButton)
+    generationHistoryContent(historyContent, mainContentBody, history, mainContentButton).catch(err => { console.error('generationHistoryContent failed', err); });
 }
 
 async function handleSearchInput(e: Event, historyContent: HTMLDivElement, mainContentBody: HTMLDivElement) {
