@@ -3,7 +3,8 @@ import currencies from '../../currencies.json'
 import { getSpecificFile } from '../controllers/searchData';
 import { months } from '../controllers/createDirectory';
 import { stateManager, PlanData, BillData, HistoryData } from "../../main";
-import moment, { Moment } from "moment";
+import { moment } from "obsidian";
+import type { Moment } from "moment";
 
 export const popularCodes : string[] = ["USD", "EUR", "RUB", "KZT", "UZS"];
 
@@ -166,7 +167,7 @@ export function SummarizingDataForTheDayExpense(obj: PlanData[] | HistoryData[] 
 export function SummarizingDataForTheDayIncome(obj: PlanData[] | HistoryData[] | null): Big {
     if (!obj) return new Big(0);
 
-    if ((obj as HistoryData[])[0]?.type !== undefined) {
+    if ((obj as PlanData[])[0]?.type !== undefined) {
         const arr = obj as (PlanData | HistoryData)[];
         return arr.reduce((sum: Big, e) => {
         if (e.type === 'income') {
@@ -275,28 +276,28 @@ export async function IncomeAndExpensesForTheMonth(month: string, year: string, 
     if(incomePlan.status === 'error') return incomePlan.error
     if(incomePlan.jsonData === undefined) throw new Error('Expesnse plan is undefined')
 
-    const totalExpense = SummarizingDataForTheDayExpense(expensePlan.jsonData)
-    const totalIncome = SummarizingDataForTheDayIncome(incomePlan.jsonData)
+    const totalExpense = SummarizingDataForTheDayExpense(expensePlan.jsonData);
+    const totalIncome = SummarizingDataForTheDayIncome(incomePlan.jsonData);
 
-    if (totalIncome >= totalExpense) {
-        div.createEl('span', {
-            text: `-${totalExpense}`,
-            cls: 'expense-all-month-success'
+    if (totalIncome.gte(totalExpense)) {
+        div.createEl("span", {
+            text: `-${totalExpense.toString()}`,
+            cls: "expense-all-month-success",
         });
 
-        div.createEl('span', {
-            text: `+${totalIncome}`,
-            cls: 'income-all-month'
+        div.createEl("span", {
+            text: `+${totalIncome.toString()}`,
+            cls: "income-all-month",
         });
     } else {
-        div.createEl('span', {
-            text: `-${totalExpense}`,
-            cls: 'expense-all-month-failure'
+        div.createEl("span", {
+            text: `-${totalExpense.toString()}`,
+            cls: "expense-all-month-failure",
         });
 
-        div.createEl('span', {
-            text: `+${totalIncome}`,
-            cls: 'income-all-month'
+        div.createEl("span", {
+            text: `+${totalIncome.toString()}`,
+            cls: "income-all-month",
         });
     }
 }

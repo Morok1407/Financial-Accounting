@@ -54,17 +54,19 @@ export const editingHistory = async (e: MouseEvent) => {
         }
     })
     setIcon(deleteButton, 'trash-2')
-    deleteButton.addEventListener('click', async () => {
-        const redultOfDelete = await deleteHistory(history.item);
-        if(redultOfDelete.status === "success") {
-            setTimeout(() => {
-                FinancialAccountingView.instance.onOpen().catch(console.error)
-                new Notice('The operation is remote.')
-            }, 100)
-        } else {
-            new Notice(redultOfDelete.error.message)
-            console.error(redultOfDelete.error)
-        }
+    deleteButton.addEventListener('click', () => {
+        void (async () => {
+            const redultOfDelete = await deleteHistory(history.item);
+            if(redultOfDelete.status === "success") {
+                setTimeout(() => {
+                    FinancialAccountingView.instance.onOpen().catch(console.error)
+                    new Notice('The operation is remote.')
+                }, 100)
+            } else {
+                new Notice(redultOfDelete.error.message)
+                console.error(redultOfDelete.error)
+            }
+        })
     })
 
     const mainAddForm = contentEl.createEl('form', {
@@ -273,49 +275,51 @@ export const editingHistory = async (e: MouseEvent) => {
         }
     })
 
-    addButton.addEventListener('click', async (e) => {
+    addButton.addEventListener('click', (e) => {
         e.preventDefault();
 
-        if(!(Number(inputSum.value) >= 1)) {
-            inputSum.focus()
-            new Notice('Enter the amount')
-            return
-        }
-
-        const billOption = await searchElementById<BillData>(selectBills.value, 'Archive bills')
-        if(billOption.status === 'error') {
-            new Notice(billOption.error.message)
-            console.error(billOption.error)
-            return
-        }
-        if(billOption.item.currency !== MainPlugin.instance.settings.baseCurrency) {
-            new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
-            return
-        }
-
-        const data: HistoryData = {
-            id: history.item.id,
-            amount: String(inputSum.value),
-            bill: {
-                id: selectBills.value
-            },
-            category: {
-                id: selectCategory.value
-            },
-            comment: commentInput.value,
-            date: `${selectDate.value}T${history.item.date.split('T')[1]}`,
-            type: history.item.type,
-        }
-        const resultOfEditing = await editingJsonToHistory(data, history.item)
-        if(resultOfEditing.status === "success") {
-            setTimeout(() => {
-                FinancialAccountingView.instance.onOpen().catch(console.error)
-                new Notice('Operation changed')
-            }, 100)
-        } else {
-            new Notice(resultOfEditing.error.message)
-            console.error(resultOfEditing.error)
-        }
+        void (async () => {
+            if(!(Number(inputSum.value) >= 1)) {
+                inputSum.focus()
+                new Notice('Enter the amount')
+                return
+            }
+    
+            const billOption = await searchElementById<BillData>(selectBills.value, 'Archive bills')
+            if(billOption.status === 'error') {
+                new Notice(billOption.error.message)
+                console.error(billOption.error)
+                return
+            }
+            if(billOption.item.currency !== MainPlugin.instance.settings.baseCurrency) {
+                new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
+                return
+            }
+    
+            const data: HistoryData = {
+                id: history.item.id,
+                amount: String(inputSum.value),
+                bill: {
+                    id: selectBills.value
+                },
+                category: {
+                    id: selectCategory.value
+                },
+                comment: commentInput.value,
+                date: `${selectDate.value}T${history.item.date.split('T')[1]}`,
+                type: history.item.type,
+            }
+            const resultOfEditing = await editingJsonToHistory(data, history.item)
+            if(resultOfEditing.status === "success") {
+                setTimeout(() => {
+                    FinancialAccountingView.instance.onOpen().catch(console.error)
+                    new Notice('Operation changed')
+                }, 100)
+            } else {
+                new Notice(resultOfEditing.error.message)
+                console.error(resultOfEditing.error)
+            }
+        })
     })
 }
 
@@ -364,17 +368,19 @@ export const editingPlan = async (e: MouseEvent) => {
         }
     })
     setIcon(deleteButton, 'trash-2')
-    deleteButton.addEventListener('click', async () => {
-        const redultOfDelete = await deletePlan(plan.item);
-        if(redultOfDelete.status === "success") {
-            setTimeout(() => {
-                FinancialAccountingView.instance.onOpen().catch(console.error)
-                new Notice('The plan has been removed.')
-            }, 100)
-        } else {
-            new Notice(redultOfDelete.error.message)
-            console.error(redultOfDelete.error)
-        }
+    deleteButton.addEventListener('click', () => {
+        void (async () => {
+            const redultOfDelete = await deletePlan(plan.item);
+            if(redultOfDelete.status === "success") {
+                setTimeout(() => {
+                    FinancialAccountingView.instance.onOpen().catch(console.error)
+                    new Notice('The plan has been removed.')
+                }, 100)
+            } else {
+                new Notice(redultOfDelete.error.message)
+                console.error(redultOfDelete.error)
+            }
+        })
     })
 
     const header = contentEl.createEl('div', {
@@ -441,33 +447,35 @@ export const editingPlan = async (e: MouseEvent) => {
         }
     })
 
-    addButton.addEventListener('click', async (e) => {
+    addButton.addEventListener('click', (e) => {
         e.preventDefault();
 
-        if(!inputName.value) {
-            inputName.focus()
-            new Notice('Enter the name')
-            return
-        }
-
-        const data: PlanData = {
-            id: plan.item.id,
-            name: inputName.value.trim(),
-            emoji: inputEmoji.value,
-            amount: plan.item.amount,
-            comment: commentInput.value.trim(),
-            type: plan.item.type,
-        }
-        const resultOfadd = await editingJsonToPlan(data)
-        if(resultOfadd.status === "success") {
-            setTimeout(() => {
-                FinancialAccountingView.instance.onOpen().catch(console.error)
-                new Notice('The plan has been edited.')
-            }, 100)
-        } else {
-            new Notice(resultOfadd.error.message)
-            console.error(resultOfadd.error)
-        }
+        void (async () => {
+            if(!inputName.value) {
+                inputName.focus()
+                new Notice('Enter the name')
+                return
+            }
+    
+            const data: PlanData = {
+                id: plan.item.id,
+                name: inputName.value.trim(),
+                emoji: inputEmoji.value,
+                amount: plan.item.amount,
+                comment: commentInput.value.trim(),
+                type: plan.item.type,
+            }
+            const resultOfadd = await editingJsonToPlan(data)
+            if(resultOfadd.status === "success") {
+                setTimeout(() => {
+                    FinancialAccountingView.instance.onOpen().catch(console.error)
+                    new Notice('The plan has been edited.')
+                }, 100)
+            } else {
+                new Notice(resultOfadd.error.message)
+                console.error(resultOfadd.error)
+            }
+        })
     })
 
     const history = await getDataFile<HistoryData>('History');
@@ -516,7 +524,7 @@ export const editingPlan = async (e: MouseEvent) => {
             cls: 'history-plan'
         })
 
-        result.forEach((e, i) => {
+        for (const historyElement of result) {
             const historyBlock = historyPlan.createEl('div', {
                 cls: 'history-block'
             })
@@ -528,18 +536,18 @@ export const editingPlan = async (e: MouseEvent) => {
                 cls: 'header-date-block'
             })
             dateBlock.createEl('p', {
-                text: humanizeDate(e[0].date.split("T")[0])
+                text: humanizeDate(historyElement[0].date.split("T")[0])
             })
             const amountBlock = headerBlock.createEl('div', {
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: `${SummarizingDataForTheDay(e)}`
+                text: `${SummarizingDataForTheDay(historyElement)}`
             })
             const dataList = historyBlock.createEl('ul', {
                 cls: 'data-list'
             })
-            e.forEach(async (e: HistoryData) => {
+            for (const e of historyElement) {
                 const dataItem = dataList.createEl('li', {
                     cls: 'data-item',
                     attr: {
@@ -562,25 +570,25 @@ export const editingPlan = async (e: MouseEvent) => {
                     console.error(bill.error)
                     return
                 }
-
+    
                 const dataText = dataItem.createEl('div', {
                     cls: 'data-link'
                 })
-
+    
                 const divEmoji = dataText.createEl('div', {
                     cls: 'data-link-emoji'
                 })
                 const divText = dataText.createEl('div', {
                     cls: 'data-link-text'
                 })
-
+    
                 divEmoji.createEl('p', {
                     text: `${category.item.emoji}`
                 })
                 divEmoji.createEl('span', {
                     text: `${bill.item.emoji}`
                 })
-
+    
                 if(e.comment === '') {
                     divText.createEl('p', {
                         text: `${category.item.name}`
@@ -596,15 +604,15 @@ export const editingPlan = async (e: MouseEvent) => {
                         text: `${category.item.name} • ${bill.item.name}`
                     })
                 }
-
+    
                 const dataAmount = dataItem.createEl('div', {
                     cls: 'data-link'
                 })
                 dataAmount.createEl('p', {
                     text: `${checkExpenceOrIncome(e.amount, e.type)} ${getCurrencySymbol(bill.item.currency)}`
                 })
-            })
-        })
+            }
+        }
     }
 }
 
@@ -648,17 +656,19 @@ export const editingBill = async (e: MouseEvent) => {
         }
     })
     setIcon(deleteButton, 'trash-2')
-    deleteButton.addEventListener('click', async () => {
-        const redultOfDelete = await deleteBill(bill.item);
-        if(redultOfDelete.status === "success") {
-            setTimeout(() => {
-                FinancialAccountingView.instance.onOpen().catch(console.error)
-                new Notice('The bill has been removed.')
-            }, 100)
-        } else {
-            new Notice(redultOfDelete.error.message)
-            console.error(redultOfDelete.error)
-        }
+    deleteButton.addEventListener('click', () => {
+        void (async () => {
+            const redultOfDelete = await deleteBill(bill.item);
+            if(redultOfDelete.status === "success") {
+                setTimeout(() => {
+                    FinancialAccountingView.instance.onOpen().catch(console.error)
+                    new Notice('The bill has been removed.')
+                }, 100)
+            } else {
+                new Notice(redultOfDelete.error.message)
+                console.error(redultOfDelete.error)
+            }
+        })
     })
 
     const header = contentEl.createEl('div', {
@@ -744,7 +754,7 @@ export const editingBill = async (e: MouseEvent) => {
             text: 'Transactions between bills',
             cls: 'form-text-transfer',
         })
-        transferUploadDiv.addEventListener('click', async () => {
+        transferUploadDiv.addEventListener('click', () => {
             void transferBetweenBillsView(bill.item.id)
         })
     }
@@ -777,33 +787,35 @@ export const editingBill = async (e: MouseEvent) => {
             type: 'submit'
         }
     })
-    addButton.addEventListener('click', async () => {
+    addButton.addEventListener('click', () => {
         e.preventDefault();
 
-        if(!inputName.value) {
-            inputName.focus()
-            new Notice('Enter the name')
-            return
-        }
-        const data: BillData = {
-            id: bill.item.id,
-            name: inputName.value.trim(),
-            emoji: inputEmoji.value,
-            balance: String(currentBalance.value.trim()),
-            currency: bill.item.currency,
-            generalBalance: checkboxInput.checked,
-            comment: commentInput.value.trim(),
-        }
-        const resultOfadd = await editingJsonToBill(data)
-        if(resultOfadd.status === "success") {
-            setTimeout(() => {
-                FinancialAccountingView.instance.onOpen().catch(console.error)
-                new Notice('The bill has been edited.')
-            }, 100)
-        } else {
-            new Notice(resultOfadd.error.message)
-            console.error(resultOfadd.error)
-        }
+        void (async () => {
+            if(!inputName.value) {
+                inputName.focus()
+                new Notice('Enter the name')
+                return
+            }
+            const data: BillData = {
+                id: bill.item.id,
+                name: inputName.value.trim(),
+                emoji: inputEmoji.value,
+                balance: String(currentBalance.value.trim()),
+                currency: bill.item.currency,
+                generalBalance: checkboxInput.checked,
+                comment: commentInput.value.trim(),
+            }
+            const resultOfadd = await editingJsonToBill(data)
+            if(resultOfadd.status === "success") {
+                setTimeout(() => {
+                    FinancialAccountingView.instance.onOpen().catch(console.error)
+                    new Notice('The bill has been edited.')
+                }, 100)
+            } else {
+                new Notice(resultOfadd.error.message)
+                console.error(resultOfadd.error)
+            }
+        })
     })
 }
 
@@ -1024,61 +1036,63 @@ export const transferBetweenBillsView = async (billId: string) => {
             type: 'submit'
         }
     })
-    addButton.addEventListener('click', async (e) => {
+    addButton.addEventListener('click', (e) => {
         e.preventDefault();
 
-        if (!selectToBill.value) {
-            new Notice('Select an account');
-            return
-        }
-
-        const fromOption = selectFromBill.options[selectFromBill.selectedIndex];
-        const toOption = selectToBill.options[selectToBill.selectedIndex];
-
-        const isSameCurrency =
-            fromOption.dataset.currency === toOption.dataset.currency;
-
-        let transferData: TransferData;
-
-        if (isSameCurrency) {
-            if (!inputSum.value) {
-                inputSum.focus();
-                new Notice('Enter the amount');
+        void (async () => {
+            if (!selectToBill.value) {
+                new Notice('Select an account');
                 return
             }
-
-            transferData = {
-                type: 'same-currency',
-                fromBillId: selectFromBill.value,
-                toBillId: selectToBill.value,
-                amount: Number(inputSum.value),
-            };
-        } else {
-            if (!sourceAmount.value || !targetAmount.value) {
-                (!sourceAmount.value ? sourceAmount : targetAmount).focus();
-                new Notice('Enter both amounts');
-                return
+    
+            const fromOption = selectFromBill.options[selectFromBill.selectedIndex];
+            const toOption = selectToBill.options[selectToBill.selectedIndex];
+    
+            const isSameCurrency =
+                fromOption.dataset.currency === toOption.dataset.currency;
+    
+            let transferData: TransferData;
+    
+            if (isSameCurrency) {
+                if (!inputSum.value) {
+                    inputSum.focus();
+                    new Notice('Enter the amount');
+                    return
+                }
+    
+                transferData = {
+                    type: 'same-currency',
+                    fromBillId: selectFromBill.value,
+                    toBillId: selectToBill.value,
+                    amount: Number(inputSum.value),
+                };
+            } else {
+                if (!sourceAmount.value || !targetAmount.value) {
+                    (!sourceAmount.value ? sourceAmount : targetAmount).focus();
+                    new Notice('Enter both amounts');
+                    return
+                }
+    
+                transferData = {
+                    type: 'cross-currency',
+                    fromBillId: selectFromBill.value,
+                    toBillId: selectToBill.value,
+                    sourceAmount: Number(sourceAmount.value),
+                    targetAmount: Number(targetAmount.value),
+                };
             }
-
-            transferData = {
-                type: 'cross-currency',
-                fromBillId: selectFromBill.value,
-                toBillId: selectToBill.value,
-                sourceAmount: Number(sourceAmount.value),
-                targetAmount: Number(targetAmount.value),
-            };
-        }
-
-        const result = await transferBetweenBills(transferData);
-
-        if (result.status === 'success') {
-            setTimeout(() => {
-                FinancialAccountingView.instance.onOpen().catch(console.error);
-                new Notice('Transfer completed');
-            }, 100);
-        } else {
-            new Notice(result.error.message);
-            console.error(result.error)
-        }
+    
+            const result = await transferBetweenBills(transferData);
+    
+            if (result.status === 'success') {
+                setTimeout(() => {
+                    FinancialAccountingView.instance.onOpen().catch(console.error);
+                    new Notice('Transfer completed');
+                }, 100);
+            } else {
+                new Notice(result.error.message);
+                console.error(result.error)
+            }
+        })
     });
 }

@@ -38,38 +38,7 @@ export const showHistory = async (mainContentBody: HTMLDivElement, mainContentBu
                 placeholder: "Search by operations"
             }
         })
-        searchInput.addEventListener('input', async (e: Event) => {
-            const target = e.target as HTMLInputElement;
-            const searchValue = target.value;
-
-            const result = await searchHistory(searchValue);
-
-            if (result.status === 'error') {
-                new Notice(result.error.message);
-                console.error(result.error);
-                return;
-            }
-
-            if (result.jsonData === undefined) throw new Error('jsonData is null or undefined');
-
-            historyContent.empty();
-
-            if (result.jsonData === null) {
-                const undefinedContent = historyContent.createEl('div', {
-                    cls: 'undefined-content'
-                });
-                historyContent.addClass('main-content-body--undefined');
-
-                undefinedContent.createEl('span', { text: '🍕 🎮 👕' });
-                undefinedContent.createEl('p', { text: 'No matching operations found.' });
-            } else if (result.jsonData.length >= 1) {
-                historyContent.removeClass('main-content-body--undefined');
-                void generationHistoryContent(historyContent, mainContentBody, result);
-            } else {
-                historyContent.removeClass('main-content-body--undefined');
-                void generationHistoryContent(historyContent, mainContentBody, result);
-            }
-        });
+        searchInput.addEventListener('input', (e: Event) => { void handleSearchInput(e, historyContent, mainContentBody); });
     }
     const historyContent = mainContentBody.createEl('div', {
         cls: 'history-content'
@@ -78,7 +47,40 @@ export const showHistory = async (mainContentBody: HTMLDivElement, mainContentBu
     generationHistoryContent(historyContent, mainContentBody, history, mainContentButton)
 }
 
-function generationHistoryContent(historyContent: HTMLDivElement, mainContentBody: HTMLDivElement, historyData: DataFileResult<HistoryData>, mainContentButton?: HTMLDivElement) {
+async function handleSearchInput(e: Event, historyContent: HTMLDivElement, mainContentBody: HTMLDivElement) {
+    const target = e.target as HTMLInputElement;
+    const searchValue = target.value;
+
+    const result = await searchHistory(searchValue);
+
+    if (result.status === 'error') {
+        new Notice(result.error.message);
+        console.error(result.error);
+        return;
+    }
+
+    if (result.jsonData === undefined) throw new Error('jsonData is null or undefined');
+
+    historyContent.empty();
+
+    if (result.jsonData === null) {
+        const undefinedContent = historyContent.createEl('div', {
+            cls: 'undefined-content'
+        });
+        historyContent.addClass('main-content-body--undefined');
+
+        undefinedContent.createEl('span', { text: '🍕 🎮 👕' });
+        undefinedContent.createEl('p', { text: 'No matching operations found.' });
+    } else if (result.jsonData.length >= 1) {
+        historyContent.removeClass('main-content-body--undefined');
+        void generationHistoryContent(historyContent, mainContentBody, result);
+    } else {
+        historyContent.removeClass('main-content-body--undefined');
+        void generationHistoryContent(historyContent, mainContentBody, result);
+    }
+}
+
+async function generationHistoryContent(historyContent: HTMLDivElement, mainContentBody: HTMLDivElement, historyData: DataFileResult<HistoryData>, mainContentButton?: HTMLDivElement) {
     if(historyData.status === 'error') return historyData.error;
     if(historyData.jsonData !== null) {
         const now = new Date().getTime();
@@ -114,7 +116,7 @@ function generationHistoryContent(historyContent: HTMLDivElement, mainContentBod
         if(historyData.jsonData.length >= 5) {
             mainContentBody.addClass('main-content-body--padding')
         }
-        result.forEach((e: HistoryData[]) => {
+        for (const historyElement of result) {
             const historyBlock = historyContent.createEl('div', {
                 cls: 'history-block'
             })
@@ -126,34 +128,33 @@ function generationHistoryContent(historyContent: HTMLDivElement, mainContentBod
                 cls: 'header-date-block'
             })
             dateBlock.createEl('p', {
-                text: humanizeDate(e[0].date.split("T")[0])
+                text: humanizeDate(historyElement[0].date.split("T")[0])
             })
             const amountBlock = headerBlock.createEl('div', {
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: `${SummarizingDataForTheDay(e)}`
+                text: `${SummarizingDataForTheDay(historyElement)}`
             })
             const dataList = historyBlock.createEl('ul', {
                 cls: 'data-list'
             })
-            e.forEach(async (e: HistoryData) => {
+            for (const element of historyElement) {
                 const dataItem = dataList.createEl('li', {
                     cls: 'data-item',
                     attr: {
-                        'data-id': e.id
+                        'data-id': element.id
                     }
                 })
-                dataItem.onclick = async (e: MouseEvent) => {
+                dataItem.onclick = (e: MouseEvent) => {
                     void editingHistory(e);
                 };
 
-                const searchCategory = await searchElementById<PlanData>(e.category.id, e.type)
+                const searchCategory = await searchElementById<PlanData>(element.category.id, element.type)
                 if (searchCategory.status === 'error') return new Notice(searchCategory.error.message)
-                
-                const searchBill = await searchElementById<BillData>(e.bill.id, 'Archive bills')
+                const searchBill = await searchElementById<BillData>(element.bill.id, 'Archive bills')
                 if (searchBill.status === 'error') return new Notice(searchBill.error.message)
-
+                    
                 const dataText = dataItem.createEl('div', {
                     cls: 'data-link'
                 })
@@ -172,7 +173,7 @@ function generationHistoryContent(historyContent: HTMLDivElement, mainContentBod
                     text: `${searchBill.item.emoji}`
                 })
 
-                if(e.comment === '') {
+                if(element.comment === '') {
                     divText.createEl('p', {
                         text: `${searchCategory.item.name}`
                     })
@@ -181,7 +182,7 @@ function generationHistoryContent(historyContent: HTMLDivElement, mainContentBod
                     })
                 } else {
                     divText.createEl('p', {
-                        text: `${e.comment}`
+                        text: `${element.comment}`
                     })
                     divText.createEl('span', {
                         text: `${searchCategory.item.name} • ${searchBill.item.name}`
@@ -192,17 +193,17 @@ function generationHistoryContent(historyContent: HTMLDivElement, mainContentBod
                     cls: 'data-link'
                 })
                 dataAmount.createEl('p', {
-                    text: `${checkExpenceOrIncome(e.amount, e.type)} ${getCurrencySymbol(searchBill.item.currency)}`
+                    text: `${checkExpenceOrIncome(element.amount, element.type)} ${getCurrencySymbol(searchBill.item.currency)}`
                 })
-            })
-        })
+            }
+        }
     }
 
     const addHistoryButton = mainContentButton?.createEl('button', {
         text: 'Add an expense or income',
         cls: 'add-button'
     })
-    addHistoryButton?.addEventListener('click', async () => {
+    addHistoryButton?.addEventListener('click', () => {
         void addHistory();
     })
 }
@@ -272,7 +273,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                             'data-type': e.type
                         }
                 })
-                dataItem.onclick = async (e: MouseEvent) => {
+                dataItem.onclick = (e: MouseEvent) => {
                     void editingPlan(e);
                 };
                 const dataText = dataItem.createEl('div', {
@@ -323,7 +324,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                             'data-type': e.type
                         }
                 })
-                dataItem.onclick = async (e: MouseEvent) => {
+                dataItem.onclick = (e: MouseEvent) => {
                     void editingPlan(e);
                 };
                 const dataText = dataItem.createEl('div', {

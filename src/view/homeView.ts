@@ -62,7 +62,7 @@ export const showInitialView = async (): Promise<void> => {
         text: month,
     });
 
-    showAllMonthsButton.addEventListener("click", async () => {
+    showAllMonthsButton.addEventListener("click", () => {
         if (contentEl.dataset.page === "home") {
         contentEl.setAttribute("data-page", "months");
         void showAllMonths();
@@ -84,7 +84,7 @@ export const showInitialView = async (): Promise<void> => {
     });
 
     balanceTop.createEl("p", {
-        text: `${SummarizingDataForTheTrueBills(bills.jsonData)} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+        text: `${SummarizingDataForTheTrueBills(bills.jsonData).toString()} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
     });
 
     balanceTop.createEl("span", {
@@ -114,7 +114,7 @@ export const showInitialView = async (): Promise<void> => {
 
     setIcon(balanceExpensesCheck, "upload");
     balanceExpensesCheck.createEl("p", {
-        text: String(SummarizingDataForTheDayExpense(expensePlan.jsonData)),
+        text: `${SummarizingDataForTheDayExpense(expensePlan.jsonData).toString()}`,
     });
 
     const balanceIncome = balanceBody.createEl("div", {
@@ -131,7 +131,7 @@ export const showInitialView = async (): Promise<void> => {
 
     setIcon(balanceIncomeCheck, "download");
     balanceIncomeCheck.createEl("p", {
-        text: String(SummarizingDataForTheDayIncome(incomePlan.jsonData)),
+        text: `${SummarizingDataForTheDayIncome(incomePlan.jsonData).toString()}`,
     });
 
     await homeButtons();
@@ -162,7 +162,7 @@ const homeButtons = async (): Promise<void> => {
         href: "#",
         },
     });
-    historyButton.addEventListener("click", async () => {
+    historyButton.addEventListener("click", () => {
         planButton.removeClass("home_button--active");
         billsButton.removeClass("home_button--active");
         historyButton.addClass("home_button--active");
@@ -178,7 +178,7 @@ const homeButtons = async (): Promise<void> => {
         href: "#",
         },
     });
-    planButton.addEventListener("click", async () => {
+    planButton.addEventListener("click", () => {
         historyButton.removeClass("home_button--active");
         billsButton.removeClass("home_button--active");
         planButton.addClass("home_button--active");
@@ -194,7 +194,7 @@ const homeButtons = async (): Promise<void> => {
         href: "#",
         },
     });
-    billsButton.addEventListener("click", async () => {
+    billsButton.addEventListener("click", () => {
         historyButton.removeClass("home_button--active");
         planButton.removeClass("home_button--active");
         billsButton.addClass("home_button--active");
@@ -372,7 +372,7 @@ export const showAnotherInitialView = async (): Promise<void> => {
         },
     });
 
-    showAllMonthsButton.addEventListener("click", async () => {
+    showAllMonthsButton.addEventListener("click", () => {
         if (contentEl.dataset.page === "home") {
         contentEl.setAttribute("data-page", "months");
         void showAllMonths();
@@ -403,7 +403,7 @@ export const showAnotherInitialView = async (): Promise<void> => {
 
     setIcon(balanceExpensesCheck, "upload");
     balanceExpensesCheck.createEl("p", {
-        text: String(SummarizingDataForTheDayExpense(expensePlan.jsonData)),
+        text: `${SummarizingDataForTheDayExpense(expensePlan.jsonData).toString()}`,
     });
 
     const balanceIncome = balanceBody.createEl("div", {
@@ -420,7 +420,7 @@ export const showAnotherInitialView = async (): Promise<void> => {
 
     setIcon(balanceIncomeCheck, "download");
     balanceIncomeCheck.createEl("p", {
-        text: String(SummarizingDataForTheDayIncome(expensePlan.jsonData)),
+        text: `${SummarizingDataForTheDayIncome(incomePlan.jsonData).toString()}`,
     });
 
     await otherMonthHomeButtons();
@@ -440,7 +440,7 @@ const otherMonthHomeButtons = async (): Promise<void> => {
         attr: { id: "history-button", href: "#" },
     });
 
-    historyButton.addEventListener("click", async () => {
+    historyButton.addEventListener("click", () => {
         planButton.removeClass("home_button--active");
         historyButton.addClass("home_button--active");
         mainContentBody.empty();
@@ -452,7 +452,7 @@ const otherMonthHomeButtons = async (): Promise<void> => {
         text: "Plan",
         attr: { id: "plan-button", href: "#" },
     });
-    planButton.addEventListener("click", async () => {
+    planButton.addEventListener("click", () => {
         historyButton.removeClass("home_button--active");
         planButton.addClass("home_button--active");
         mainContentBody.empty();

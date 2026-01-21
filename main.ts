@@ -328,34 +328,36 @@ class SettingsTab extends PluginSettingTab {
 
         selectEl.value = this.plugin.settings.baseCurrency;
 
-        selectEl.addEventListener("change", async (event: Event) => {
-            const target = event.target as HTMLSelectElement;
-            const newCurrency = target.value;
-
-            const bills = await getDataArchiveFile<BillData>('Archive bills');
-            if (bills.status === 'error') {
-                new Notice(`Error fetching archive bills: ${bills.error.message}`);
-                return;
-            }
-
-            const generalBalanceBills = bills.jsonData?.filter(
-                bill => bill.generalBalance && bill.currency !== newCurrency
-            );
-
-            if (generalBalanceBills && generalBalanceBills.length > 0) {
-                const bill = generalBalanceBills[0];
-
-                selectEl.value = this.plugin.settings.baseCurrency;
-
-                new Notice(
-                    `Cannot change base currency. Bill "${bill.name}" is set to general balance with currency ${bill.currency}. Please change or disable general balance on this bill first.`
+        selectEl.addEventListener("change", (event: Event) => {
+            void (async () => {
+                const target = event.target as HTMLSelectElement;
+                const newCurrency = target.value;
+    
+                const bills = await getDataArchiveFile<BillData>('Archive bills');
+                if (bills.status === 'error') {
+                    new Notice(`Error fetching archive bills: ${bills.error.message}`);
+                    return;
+                }
+    
+                const generalBalanceBills = bills.jsonData?.filter(
+                    bill => bill.generalBalance && bill.currency !== newCurrency
                 );
-                return;
-            }
-
-            this.plugin.settings.baseCurrency = newCurrency;
-            void this.plugin.saveSettings().catch(console.error);
-            new Notice(`Base currency changed to ${newCurrency}`);
+    
+                if (generalBalanceBills && generalBalanceBills.length > 0) {
+                    const bill = generalBalanceBills[0];
+    
+                    selectEl.value = this.plugin.settings.baseCurrency;
+    
+                    new Notice(
+                        `Cannot change base currency. Bill "${bill.name}" is set to general balance with currency ${bill.currency}. Please change or disable general balance on this bill first.`
+                    );
+                    return;
+                }
+    
+                this.plugin.settings.baseCurrency = newCurrency;
+                await this.plugin.saveSettings().catch(console.error);
+                new Notice(`Base currency changed to ${newCurrency}`);
+            })
         });
 
         new Setting(containerEl)
@@ -374,22 +376,24 @@ class SettingsTab extends PluginSettingTab {
                 }
             });
 
-            text.inputEl.addEventListener("blur", async () => {
-                const value = text.getValue().trim();
-
-                if (/\s/.test(value)) {
-                    new Notice("Tag must not contain spaces.");
-                    return;
-                }
-
-                if (!/^[\w\-а-яА-ЯёЁ]+$/.test(value)) {
-                    new Notice("The tag can only contain letters, numbers, underscores and hyphens.");
-                    return;
-                }
-
-                this.plugin.settings.defaultTag = value;
-                void this.plugin.saveSettings();
-                new Notice(`The tag "${value}" has been saved.`);
+            text.inputEl.addEventListener("blur", () => {
+                void (async () => {
+                    const value = text.getValue().trim();
+    
+                    if (/\s/.test(value)) {
+                        new Notice("Tag must not contain spaces.");
+                        return;
+                    }
+    
+                    if (!/^[\w\-а-яА-ЯёЁ]+$/.test(value)) {
+                        new Notice("The tag can only contain letters, numbers, underscores and hyphens.");
+                        return;
+                    }
+    
+                    this.plugin.settings.defaultTag = value;
+                    await this.plugin.saveSettings();
+                    new Notice(`The tag "${value}" has been saved.`);
+                })
             });
         });
     }

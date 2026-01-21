@@ -341,49 +341,51 @@ export const addHistory = async () => {
         }
     })
 
-    addButton.addEventListener('click', async (e) => {
+    addButton.addEventListener('click', (e) => {
         e.preventDefault();
         
-        if(!(Number(inputSum.value) >= 1)) {
-            inputSum.focus()
-            new Notice('Enter the amount')
-            return
-        }
-
-        const billOption = await searchElementById<BillData>(selectBills.value, 'Archive bills')
-        if(billOption.status === 'error') {
-            new Notice(billOption.error.message)
-            console.error(billOption.error)
-            return
-        }
-        if(billOption.item.currency !== MainPlugin.instance.settings.baseCurrency) {
-            new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
-            return
-        }
-
-        const data: HistoryData = {
-            id: String(generateUUID()),
-            amount: String(inputSum.value),
-            bill: {
-                id: selectBills.value
-            },
-            category: {
-                id: selectCategory.value
-            }, 
-            comment: commentInput.value.trim(),
-            date: `${selectDate.value}T${getLocalTimeISO()}`,
-            type: resultRadio,
-        }
-        const resultOfadd = await addJsonToHistory(data)
-        if(resultOfadd.status === "success") {
-            setTimeout(() => {
-                FinancialAccountingView.instance.onOpen().catch(console.error)
-                new Notice('Operation added')
-            }, 100)
-        } else {
-            new Notice(resultOfadd.error.message)
-            console.error(resultOfadd.error)
-        }
+        void (async () => {
+            if(!(Number(inputSum.value) >= 1)) {
+                inputSum.focus()
+                new Notice('Enter the amount')
+                return
+            }
+    
+            const billOption = await searchElementById<BillData>(selectBills.value, 'Archive bills')
+            if(billOption.status === 'error') {
+                new Notice(billOption.error.message)
+                console.error(billOption.error)
+                return
+            }
+            if(billOption.item.currency !== MainPlugin.instance.settings.baseCurrency) {
+                new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
+                return
+            }
+    
+            const data: HistoryData = {
+                id: String(generateUUID()),
+                amount: String(inputSum.value),
+                bill: {
+                    id: selectBills.value
+                },
+                category: {
+                    id: selectCategory.value
+                }, 
+                comment: commentInput.value.trim(),
+                date: `${selectDate.value}T${getLocalTimeISO()}`,
+                type: resultRadio,
+            }
+            const resultOfadd = await addJsonToHistory(data)
+            if(resultOfadd.status === "success") {
+                setTimeout(() => {
+                    FinancialAccountingView.instance.onOpen().catch(console.error)
+                    new Notice('Operation added')
+                }, 100)
+            } else {
+                new Notice(resultOfadd.error.message)
+                console.error(resultOfadd.error)
+            }
+        })
     })
 }
 
@@ -510,33 +512,35 @@ export const addPlan = () => {
         }
     })
 
-    addButton.addEventListener('click', async (e) => {
+    addButton.addEventListener('click', (e) => {
         e.preventDefault();
 
-        if(!inputName.value) {
-            inputName.focus()
-            new Notice('Enter the name')
-            return
-        }
-
-        const data: PlanData = {
-            id: String(generateUUID()),
-            name: inputName.value.trim(),
-            emoji: inputEmoji.value,
-            amount: '0',
-            comment: commentInput.value.trim(),
-            type: resultRadio,
-        }
-        const resultOfadd = await addJsonToPlan(data)
-        if(resultOfadd.status === "success") {
-            setTimeout(() => {
-                FinancialAccountingView.instance.onOpen().catch(console.error)
-                new Notice('The plan has been added.')
-            }, 100)
-        } else {
-            new Notice(resultOfadd.error.message)
-            console.error(resultOfadd.error)
-        }
+        void (async () => {
+            if(!inputName.value) {
+                inputName.focus()
+                new Notice('Enter the name')
+                return
+            }
+    
+            const data: PlanData = {
+                id: String(generateUUID()),
+                name: inputName.value.trim(),
+                emoji: inputEmoji.value,
+                amount: '0',
+                comment: commentInput.value.trim(),
+                type: resultRadio,
+            }
+            const resultOfadd = await addJsonToPlan(data)
+            if(resultOfadd.status === "success") {
+                setTimeout(() => {
+                    FinancialAccountingView.instance.onOpen().catch(console.error)
+                    new Notice('The plan has been added.')
+                }, 100)
+            } else {
+                new Notice(resultOfadd.error.message)
+                console.error(resultOfadd.error)
+            }
+        })
     })
 }
 
@@ -692,33 +696,35 @@ export const addBills = () => {
         }
     })
 
-    addButton.addEventListener('click', async (e) => {
+    addButton.addEventListener('click',  (e) => {
         e.preventDefault();
 
-        if(!inputName.value) {
-            inputName.focus()
-            new Notice('Enter the name')
-            return
-        }
-
-        const data: BillData = {
-            id: String(generateUUID()),
-            name: inputName.value.trim(),
-            emoji: inputEmoji.value,
-            balance: String(currentBalance.value).trim(),
-            currency: currencySelect.value,
-            generalBalance: checkboxInput.checked,
-            comment: commentInput.value.trim(),
-        }
-        const resultOfadd = await addJsonToBills(data)
-        if(resultOfadd.status === "success") {
-            setTimeout(() => {
-                FinancialAccountingView.instance.onOpen().catch(console.error)
-                new Notice('The bill has been added.')
-            }, 100)
-        } else {
-            new Notice(resultOfadd.error.message)
-            console.error(resultOfadd.error)
-        }
+        void (async () => {
+            if(!inputName.value) {
+                inputName.focus()
+                new Notice('Enter the name')
+                return
+            }
+    
+            const data: BillData = {
+                id: String(generateUUID()),
+                name: inputName.value.trim(),
+                emoji: inputEmoji.value,
+                balance: String(currentBalance.value).trim(),
+                currency: currencySelect.value,
+                generalBalance: checkboxInput.checked,
+                comment: commentInput.value.trim(),
+            }
+            const resultOfadd = await addJsonToBills(data)
+            if(resultOfadd.status === "success") {
+                setTimeout(() => {
+                    FinancialAccountingView.instance.onOpen().catch(console.error)
+                    new Notice('The bill has been added.')
+                }, 100)
+            } else {
+                new Notice(resultOfadd.error.message)
+                console.error(resultOfadd.error)
+            }
+        })
     })
 }
