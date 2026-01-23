@@ -64,8 +64,8 @@ export const showInitialView = async (): Promise<void> => {
 
     showAllMonthsButton.addEventListener("click", () => {
         if (contentEl.dataset.page === "home") {
-        contentEl.setAttribute("data-page", "months");
-        void showAllMonths();
+            contentEl.setAttribute("data-page", "months");
+            void showAllMonths();
         }
     });
 
