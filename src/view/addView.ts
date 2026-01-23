@@ -364,7 +364,7 @@ export const addHistory = async () => {
             type: resultRadio,
         }
 
-        addHistoryButton(data, selectBills)
+        void addHistoryButton(data, selectBills)
     })
 }
 
@@ -533,7 +533,7 @@ export const addPlan = () => {
             type: resultRadio,
         }
 
-        addPlanButton(data)
+        void addPlanButton(data)
     })
 }
 
@@ -721,7 +721,7 @@ export const addBills = () => {
             comment: commentInput.value.trim(),
         }
         
-        addBillsButton(data)
+        void addBillsButton(data)
     })
 }
 

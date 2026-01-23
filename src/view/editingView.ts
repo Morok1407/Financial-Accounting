@@ -55,7 +55,7 @@ export const editingHistory = async (e: MouseEvent) => {
     })
     setIcon(deleteButton, 'trash-2')
     deleteButton.addEventListener('click', () => {
-        deleteHistoryButton(history.item)
+        void deleteHistoryButton(history.item)
     })
 
     const mainAddForm = contentEl.createEl('form', {
@@ -287,7 +287,7 @@ export const editingHistory = async (e: MouseEvent) => {
             type: history.item.type,
         }
 
-        editingHistoryButton(data, history.item, selectBills)
+        void editingHistoryButton(data, history.item, selectBills)
     })
 }
 
@@ -374,7 +374,7 @@ export const editingPlan = async (e: MouseEvent) => {
     })
     setIcon(deleteButton, 'trash-2')
     deleteButton.addEventListener('click', () => {
-        deletePlanButton(plan.item)
+        void deletePlanButton(plan.item)
     })
 
     const header = contentEl.createEl('div', {
@@ -459,8 +459,7 @@ export const editingPlan = async (e: MouseEvent) => {
             type: plan.item.type,
         }
 
-        
-        editingPlanButton(data)
+        void editingPlanButton(data)
     })
 
     const history = await getDataFile<HistoryData>('History');
@@ -668,7 +667,7 @@ export const editingBill = async (e: MouseEvent) => {
     })
     setIcon(deleteButton, 'trash-2')
     deleteButton.addEventListener('click', () => {
-        deleteBillButton(bill.item)
+        void deleteBillButton(bill.item)
     })
 
     const header = contentEl.createEl('div', {
@@ -806,7 +805,7 @@ export const editingBill = async (e: MouseEvent) => {
             comment: commentInput.value.trim(),
         }
 
-        editingBillButton(data)
+        void editingBillButton(data)
     })
 }
 
@@ -1098,7 +1097,7 @@ export const transferBetweenBillsView = async (billId: string) => {
             };
         }
 
-        transferBetweenBillsButton(transferData)
+        void transferBetweenBillsButton(transferData)
     });
 }
 
