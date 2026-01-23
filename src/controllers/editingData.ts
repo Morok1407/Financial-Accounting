@@ -57,8 +57,8 @@ export const editingJsonToPlan = async (data: PlanData): Promise<ResultOfExecuti
         if(!plan.content) return { status: 'error', error: new Error("History content is null or undefined")}
 
         const newData = plan.jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
-        const dataStr = JSON.stringify(newData, null, 4) + "\n```";
-        const newContent = plan.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr);
+        const dataStr = JSON.stringify(newData, null, 4);
+        const newContent = plan.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr  + "\n```");
         await MainPlugin.instance.app.vault.modify(plan.file, newContent)
 
         if(data.type === 'expense') {
@@ -88,8 +88,8 @@ export const editingJsonToBill = async (data: BillData): Promise<ResultOfExecuti
     
     try {
         const newData = bills.jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
-        const dataStr = JSON.stringify(newData, null, 4) + "\n```";
-        const newContent = bills.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr);
+        const dataStr = JSON.stringify(newData, null, 4);
+        const newContent = bills.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr  + "\n```");
         await MainPlugin.instance.app.vault.modify(bills.file, newContent)
 
         return { status: "success" }

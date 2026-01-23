@@ -26,13 +26,13 @@ export const addJsonToHistory = async (data: HistoryData): Promise<ResultOfExecu
         return { status: 'error', error: new Error('The specified type is not suitable') }
     }  
 
-    if (historyData.content === undefined) throw new Error('content is undefined');
-    if(historyData.file === undefined) throw new Error('file is undefined');
+    if (historyData.content === undefined) return { status: 'error', error: new Error('Сontent is undefined') };
+    if(historyData.file === undefined) return { status: 'error', error: new Error('File is undefined') };
 
     try {
-        if(historyData.jsonData == null) {
+        if(historyData.jsonData === null) {
             const dataStr = JSON.stringify([data], null, 4) + "\n```";
-            const newContent = historyData.content.replace(/\\```$/, dataStr);
+            const newContent = historyData.content.replace(/```$/, dataStr);
             await MainPlugin.instance.app.vault.modify(historyData.file, newContent)
 
             return { status: 'success' };
@@ -73,7 +73,7 @@ async function addJsonToExpenditurePlan(data: PlanData): Promise<ResultOfExecuti
     try {
         if(planData.jsonData === null) {
             const dataStr = JSON.stringify([data], null, 4) + "\n```";
-            const newContent = planData.content.replace(/\\```$/, dataStr);
+            const newContent = planData.content.replace(/```$/, dataStr);
             await MainPlugin.instance.app.vault.modify(planData.file, newContent)
             
             const resultArchive = await archiveExpenditurePlan()
@@ -109,7 +109,7 @@ async function addJsonToIncomePlan(data: PlanData): Promise<ResultOfExecution> {
     try {
         if(planData.jsonData === null) {
             const dataStr = JSON.stringify([data], null, 4) + "\n```";
-            const newContent = planData.content.replace(/\\```$/, dataStr);
+            const newContent = planData.content.replace(/```$/, dataStr);
             await MainPlugin.instance.app.vault.modify(planData.file, newContent)
 
             const resultArchive = await archiveIncomePlan()
@@ -149,7 +149,7 @@ export const addJsonToBills = async (data: BillData): Promise<ResultOfExecution>
     try {
         if(billData.jsonData === null) {
             const dataStr = JSON.stringify([data], null, 4) + "\n```";
-            const newContent = billData.content.replace(/\\```$/, dataStr);
+            const newContent = billData.content.replace(/```$/, dataStr);
             await MainPlugin.instance.app.vault.modify(billData.file, newContent)
 
             return { status: 'success' }
