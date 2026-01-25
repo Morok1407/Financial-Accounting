@@ -306,13 +306,13 @@ export async function TheSumOfExpensesAndIncomeForTheYear(year: string): Promise
     let totalExpense = new Big(0);
     let totalIncome = new Big(0);
 
-    for (let m = 0; m < 12; m++) { // исправил на 0..11 для массива months
+    for (let m = 0; m < 12; m++) {
         const expensePlan = await getSpecificFile<PlanData>('Expenditure plan', year, months[m]);
-        if (expensePlan.status === 'error') return;
+        if (expensePlan.status === 'error') continue;
         if (!expensePlan.jsonData) throw new Error('Expense plan is undefined');
 
         const incomePlan = await getSpecificFile<PlanData>('Income plan', year, months[m]);
-        if (incomePlan.status === 'error') return;
+        if (incomePlan.status === 'error') continue;
         if (!incomePlan.jsonData) throw new Error('Income plan is undefined');
 
         totalExpense = totalExpense.plus(SummarizingDataForTheDayExpense(expensePlan.jsonData));
