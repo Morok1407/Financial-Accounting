@@ -1,18 +1,18 @@
-import { getDataFile, getDataArchiveFile } from "./searchData";
-import { expenditureTransaction, incomeTransaction } from "../middleware/transferring"
+import { getAllFile } from "./searchData";
+import { updateFile } from "./editingData";
 import { checkForDeletionData } from "../middleware/checkData";
-import { archiveExpenditurePlan, archiveIncomePlan } from "../middleware/duplicating";
-import { HistoryData, PlanData, BillData, ResultOfExecution } from "../../main";
+import { HistoryData, PlanData, BillData, ResultOfExecution, stateManager } from "../../main";
+import { getDate } from '../middleware/otherFunc';
+import { expenditureTransaction, incomeTransaction } from "../middleware/transferring"
 import MainPlugin from "../../main";
+import { DB_PATH } from "./DB";
 
 export const deleteHistory = async (element: HistoryData): Promise<ResultOfExecution> => {
-    if(element === null || element === undefined) return {status: 'error', error: new Error('Element is null or undefined')};
-
-    const historyData = await getDataFile<HistoryData>('History')
-    if(historyData.status === 'error') return {status: 'error', error: historyData.error};
-    if(historyData.file === null || historyData.file === undefined) return {status: 'error', error: new Error('History file is null or undefined')};
-    if(historyData.content === null || historyData.content === undefined) return {status: 'error', error: new Error('History content is null or undefined')};
-    if(historyData.jsonData === null || historyData.jsonData === undefined) return {status: 'error', error: new Error('History data is null or undefined')};
+    const { selectedYear, selectedMonth } = stateManager();
+    const { year, month } =
+    selectedYear && selectedMonth
+        ? { year: selectedYear, month: selectedMonth }
+        : getDate();
 
     if(element.type === 'expense') {
         const result = await expenditureTransaction(element, 'remove')
@@ -24,78 +24,73 @@ export const deleteHistory = async (element: HistoryData): Promise<ResultOfExecu
         return { status: 'error', error: new Error('Unknown transaction type') }
     }
 
-    if(historyData.jsonData.length <= 1) {
-        try {
-            const newContent = historyData.content.replace(/```json[\s\S]*?```/, "```json\n```");
-            await MainPlugin.instance.app.vault.modify(historyData.file, newContent);        
-            
-            return { status: 'success' }
-        } catch (error) {
-            return { status: 'error', error: error instanceof Error ? error : new Error(`Error deleting item: ${String(error)}`)}
-        }
-    } else {
-        try {
-            const newData = historyData.jsonData.filter(item => item.id !== element.id);
-            const dataStr = JSON.stringify(newData, null, 4);
-            const newContent = historyData.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
-            await MainPlugin.instance.app.vault.modify(historyData.file, newContent);
-        
-            return { status: 'success' }
-        } catch (error) {
-            return { status: 'error', error: error instanceof Error ? error : new Error(`Error deleting item: ${String(error)}`)}
-        }
+    const allData = await getAllFile(year)
+    if (allData.status === 'error') return { status: 'error', error: allData.error };
+
+    try {
+        const newHistory = allData.months[month].history.filter((item: HistoryData) => item.id !== element.id);
+        allData.months[month].history = newHistory;
+
+        const result = await updateFile(`${allData.year}`, allData);
+        if (result.status === 'error') return { status: 'error', error: result.error };
+
+        return { status: 'success' };
+    } catch (error) {
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Error deleting item: ${String(error)}`)}
     }
 }
 
-export const deletePlan = async (item: PlanData): Promise<ResultOfExecution> => {
-    const { id, name, emoji, type } = item;
-    if(!id) return { status: 'error', error: new Error('Element not found')}
+export const deletePlan = async (data: PlanData): Promise<ResultOfExecution> => {
+    if(await checkForDeletionData(data.id, 'plan')) return { status: 'error', error: new Error(`The bill ${data.emoji} • ${data.name} cannot be deleted because it is used in history.`)}
 
-    const sourceMap = {
-        expense: () => getDataFile<PlanData>('Expenditure plan'),
-        income: () => getDataFile<PlanData>('Income plan'),
-    } as const;
+    const additionalData = await getAllFile('categories');
+    if(additionalData.status === 'error') return { status: 'error', error: additionalData.error };
+
+    const BD = await MainPlugin.instance.app.vault.adapter.list(DB_PATH);
+
+    const yearsFiles = BD.files.filter(path => /\/\d{4}\.json$/.test(path))
+
+    if (yearsFiles.length === 0) {
+        return { status: 'error', error: new Error('No yearly files found. Please generate a yearly file first.') }
+    }
 
     try {
-        const loader = sourceMap[type];
-        if (!loader) return { status: 'error', error: new Error('Element not found')}
+        yearsFiles.forEach(async (filePath) => {
+            const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
+            const jsonData = JSON.parse(file);
 
-        const data = await loader();
-        if (data.status === 'error') return { status: 'error', error: data.error};
-        if(data.file === null || data.file === undefined) return { status: 'error', error: new Error('History file is null or undefined')}
-        if(data.content === null || data.content === undefined) return { status: 'error', error: new Error('History content is null or undefined')}
-        if(data.jsonData === null || data.jsonData === undefined) return { status: 'error', error: new Error('History data is null or undefined')}
+            for (const month in jsonData.months) {
+                if(data.type === 'income') {
+                    const newPlan = jsonData.months[month].income_plan.filter((item: PlanData) => item.id !== data.id);
+                    jsonData.months[month].income_plan = newPlan;
+                } else if (data.type === 'expense') {
+                    const newPlan = jsonData.months[month].expenditure_plan.filter((item: PlanData) => item.id !== data.id);
+                    jsonData.months[month].expenditure_plan = newPlan;
+                } else {
+                    throw new Error('The specified type is not suitable');
+                }
+            }
 
-        if(await checkForDeletionData(id, 'plan')) return { status: 'error', error: new Error(`The category ${emoji} • ${name} cannot be deleted because it is used in history.`)};
-        
-        let newContent: string;
+            const result = await updateFile(`${jsonData.year}`, jsonData);
+            if (result.status === 'error') return { status: 'error', error: result.error };
+        })
 
-        if (data.jsonData.length <= 1) {
-            newContent = data.content.replace(/```json[\s\S]*?```/, "```json\n```");
-        } else if (data.jsonData.length >= 2) {
-            const newData = data.jsonData.filter(item => item.id !== id);
-            const dataStr = JSON.stringify(newData, null, 4);
-            newContent = data.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
-        } else {
-            newContent = 'Error'
-        }
-        
-        if(newContent === 'Error') return { status: 'error', error: new Error('Error with create new content')}
-
-        await MainPlugin.instance.app.vault.modify(data.file, newContent);
-        if(type === 'expense') {
-            const resultArchive = await archiveExpenditurePlan()
-            if(resultArchive.status === 'error') return { status: 'error', error: resultArchive.error } 
-        } else if (type === 'income') {
-            const resultArchive = await archiveIncomePlan()
-            if(resultArchive.status === 'error') return { status: 'error', error: resultArchive.error } 
+        if(data.type === 'expense') {
+            const newPlan = additionalData.categories.expenditure_plan.filter((item: PlanData) => item.id !== data.id);
+            additionalData.categories.expenditure_plan = newPlan;
+        } else if (data.type === 'income') {
+            const newPlan = additionalData.categories.income_plan.filter((item: PlanData) => item.id !== data.id);
+            additionalData.categories.income_plan = newPlan;
         } else {
             return { status: 'error', error: new Error('The plan has an invalid type.')}
         }
 
-        return { status: 'success'}
+        const result = await updateFile('categories', additionalData);
+        if (result.status === 'error') return { status: 'error', error: result.error };
+
+        return { status: 'success' }
     } catch (error) {
-        return { status: 'error', error: error instanceof Error ? error : new Error(`Error deleting item: ${String(error)}`)}
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Error checking for deletion: ${String(error)}`)}
     }
 }
 
@@ -103,33 +98,20 @@ export const deleteBill = async (item: BillData): Promise<ResultOfExecution> => 
     const { id, name, emoji } = item;
     if(!id) return { status: 'error', error: new Error('Element not found')}
 
-    const billData = await getDataArchiveFile<BillData>('Archive bills')
-    if (billData.status === 'error') return { status: 'error', error: billData.error};
-    if (!billData.jsonData) return { status: 'error', error: new Error('jsonData is null or undefined')};
-    if(!billData.file) return { status: 'error', error: new Error("History file is null or undefined")}
-    if(!billData.content) return { status: 'error', error: new Error("History content is null or undefined")}
+    const allData = await getAllFile('accounts')
+    if (allData.status === 'error') return { status: 'error', error: allData.error };
 
     try {
-        if(await checkForDeletionData(id, 'bill')) return { status: 'error', error: new Error(`The bill ${emoji} • ${name} cannot be deleted because it is in use in history.`)}
-
-        let newContent: string;
-
-        if (billData.jsonData.length <= 1) {
-            newContent = billData.content.replace(/```json[\s\S]*?```/, "```json\n```");
-        } else if (billData.jsonData.length >= 2) {
-            const newData = billData.jsonData.filter(item => item.id !== id);
-            const dataStr = JSON.stringify(newData, null, 4);
-            newContent = billData.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
-        } else {
-            newContent = 'Error';
-        }
-
-        if(newContent === 'Error') return { status: 'error', error: new Error('Error with create new content')}
-        await MainPlugin.instance.app.vault.modify(billData.file, newContent);
+        if(await checkForDeletionData(id, 'bill')) return { status: 'error', error: new Error(`The bill ${emoji} • ${name} cannot be deleted because it is used in history.`)}
         
-        return { status: 'success'}
+        const newBills = allData.accounts.filter((item: BillData) => item.id !== id);
+        allData.accounts = newBills;
 
+        const result = await updateFile('accounts', allData);
+        if (result.status === 'error') return { status: 'error', error: result.error };
+
+        return { status: 'success' }
     } catch (error) {
-        return { status: 'error', error: error instanceof Error ? error : new Error(`Error deleting item: ${String(error)}`)}
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Error checking for deletion: ${String(error)}`)}
     }
 }

@@ -3,47 +3,53 @@ import MainPlugin from "../../main";
 import { FinancialAccountingView } from '../../main'
 import { stateManager, BillData, PlanData } from "../../main";
 import { getDate } from "../middleware/otherFunc";
-import { createDirectory, createOtherMonthDirectory, months } from "../controllers/createDirectory";
+import { initDB, generateYearlyFile } from "../controllers/DB";
 import { showHistory, showPlans, showBills } from "./showDataView";
-import { getDataFile, getDataArchiveFile } from "../controllers/searchData";
-import { SummarizingDataForTheDayExpense, SummarizingDataForTheTrueBills, divideByRemainingDays, switchBalanceLine, SummarizingDataForTheDayIncome, getCurrencySymbol, TheSumOfExpensesAndIncomeForTheYear, IncomeAndExpensesForTheMonth } from "../middleware/otherFunc";
+import { getAdditionalData, getMainData } from "../controllers/searchData";
+import { SummarizingDataForTheTrueBills, divideByRemainingDays, switchBalanceLine, SummarizingData, getCurrencySymbol, TheSumOfExpensesAndIncomeForTheYear, IncomeAndExpensesForTheMonth } from "../middleware/otherFunc";
 
 export const showInitialView = async (): Promise<void> => {
+    const initDBResult = await initDB();
+    if (initDBResult.status === "error") {
+        new Notice(initDBResult.error.message);
+        console.error(initDBResult.error);
+        return;
+    }
+
+    const generateYearlyFileResult = await generateYearlyFile();
+    if (generateYearlyFileResult.status === "error") {
+        new Notice(generateYearlyFileResult.error.message);
+        console.error(generateYearlyFileResult.error);
+        return;
+    }
+
     if (!FinancialAccountingView.instance || !MainPlugin.instance) return;
 
     stateManager({ selectedMonth: null, selectedYear: null });
 
-    const result = await createDirectory();
-    if(!result) {
-        return showInitialView();
-    }
-
     const { contentEl } = FinancialAccountingView.instance;
     const { month } = getDate();
 
-    const bills = await getDataArchiveFile<BillData>("Archive bills");
+    const bills = await getAdditionalData<BillData>('accounts');
     if (bills.status === "error") {
         new Notice(bills.error.message);
         console.error(bills.error);
         return
     }
-    if (bills.jsonData === undefined) throw new Error('billsInfo is undefined');
 
-    const expensePlan = await getDataFile<PlanData>("Expenditure plan");
+    const expensePlan = await getMainData<PlanData>('expenditure_plan');
     if (expensePlan.status === "error") {
         new Notice(expensePlan.error.message);
         console.error(expensePlan.error);
         return
     }
-    if (expensePlan.jsonData === undefined) throw new Error('expenditurePlanInfo is undefined');
 
-    const incomePlan = await getDataFile<PlanData>("Income plan");
+    const incomePlan = await getMainData<PlanData>('income_plan');
     if (incomePlan.status === "error") {
         new Notice(incomePlan.error.message);
         console.error(incomePlan.error);
         return
     }
-    if (incomePlan.jsonData === undefined) throw new Error('incomePlanInfo is undefined');
 
     contentEl.empty();
     contentEl.addClass("finance-content");
@@ -52,14 +58,27 @@ export const showInitialView = async (): Promise<void> => {
         cls: "finance-header",
     });
 
+    const allMonths = [
+        "☃️ January",
+        "🌨️ February",
+        "🌷 March",
+        "🌱 April",
+        "☀️ May",
+        "🌳 June",
+        "🏖️ July",
+        "🌾 August",
+        "🍁 September",
+        "🍂 October",
+        "☔ November",
+        "❄️ December",
+    ];
     const showAllMonthsButton = financeHeader.createEl("button", {
         attr: {
         id: "showAllMonths",
         },
     });
-    setIcon(showAllMonthsButton, "calendar-days");
     showAllMonthsButton.createEl("span", {
-        text: month,
+        text: allMonths[Number(month) - 1],
     });
 
     showAllMonthsButton.addEventListener("click", () => {
@@ -114,7 +133,7 @@ export const showInitialView = async (): Promise<void> => {
 
     setIcon(balanceExpensesCheck, "upload");
     balanceExpensesCheck.createEl("p", {
-        text: `${SummarizingDataForTheDayExpense(expensePlan.jsonData).toString()}`,
+        text: `${SummarizingData(expensePlan.jsonData).toString()}`,
     });
 
     const balanceIncome = balanceBody.createEl("div", {
@@ -131,7 +150,7 @@ export const showInitialView = async (): Promise<void> => {
 
     setIcon(balanceIncomeCheck, "download");
     balanceIncomeCheck.createEl("p", {
-        text: `${SummarizingDataForTheDayIncome(incomePlan.jsonData).toString()}`,
+        text: `${SummarizingData(incomePlan.jsonData).toString()}`,
     });
 
     await homeButtons();
@@ -299,7 +318,7 @@ const showAllMonths = async (): Promise<void> => {
             const storyMonth = calendarItem.createEl("div", {
                 cls: "story-month",
             });
-            await IncomeAndExpensesForTheMonth(months[k], String(i), storyMonth);
+            await IncomeAndExpensesForTheMonth(`${k + 1}`, String(i), storyMonth);
         }
     }
 }
@@ -308,19 +327,14 @@ export const initOtherMonth = async (e: MouseEvent): Promise<void> => {
     const { year, month } = getDate();
 
     const target = (e.target as HTMLElement)?.closest<HTMLElement>("[data-month]") ?? (e.target as HTMLElement);
-    const dataMonth = Number(target?.dataset?.month);
+    const dataMonth = target?.dataset?.month;
     const dataYear = String(target?.dataset?.year);
 
-    if (months[dataMonth - 1] === month && dataYear === year) {
+    if (dataMonth === month && dataYear === year) {
         return FinancialAccountingView.instance?.onOpen();
     }
 
-    stateManager({ selectedMonth: months[dataMonth - 1], selectedYear: dataYear });
-
-    const resultCreat = await createOtherMonthDirectory(dataMonth - 1, dataYear);
-    if (resultCreat !== "success") {
-        new Notice(resultCreat);
-    }
+    stateManager({ selectedMonth: dataMonth, selectedYear: dataYear });
 
     await showAnotherInitialView();
 }
@@ -332,21 +346,19 @@ export const showAnotherInitialView = async (): Promise<void> => {
 
     const { selectedMonth, selectedYear } = stateManager();
 
-    const expensePlan = await getDataFile<PlanData>("Expenditure plan");
+    const expensePlan = await getMainData<PlanData>("expenditure_plan");
     if (expensePlan.status === "error") {
         new Notice(expensePlan.error.message);
         console.error(expensePlan.error);
         return
     }
-    if (expensePlan.jsonData == null) throw new Error('expenditurePlanInfo is null or undefined');
 
-    const incomePlan = await getDataFile<PlanData>("Income plan");
+    const incomePlan = await getMainData<PlanData>("income_plan");
     if (incomePlan.status === "error") {
         new Notice(incomePlan.error.message);
         console.error(incomePlan.error);
         return
     }
-    if (incomePlan.jsonData == null) throw new Error('incomePlanInfo is null or undefined');
 
     const { contentEl } = FinancialAccountingView.instance;
     contentEl.empty();
@@ -367,22 +379,35 @@ export const showAnotherInitialView = async (): Promise<void> => {
         cls: "finance-header",
     });
 
+    const allMonths = [
+        "☃️ January",
+        "🌨️ February",
+        "🌷 March",
+        "🌱 April",
+        "☀️ May",
+        "🌳 June",
+        "🏖️ July",
+        "🌾 August",
+        "🍁 September",
+        "🍂 October",
+        "☔ November",
+        "❄️ December",
+    ];
     const showAllMonthsButton = financeHeader.createEl("button", {
         attr: {
-            id: "showAllMonths",
+        id: "showAllMonths",
         },
     });
-    setIcon(showAllMonthsButton, "calendar-days");
     if(Number(selectedYear) === nowYear) {
         showAllMonthsButton.createEl("span", {
-            text: `${selectedMonth}`,
+            text: allMonths[Number(selectedMonth) - 1],
             attr: {
             id: "showAllMonths",
             },
         });
     } else {
         showAllMonthsButton.createEl("span", {
-            text: `${selectedMonth} ${selectedYear}`,
+            text: `${allMonths[Number(selectedMonth) - 1]} ${selectedYear}`,
             attr: {
             id: "showAllMonths",
             },
@@ -420,7 +445,7 @@ export const showAnotherInitialView = async (): Promise<void> => {
 
     setIcon(balanceExpensesCheck, "upload");
     balanceExpensesCheck.createEl("p", {
-        text: `${SummarizingDataForTheDayExpense(expensePlan.jsonData).toString()}`,
+        text: `${SummarizingData(expensePlan.jsonData).toString()}`,
     });
 
     const balanceIncome = balanceBody.createEl("div", {
@@ -437,7 +462,7 @@ export const showAnotherInitialView = async (): Promise<void> => {
 
     setIcon(balanceIncomeCheck, "download");
     balanceIncomeCheck.createEl("p", {
-        text: `${SummarizingDataForTheDayIncome(incomePlan.jsonData).toString()}`,
+        text: `${SummarizingData(incomePlan.jsonData).toString()}`,
     });
 
     await otherMonthHomeButtons();

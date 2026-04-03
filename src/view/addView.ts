@@ -2,60 +2,58 @@ import { Notice, setIcon } from "obsidian";
 import MainPlugin from "../../main";
 import { FinancialAccountingView } from "../../main";
 import { addJsonToHistory, addJsonToPlan, addJsonToBills } from "../controllers/addData";
-import { getDataArchiveFile, getDataFile, searchElementById } from "../controllers/searchData";
+import { getAdditionalData, getMainData, searchElementById } from "../controllers/searchData";
 import { stateManager } from "../../main";
 import { HistoryData, PlanData, BillData  } from "../../main";
-import { getCurrencySymbol, fillMonthDates, getLocalTimeISO, selectRelativeDate, getCurrencyGroups, generateUUID } from "../middleware/otherFunc";
+import { getCurrencySymbol, fillMonthDates, getLocalTimeISO, selectRelativeDate, getCurrencyGroups, generateUUID, mergeCategoriesData } from "../middleware/otherFunc";
 
 export const addHistory = async () => {
-    const bills = await getDataArchiveFile<BillData>('Archive bills')
+    const bills = await getAdditionalData<BillData>('accounts');
     if (bills.status === 'error') {
         new Notice(bills.error.message)
         console.error(bills.error)
         return
     }
-    if(bills.jsonData === undefined) {
-        new Notice('Bills is undefined')
-        console.error('Bills is null or undefined')
-        return
-    }
-    if(bills.jsonData === null) return new Notice('Add a bill')
+    if(bills.jsonData.length === 0) return new Notice('Add a bill')
 
-    const expensePlan = await getDataFile<PlanData>('Expenditure plan')
-    if (expensePlan.status === 'error') {
-        new Notice(expensePlan.error.message)
-        console.error(expensePlan.error)
+    const additionalExpensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan')
+    if (additionalExpensePlan.status === 'error') {
+        new Notice(additionalExpensePlan.error.message)
+        console.error(additionalExpensePlan.error)
         return
     }
-    if(expensePlan.jsonData === undefined) {
-        new Notice('Expenditure plan is undefined')
-        console.error('Expenditure plan is undefined')
-        return
-    }
-    if(expensePlan.jsonData === null) return new Notice('Add a expenditure plan')
-
-    const incomePlan = await getDataFile<PlanData>('Income plan')
-    if (incomePlan.status === 'error') {
-        new Notice(incomePlan.error.message)
-        console.error(incomePlan.error)
-        return
-    }
-    if(incomePlan.jsonData === undefined) {
-        new Notice('Income plan is undefined')
-        console.error('Income plan is undefined')
-        return
-    }
-    if(incomePlan.jsonData === null) return new Notice('Add a income plan')
+    if(additionalExpensePlan.jsonData.length === 0) return new Notice('Add a expenditure plan')
     
-    const history = await getDataFile<HistoryData>('History')
+    const mainExpensePlan = await getMainData<PlanData>('expenditure_plan')
+    if (mainExpensePlan.status === 'error') {
+        new Notice(mainExpensePlan.error.message)
+        console.error(mainExpensePlan.error)
+        return
+    }
+
+    const expensePlan = mergeCategoriesData(additionalExpensePlan.jsonData, mainExpensePlan.jsonData)
+
+    const additionalIncomePlan = await getAdditionalData<PlanData>('categories', 'income_plan')
+    if (additionalIncomePlan.status === 'error') {
+        new Notice(additionalIncomePlan.error.message)
+        console.error(additionalIncomePlan.error)
+        return
+    }
+    if(additionalIncomePlan.jsonData.length === 0) return new Notice('Add a income plan')
+
+    const mainIncomePlan = await getMainData<PlanData>('income_plan')
+    if (mainIncomePlan.status === 'error') {
+        new Notice(mainIncomePlan.error.message)
+        console.error(mainIncomePlan.error)
+        return
+    }
+
+    const incomePlan = mergeCategoriesData(additionalIncomePlan.jsonData, mainIncomePlan.jsonData)
+    
+    const history = await getMainData<HistoryData>('history')
     if (history.status === 'error') {
         new Notice(history.error.message)
         console.error(history.error)
-        return
-    }
-    if(history.jsonData === undefined) {
-        new Notice('History is undefined')
-        console.error('History is undefined')
         return
     }
 
@@ -192,7 +190,7 @@ export const addHistory = async () => {
         selectBills.appendChild(additionalGroup);
     }
 
-    if(history.jsonData === null) {
+    if(history.jsonData.length === 0) {
         bills.jsonData.sort((a, b) => Number(b.balance) - Number(a.balance))
         selectBills.value = bills.jsonData[0].id;
     } else {
@@ -234,22 +232,11 @@ export const addHistory = async () => {
     createOptionCategory()
 
     function createOptionCategory() {
-        if (expensePlan.status === 'error') {
-            new Notice(expensePlan.error.message)
-            console.error(expensePlan.error)
-            return
-        }
-        if (incomePlan.status === 'error') {
-            new Notice(incomePlan.error.message)
-            console.error(incomePlan.error)
-            return
-        }
-
         if(resultRadio === 'expense'){
             selectCategory.empty()
-            if(expensePlan.jsonData) {
-                expensePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
-                expensePlan.jsonData.forEach(plan => {
+            if(expensePlan) {
+                expensePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
+                expensePlan.forEach(plan => {
                     selectCategory.createEl('option', {
                         text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
                         attr: { 
@@ -260,9 +247,9 @@ export const addHistory = async () => {
             }
         } else {
             selectCategory.empty()
-            if(incomePlan.jsonData) {
-                incomePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
-                incomePlan.jsonData.forEach(plan => {
+            if(incomePlan) {
+                incomePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
+                incomePlan.forEach(plan => {
                     selectCategory.createEl('option', {
                         text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
                         attr: { 
@@ -368,8 +355,8 @@ export const addHistory = async () => {
     })
 }
 
-async function addHistoryButton(data:HistoryData, selectBills: HTMLSelectElement): Promise<void> {
-    const billOption = await searchElementById<BillData>(selectBills.value, 'Archive bills')
+async function addHistoryButton(data: HistoryData, selectBills: HTMLSelectElement): Promise<void> {
+    const billOption = await searchElementById<BillData>(selectBills.value, 'accounts')
     if(billOption.status === 'error') {
         new Notice(billOption.error.message)
         console.error(billOption.error)

@@ -1,12 +1,15 @@
-import { Plugin, ItemView, WorkspaceLeaf, Platform, PluginSettingTab, Setting, TFolder, TFile, Notice, App } from 'obsidian';
+import { Plugin, ItemView, WorkspaceLeaf, Platform, PluginSettingTab, Setting, Notice, App } from 'obsidian';
 import { showInitialView, showAnotherInitialView } from './src/view/homeView'; 
+import { getDate } from './src/middleware/otherFunc';
 import { getCurrencyGroups } from './src/middleware/otherFunc';
-import { getDataArchiveFile } from './src/controllers/searchData';
+import { getAdditionalData } from './src/controllers/searchData';
+import { generateYearlyFile } from './src/controllers/DB';
 
 const FINANCIAL_ACCOUNTING_VIEW = "financial-accounting-view";
+const { year } = getDate();
 
 export interface BillData {
-    id: string;
+    readonly id: string;
     name: string;
     emoji?: string;
     balance: string;
@@ -16,7 +19,7 @@ export interface BillData {
 }
 
 export interface PlanData {
-    id: string;
+    readonly id: string;
     name: string;
     emoji?: string;
     amount: string;
@@ -25,7 +28,7 @@ export interface PlanData {
 }
 
 export interface HistoryData {
-    id: string;
+    readonly id: string;
     amount: string;
     bill: { id: string };
     category: { id: string };
@@ -46,26 +49,23 @@ export type ResultOfExecution =
 
 export type TransferData =
     | {
-        type: 'same-currency';
-        fromBillId: string;
-        toBillId: string;
+        readonly type: 'same-currency';
+        readonly fromBillId: string;
+        readonly toBillId: string;
         amount: number;
     }
     | {
-        type: 'cross-currency';
-        fromBillId: string;
-        toBillId: string;
+        readonly type: 'cross-currency';
+        readonly fromBillId: string;
+        readonly toBillId: string;
         sourceAmount: number;
         targetAmount: number;
     };
 
-
 export type DataFileResult<T> =
     | {
         status: 'success';
-        jsonData: T[] | null;
-        file?: TFile;
-        content?: string;
+        readonly jsonData: T[];
     }
     | {
         status: 'error';
@@ -83,9 +83,9 @@ export type DataItemResult<T> =
     };
 
 export interface CurrencyType {
-    code: string;
-    name: string;
-    symbol: string;
+    readonly code: string;
+    readonly name: string;
+    readonly symbol: string;
 }
 
 export default class MainPlugin extends Plugin {
@@ -216,15 +216,11 @@ export class FinancialAccountingView extends ItemView {
 }
 
 class DefaultSettings {
-    targetFolder: string;
     startYear: number;
     baseCurrency: string;
-    defaultTag: string;
     constructor() {
-        this.targetFolder = 'Finances';
-        this.startYear = 2020;
+        this.startYear = Number(year);
         this.baseCurrency = "USD";
-        this.defaultTag = 'Finances';
     }
 }
 
@@ -243,36 +239,6 @@ class SettingsTab extends PluginSettingTab {
             .setName("Preferences")
             .setHeading();
 
-        const folders = this.app.vault
-            .getAllLoadedFiles()
-            .filter((f): f is TFolder => f instanceof TFolder)
-            .map(f => f.path);
-
-        const defaultFolder = this.plugin.settings.targetFolder || "Finances/";
-        const hasDefault = folders.includes(defaultFolder);
-
-        // Selecting a directory
-        new Setting(containerEl)
-        .setName("Working directory")
-        .setDesc("Select the folder the plugin will work with.")
-        .addDropdown((drop) => {
-            for (const path of folders) {
-            drop.addOption(path, path);
-            }
-
-            if (!hasDefault) {
-            drop.addOption(defaultFolder, `${defaultFolder} (does not exist)`);
-            }
-
-            drop.setValue(defaultFolder);
-
-            drop.onChange(async (value) => {
-            this.plugin.settings.targetFolder = value;
-            await this.plugin.saveSettings();
-            new Notice(`Folder selected: ${value}`);
-            });
-        });
-
         // Selecting the initial year of accounting
         new Setting(containerEl)
         .setName("Initial year of accounting")
@@ -288,6 +254,7 @@ class SettingsTab extends PluginSettingTab {
             drop.onChange(async (value) => {
             this.plugin.settings.startYear = Number(value);
             await this.plugin.saveSettings();
+            await generateYearlyFile();
             new Notice(`The starting year has been changed to ${value}`);
             });
         });
@@ -328,73 +295,34 @@ class SettingsTab extends PluginSettingTab {
 
         selectEl.value = this.plugin.settings.baseCurrency;
 
-        selectEl.addEventListener("change", (event: Event) => {
-            void (async () => {
-                const target = event.target as HTMLSelectElement;
-                const newCurrency = target.value;
-    
-                const bills = await getDataArchiveFile<BillData>('Archive bills');
-                if (bills.status === 'error') {
-                    new Notice(`Error fetching archive bills: ${bills.error.message}`);
-                    return;
-                }
-    
-                const generalBalanceBills = bills.jsonData?.filter(
-                    bill => bill.generalBalance && bill.currency !== newCurrency
+        selectEl.addEventListener("change", async (event: Event) => {
+            const target = event.target as HTMLSelectElement;
+            const newCurrency = target.value;
+
+            const bills = await getAdditionalData<BillData>('accounts');
+            if (bills.status === 'error') {
+                new Notice(`Error fetching archive bills: ${bills.error.message}`);
+                return;
+            }
+
+            const generalBalanceBills = bills.jsonData?.filter(
+                bill => bill.generalBalance && bill.currency !== newCurrency
+            );
+
+            if (generalBalanceBills && generalBalanceBills.length > 0) {
+                const bill = generalBalanceBills[0];
+
+                selectEl.value = this.plugin.settings.baseCurrency;
+
+                new Notice(
+                    `Cannot change base currency. Bill "${bill.name}" is set to general balance with currency ${bill.currency}. Please change or disable general balance on this bill first.`
                 );
-    
-                if (generalBalanceBills && generalBalanceBills.length > 0) {
-                    const bill = generalBalanceBills[0];
-    
-                    selectEl.value = this.plugin.settings.baseCurrency;
-    
-                    new Notice(
-                        `Cannot change base currency. Bill "${bill.name}" is set to general balance with currency ${bill.currency}. Please change or disable general balance on this bill first.`
-                    );
-                    return;
-                }
-    
-                this.plugin.settings.baseCurrency = newCurrency;
-                await this.plugin.saveSettings().catch(console.error);
-                new Notice(`Base currency changed to ${newCurrency}`);
-            })
-        });
+                return;
+            }
 
-        new Setting(containerEl)
-        .setName("Default tag for Obsidian")
-        .setDesc("Enter one word to use as a tag (no spaces).")
-        .addText((text) => {
-            text
-            .setPlaceholder("For example: finances")
-            .setValue(this.plugin.settings.defaultTag || "");
-
-
-            text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    text.inputEl.blur();
-                }
-            });
-
-            text.inputEl.addEventListener("blur", () => {
-                void (async () => {
-                    const value = text.getValue().trim();
-    
-                    if (/\s/.test(value)) {
-                        new Notice("Tag must not contain spaces.");
-                        return;
-                    }
-    
-                    if (!/^[\w\-а-яА-ЯёЁ]+$/.test(value)) {
-                        new Notice("The tag can only contain letters, numbers, underscores and hyphens.");
-                        return;
-                    }
-    
-                    this.plugin.settings.defaultTag = value;
-                    await this.plugin.saveSettings();
-                    new Notice(`The tag "${value}" has been saved.`);
-                })
-            });
+            this.plugin.settings.baseCurrency = newCurrency;
+            await this.plugin.saveSettings().catch(console.error);
+            new Notice(`Base currency changed to ${newCurrency}`);
         });
     }
 }

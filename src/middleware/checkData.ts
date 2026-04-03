@@ -1,15 +1,14 @@
 import Big from 'big.js'
-import { App, TFolder, TFile } from 'obsidian'
-import { getDataArchiveFile } from "../controllers/searchData";
-import { BillData, HistoryData, ResultOfExecution } from "../../main";
-import MainPlugin from "../../main";
+import { App } from 'obsidian'
+import { getAdditionalData } from "../controllers/searchData";
+import { HistoryData, ResultOfExecution, BillData } from "../../main";
+import { DB_PATH } from '../controllers/DB';
 
 declare const app: App;
 
 export const checkBill = async (data: HistoryData, oldData?: HistoryData ): Promise<ResultOfExecution> => {
-    const bills = await getDataArchiveFile<BillData>("Archive bills")
+    const bills = await getAdditionalData<BillData>('accounts');
     if(bills.status === 'error') return { status: 'error', error: bills.error};
-    if(bills.jsonData === null || bills.jsonData === undefined) throw new Error('Bill is null or undefined')
     const bill = bills.jsonData.find(b => b.id === data.bill.id);
 
     if (!bill) {
@@ -20,7 +19,7 @@ export const checkBill = async (data: HistoryData, oldData?: HistoryData ): Prom
         ? new Big(bill.balance).plus(oldData.amount)
         : new Big(bill.balance);
 
-    if (new Big(data.amount).gt(currentBalance)) {
+    if (new Big(data.amount).gte(currentBalance)) {
         return { status: 'error', error: new Error(`On bill ${bill.name} insufficient funds`)};
     }
 
@@ -31,56 +30,31 @@ export const checkForDeletionData = async (
     id: string,
     modifier: 'plan' | 'bill'
 ): Promise<boolean> => {
+    const adapter = app.vault.adapter;
 
-    const financeFolder = app.vault.getAbstractFileByPath(
-        MainPlugin.instance.settings.targetFolder
-    );
+    try {
+        const dbList = await adapter.list(DB_PATH);
 
-    if (!financeFolder || !(financeFolder instanceof TFolder)) {
-        throw new Error('Finance folder not found or is not a folder');
-    }
+        const yearFiles = dbList.files.filter(f => /\d{4}\.json$/.test(f));
 
-    const historyFiles: TFile[] = [];
+        for (const filePath of yearFiles) {
+            const raw = await adapter.read(filePath);
+            const yearData = JSON.parse(raw);
 
-    const collectFiles = (folder: TFolder) => {
-        for (const child of folder.children) {
-            if (child instanceof TFolder) {
-                collectFiles(child);
-            } else if (child instanceof TFile && child.name === 'History.md') {
-                historyFiles.push(child);
+            for (const month of Object.values(yearData.months) as any[]) {
+                const found = month.history.some((item: HistoryData) => {
+                    if (modifier === 'plan') return item?.category?.id === id;
+                    if (modifier === 'bill') return item?.bill?.id === id;
+                    return false;
+                });
+
+                if (found) return true;
             }
         }
-    };
 
-    collectFiles(financeFolder);
-
-    for (const file of historyFiles) {
-        try {
-            const content = await app.vault.read(file);
-            const jsonMatch = content.match(/```json([\s\S]*?)```/);
-
-            if (!jsonMatch || jsonMatch[1].trim().length <= 2) continue;
-
-            const jsonData = JSON.parse(jsonMatch[1].trim());
-
-            if (!Array.isArray(jsonData)) continue;
-
-            const found = jsonData.some(item => {
-                if (modifier === 'plan') {
-                    return item?.category?.id === id;
-                }
-                if (modifier === 'bill') {
-                    return item?.bill?.id === id;
-                }
-                return false;
-            });
-
-            if (found) return true;
-
-        } catch (e) {
-            console.error(`Error processing file: ${file.path}`, e);
-        }
+        return false;
+    } catch (err) {
+        console.error('Error in checkForDeletionData:', err);
+        throw err instanceof Error ? err : new Error(String(err));
     }
-
-    return false;
 };

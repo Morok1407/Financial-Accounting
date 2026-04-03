@@ -1,9 +1,8 @@
 import Big from 'big.js';
 import currencies from '../../currencies.json'
-import { getSpecificFile } from '../controllers/searchData';
-import { months } from '../controllers/createDirectory';
 import { stateManager, PlanData, BillData, HistoryData } from "../../main";
-import { moment } from "obsidian";
+import { moment, Notice } from "obsidian";
+import { getAllFile } from '../controllers/searchData'
 
 type Moment = ReturnType<typeof moment>;
 
@@ -24,7 +23,7 @@ export const getDate = (): {
     return {
         now,
         year: now.format("YYYY"),
-        month: now.format("MMMM"),
+        month: now.format("M"),
     };
 };
 
@@ -137,8 +136,8 @@ export function checkExpenceOrIncome(amount: string, type: 'expense' | 'income')
 }
 
 export function SummarizingDataForTheDay(obj: PlanData[] | HistoryData[] | null): string {
-    const expense = SummarizingDataForTheDayExpense(obj);
-    const income = SummarizingDataForTheDayIncome(obj);
+    const expense = SummarizingData(obj);
+    const income = SummarizingData(obj);
 
     if (expense.eq(0)) {
         return `+${income.toString()}`;
@@ -149,32 +148,13 @@ export function SummarizingDataForTheDay(obj: PlanData[] | HistoryData[] | null)
     }
 }
 
-export function SummarizingDataForTheDayExpense(obj: PlanData[] | HistoryData[] | null): Big {
+export function SummarizingData(obj: PlanData[] | HistoryData[] | null): Big {
     if (!obj) return new Big(0);
 
-    if ((obj as HistoryData[])[0]?.type !== undefined) {
+    if ((obj as PlanData[])) {
         const arr = obj as (PlanData | HistoryData)[];
         return arr.reduce((sum: Big, e) => {
-        if (e.type === 'expense') {
             return sum.plus(new Big(e.amount));
-        }
-        return sum;
-        }, new Big(0));
-    }
-
-    return new Big(0);
-}
-
-export function SummarizingDataForTheDayIncome(obj: PlanData[] | HistoryData[] | null): Big {
-    if (!obj) return new Big(0);
-
-    if ((obj as PlanData[])[0]?.type !== undefined) {
-        const arr = obj as (PlanData | HistoryData)[];
-        return arr.reduce((sum: Big, e) => {
-        if (e.type === 'income') {
-            return sum.plus(new Big(e.amount));
-        }
-        return sum;
         }, new Big(0));
     }
 
@@ -221,9 +201,9 @@ export function getCurrencySymbol(code: string) {
     return currency ? (currency.symbol || currency.symbolNative || code) : code;
 }
 export function switchBalanceLine(billsInfo: BillData[] | null, expenditurePlanInfo: PlanData[] | null) {
-    const fullSum = Number(SummarizingDataForTheTrueBills(billsInfo)) + Number(SummarizingDataForTheDayExpense(expenditurePlanInfo))
-    const percent = Number(SummarizingDataForTheDayExpense(expenditurePlanInfo)) / fullSum * 100
-    if(Number(SummarizingDataForTheDayExpense(expenditurePlanInfo)) <= fullSum) {
+    const fullSum = Number(SummarizingDataForTheTrueBills(billsInfo)) + Number(SummarizingData(expenditurePlanInfo))
+    const percent = Number(SummarizingData(expenditurePlanInfo)) / fullSum * 100
+    if(Number(SummarizingData(expenditurePlanInfo)) <= fullSum) {
         return 100 - percent
     } else if(percent === 0) {
         return 100
@@ -269,16 +249,15 @@ export function humanizeDate(dateStr: string) {
     return prefix ? `${prefix}, ${formattedDate}` : formattedDate;
 }
 export async function IncomeAndExpensesForTheMonth(month: string, year: string, div: HTMLDivElement) {
-    const expensePlan = await getSpecificFile<PlanData>('Expenditure plan', year, month)
-    if(expensePlan.status === 'error') return expensePlan.error
-    if(expensePlan.jsonData === undefined) throw new Error('Expesnse plan is undefined')
+    const allData = await getAllFile(year);
+    if (allData.status === "error") {
+        new Notice(allData.error.message);
+        console.error(allData.error);
+        return
+    }
 
-    const incomePlan = await getSpecificFile<PlanData>('Income plan', year, month)
-    if(incomePlan.status === 'error') return incomePlan.error
-    if(incomePlan.jsonData === undefined) throw new Error('Expesnse plan is undefined')
-
-    const totalExpense = SummarizingDataForTheDayExpense(expensePlan.jsonData);
-    const totalIncome = SummarizingDataForTheDayIncome(incomePlan.jsonData);
+    const totalExpense = SummarizingData(allData.months[month].expenditure_plan);
+    const totalIncome = SummarizingData(allData.months[month].income_plan);
 
     if (totalIncome.gte(totalExpense)) {
         div.createEl("span", {
@@ -302,27 +281,42 @@ export async function IncomeAndExpensesForTheMonth(month: string, year: string, 
         });
     }
 }
+
 export async function TheSumOfExpensesAndIncomeForTheYear(year: string): Promise<string | undefined> {
+    const allData = await getAllFile(year);
+    if (allData.status === "error") {
+        new Notice(allData.error.message);
+        console.error(allData.error);
+        return
+    }
+
     let totalExpense = new Big(0);
     let totalIncome = new Big(0);
-
-    for (let m = 0; m < 12; m++) {
-        const expensePlan = await getSpecificFile<PlanData>('Expenditure plan', year, months[m]);
-        if (expensePlan.status === 'error') continue;
-        if (!expensePlan.jsonData) throw new Error('Expense plan is undefined');
-
-        const incomePlan = await getSpecificFile<PlanData>('Income plan', year, months[m]);
-        if (incomePlan.status === 'error') continue;
-        if (!incomePlan.jsonData) throw new Error('Income plan is undefined');
-
-        totalExpense = totalExpense.plus(SummarizingDataForTheDayExpense(expensePlan.jsonData));
-        totalIncome = totalIncome.plus(SummarizingDataForTheDayIncome(incomePlan.jsonData));
+    for (const month in allData.months) {
+        totalExpense = totalExpense.plus(SummarizingData(allData.months[month].expenditure_plan));
+        totalIncome = totalIncome.plus(SummarizingData(allData.months[month].income_plan));
     }
 
     return `-${totalExpense.toString()} +${totalIncome.toString()}`;
 }
+
 export function getLocalTimeISO() {
     const d = new Date();
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     return d.toISOString().split('T')[1].split('.')[0];
 }
+
+export const mergeCategoriesData = (
+    additionPlan: PlanData[],
+    mainPlan: PlanData[]
+): PlanData[] => {
+    if (!additionPlan || !mainPlan) return [];
+    return mainPlan.map((item: PlanData) => {
+        const category = additionPlan.find((c: PlanData) => c.id === item.id);
+        if (!category) return item;
+        return {
+            ...category,
+            amount: item.amount,
+        };
+    });
+};

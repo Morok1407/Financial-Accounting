@@ -1,22 +1,22 @@
-import { TFile } from "obsidian";
-import { getDataFile, getDataArchiveFile } from "./searchData";
+import { getAllFile } from "./searchData";
+import { getDate} from "../middleware/otherFunc";
 import { checkBill } from "../middleware/checkData";
 import { expenditureTransaction, incomeTransaction } from "../middleware/transferring";
-import { archiveExpenditurePlan, archiveIncomePlan } from "../middleware/duplicating";
-import { HistoryData, PlanData, BillData, ResultOfExecution } from "../../main";
+import { HistoryData, PlanData, BillData, ResultOfExecution, stateManager } from "../../main";
 import MainPlugin from "../../main";
+import { DB_PATH } from "./DB";
 
 export const editingJsonToHistory = async (data: HistoryData, oldData: HistoryData): Promise<ResultOfExecution> => {
-    const history = await getDataFile<HistoryData>('History')
-    if(history.status === 'error') return { status: 'error', error: history.error}
-    if(!history.jsonData) return { status: 'error', error: new Error('Error with data history') }
-    if(!history.content) return { status: 'error', error: new Error('Error with content history') }
-    if(!history.file) return { status: 'error', error: new Error('Error with file history')}
-
     if(data.type === 'expense') {
         const resultCheckBill  = await checkBill(data, oldData)
         if(resultCheckBill.status === 'error') return { status: 'error', error: resultCheckBill.error }
     }
+
+    const { selectedYear, selectedMonth } = stateManager();
+    const { year, month } =
+    selectedYear && selectedMonth
+        ? { year: selectedYear, month: selectedMonth }
+        : getDate();
 
     if(data.type === 'expense') {
         const result = await expenditureTransaction(data, 'edit', oldData)
@@ -28,11 +28,14 @@ export const editingJsonToHistory = async (data: HistoryData, oldData: HistoryDa
         return { status: 'error', error: new Error('The specified type is not suitable')}
     }
 
+    const allData = await getAllFile(year);
+    if (allData.status === 'error') return { status: 'error', error: allData.error };
+
     try {
-        const newData = history.jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
-        const dataStr = JSON.stringify(newData, null, 4);
-        const newContent = history.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
-        await MainPlugin.instance.app.vault.modify(history.file, newContent)
+        allData.months[month].history = allData.months[month].history.map((item: HistoryData) => item.id === data.id ? {...item, ...data} : item);
+
+        const result = await updateFile(`${allData.year}`, allData);
+        if (result.status === 'error') return { status: 'error', error: result.error };
 
         return { status: "success"}
     } catch (error) {
@@ -41,33 +44,21 @@ export const editingJsonToHistory = async (data: HistoryData, oldData: HistoryDa
 }
 
 export const editingJsonToPlan = async (data: PlanData): Promise<ResultOfExecution> => {
-    const sourceMap = {
-        expense: () => getDataFile<PlanData>('Expenditure plan'),
-        income: () => getDataFile<PlanData>('Income plan'),
-    } as const;
+    const allCategories = await getAllFile('categories');
+    if (allCategories.status === 'error') return { status: 'error', error: allCategories.error };
     
-    try {
-        const loader = sourceMap[data.type];
-        if (!loader) return { status: 'error', error: new Error('Element not found')}
-
-        const plan = await loader();
-        if (plan.status === 'error') return { status: 'error', error: plan.error }
-        if (!plan.jsonData) return { status: 'error', error: new Error('jsonData is null or undefined')};
-        if(!plan.file) return { status: 'error', error: new Error("History file is null or undefined")}
-        if(!plan.content) return { status: 'error', error: new Error("History content is null or undefined")}
-
-        const newData = plan.jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
-        const dataStr = JSON.stringify(newData, null, 4);
-        const newContent = plan.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr  + "\n```");
-        await MainPlugin.instance.app.vault.modify(plan.file, newContent)
-
+    try {         
+        const plan = data.type === 'expense' ? allCategories.categories.expenditure_plan : allCategories.categories.income_plan;
+        const updatedPlan = plan.map((item: PlanData) => item.id === data.id ? {...item, ...data} : item);
         if(data.type === 'expense') {
-            await archiveExpenditurePlan()
+            allCategories.categories.expenditure_plan = updatedPlan;
         } else if (data.type === 'income') {
-            await archiveIncomePlan()
+            allCategories.categories.income_plan = updatedPlan;
         } else {
             return { status: 'error', error: new Error('The specified type is not suitable')}
         }
+        const result = await updateFile('categories', allCategories);
+        if (result.status === 'error') return { status: 'error', error: result.error };
 
         return { status: "success" }
     } catch (error) {
@@ -79,18 +70,15 @@ export const editingJsonToBill = async (data: BillData): Promise<ResultOfExecuti
     if (data.balance === '') {
         data.balance = '0'
     }
-    
-    const bills = await getDataArchiveFile<BillData>('Archive bills')
-    if(bills.status === 'error') return { status: 'error', error: bills.error};
-    if(!bills.jsonData) return { status: 'error', error: new Error('Error with data bill')}
-    if(!bills.content) return { status: 'error', error: new Error('Error with content bill')}
-    if(!bills.file) return { status: 'error', error: new Error('Error with file bill')}
+
+    const allData = await getAllFile('accounts')
+    if (allData.status === 'error') return { status: 'error', error: allData.error };
     
     try {
-        const newData = bills.jsonData.map(item => item.id === data.id ? {...item, ...data} : item)
-        const dataStr = JSON.stringify(newData, null, 4);
-        const newContent = bills.content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr  + "\n```");
-        await MainPlugin.instance.app.vault.modify(bills.file, newContent)
+        allData.accounts = allData.accounts.map((item: BillData) => item.id === data.id ? {...item, ...data} : item);
+
+        const result = await updateFile('accounts', allData);
+        if (result.status === 'error') return { status: 'error', error: result.error };
 
         return { status: "success" }
     } catch (error) {
@@ -98,14 +86,18 @@ export const editingJsonToBill = async (data: BillData): Promise<ResultOfExecuti
     }
 }
 
-export const updateFile = async (newData: BillData[] | HistoryData[] | PlanData[], file: TFile, content: string): Promise<ResultOfExecution> => {
+export const updateFile = async (file: string, data: BillData[] | HistoryData[] | PlanData[]): Promise<ResultOfExecution> => {
     try {
-        const dataStr = JSON.stringify(newData, null, 4);
-        const newContent = content.replace(/```json[\s\S]*?```/, "```json\n" + dataStr + "\n```");
-        await MainPlugin.instance.app.vault.modify(file, newContent);
+        const fileExists = await MainPlugin.instance.app.vault.adapter.exists(`${DB_PATH}/${file}.json`);
+        if(!fileExists) { return { status: 'error', error: new Error(`File not found: ${DB_PATH}/${file}.json`) }; }
+        
+        await MainPlugin.instance.app.vault.adapter.write(
+            `${DB_PATH}/${file}.json`,
+            JSON.stringify(data, null, 4)
+        );
 
         return { status: 'success' };
     } catch (error) {
-        return { status: 'error', error: error instanceof Error ? error : new Error(`Error update ${file.name}: ${String(error)}`) };
+        return { status: 'error', error: error instanceof Error ? error : new Error(`Error update data: ${String(error)}`) };
     }
 }

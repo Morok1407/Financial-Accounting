@@ -1,12 +1,13 @@
 import { Notice, setIcon } from 'obsidian';
 import MainPlugin from '../../main';
 import { FinancialAccountingView } from '../../main'
+import { searchElementById, getAdditionalData, getMainData } from '../controllers/searchData';
+import { HistoryData, PlanData, BillData, TransferData, DataItemResult, DataFileResult } from '../../main';
 import { deleteBill, deletePlan, deleteHistory } from '../controllers/deleteData';
-import { searchElementById, getDataArchiveFile, getDataFile } from '../controllers/searchData';
-import { HistoryData, PlanData, BillData, TransferData } from '../../main';
-import { fillMonthDates, humanizeDate, checkExpenceOrIncome, SummarizingDataForTheDay, getCurrencySymbol } from '../middleware/otherFunc';
 import { editingJsonToHistory, editingJsonToPlan, editingJsonToBill } from '../controllers/editingData';
 import { transferBetweenBills } from '../middleware/transferring'
+import { generationHistoryContent } from './showDataView';
+import { fillMonthDates, getCurrencySymbol, mergeCategoriesData } from '../middleware/otherFunc';
 
 export const editingHistory = async (e: MouseEvent) => {
     if (!(e.target instanceof HTMLElement)) return;
@@ -19,7 +20,41 @@ export const editingHistory = async (e: MouseEvent) => {
         return 'Element not found'
     }
 
-    const history = await searchElementById<HistoryData>(id, 'History')
+    const additionalExpensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan')
+    if (additionalExpensePlan.status === 'error') {
+        new Notice(additionalExpensePlan.error.message)
+        console.error(additionalExpensePlan.error)
+        return
+    }
+    if(additionalExpensePlan.jsonData.length === 0) return new Notice('Add a expenditure plan')
+    
+    const mainExpensePlan = await getMainData<PlanData>('expenditure_plan')
+    if (mainExpensePlan.status === 'error') {
+        new Notice(mainExpensePlan.error.message)
+        console.error(mainExpensePlan.error)
+        return
+    }
+
+    const expensePlan = mergeCategoriesData(additionalExpensePlan.jsonData, mainExpensePlan.jsonData)
+
+    const additionalIncomePlan = await getAdditionalData<PlanData>('categories', 'income_plan')
+    if (additionalIncomePlan.status === 'error') {
+        new Notice(additionalIncomePlan.error.message)
+        console.error(additionalIncomePlan.error)
+        return
+    }
+    if(additionalIncomePlan.jsonData.length === 0) return new Notice('Add a income plan')
+
+    const mainIncomePlan = await getMainData<PlanData>('income_plan')
+    if (mainIncomePlan.status === 'error') {
+        new Notice(mainIncomePlan.error.message)
+        console.error(mainIncomePlan.error)
+        return
+    }
+
+    const incomePlan = mergeCategoriesData(additionalIncomePlan.jsonData, mainIncomePlan.jsonData)
+
+    const history = await searchElementById<HistoryData>(id, 'history') as DataItemResult<HistoryData>;
     if(history.status === 'error') {
         new Notice(history.error.message)
         console.error(history.error)
@@ -89,13 +124,12 @@ export const editingHistory = async (e: MouseEvent) => {
         }
     })
     
-    const bills = await getDataArchiveFile<BillData>('Archive bills')
+    const bills = await getAdditionalData<BillData>('accounts');
     if(bills.status === 'error') {
         new Notice(bills.error.message)
         console.error(bills.error)
         return
     }
-    if(bills.jsonData === null || bills.jsonData === undefined) throw new Error('Bill is null or undefined')
 
     // --- Main ---
     if(bills.jsonData.some(i => i.generalBalance === true)) {
@@ -151,17 +185,9 @@ export const editingHistory = async (e: MouseEvent) => {
 
         if(history.item.type === 'expense'){
             selectCategory.empty()
-            
-            const expensePlan = await getDataFile<PlanData>('Expenditure plan');
-            if (expensePlan.status === 'error') {
-                new Notice(expensePlan.error.message)
-                console.error(expensePlan.error)
-                return;
-            }
-            if(expensePlan.jsonData === null || expensePlan.jsonData === undefined) throw new Error('Expenditure plan is null or undefined') 
 
-            expensePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
-            expensePlan.jsonData.forEach(plan => {
+            expensePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
+            expensePlan.forEach(plan => {
                 if(plan.id === history.item.category.id) {
                     selectCategory.createEl('option', {
                         text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
@@ -176,16 +202,9 @@ export const editingHistory = async (e: MouseEvent) => {
             })
         } else if (history.item.type === 'income') {
             selectCategory.empty()
-            const incomePlan = await getDataFile<PlanData>('Income plan');
-            if (incomePlan.status === 'error') {
-                new Notice(incomePlan.error.message)
-                console.error(incomePlan.error)
-                return;
-            }
-            if(incomePlan.jsonData === null || incomePlan.jsonData === undefined) throw new Error('Expenditure plan is null or undefined') 
 
-            incomePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
-            incomePlan.jsonData.forEach(plan => {
+            incomePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
+            incomePlan.forEach(plan => {
                 if(plan.id === history.item.category.id) {
                     selectCategory.createEl('option', {
                         text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
@@ -305,7 +324,7 @@ async function deleteHistoryButton(history: HistoryData): Promise<void> {
 }
 
 async function editingHistoryButton(data: HistoryData, oldData: HistoryData, selectBills: HTMLSelectElement): Promise<void> {
-    const billOption = await searchElementById<BillData>(selectBills.value, 'Archive bills')
+    const billOption = await searchElementById<BillData>(selectBills.value, 'accounts');
     if(billOption.status === 'error') {
         new Notice(billOption.error.message)
         console.error(billOption.error)
@@ -344,14 +363,28 @@ export const editingPlan = async (e: MouseEvent) => {
     if(!id) {
         return 'Element not found'
     }
+
+    const sourceMap = {
+        expense: () => getAdditionalData<PlanData>('categories', 'expenditure_plan'),
+        income: () => getAdditionalData<PlanData>('categories', 'income_plan')
+    } as const;
     
-    const plan = await searchElementById<PlanData>(id, type)
-    if(plan.status === 'error') {
-        new Notice(plan.error.message)
-        console.error(plan.error)
+    const loader = sourceMap[type];
+    if (!loader) return { status: 'error', error: new Error('Element not found') };
+
+    const result = await loader() as DataFileResult<PlanData>;
+    if(result.status === 'error') {
+        new Notice(result.error.message)
+        console.error(result.error)
         return
     }
-    
+
+    const plan = result.jsonData.find((item: PlanData) => item.id === id);
+    if (!plan) {
+        new Notice('Plan not found')
+        return
+    }
+
     const { contentEl } = FinancialAccountingView.instance;
     contentEl.empty()
 
@@ -374,7 +407,7 @@ export const editingPlan = async (e: MouseEvent) => {
     })
     setIcon(deleteButton, 'trash-2')
     deleteButton.addEventListener('click', () => {
-        void deletePlanButton(plan.item)
+        void deletePlanButton(plan)
     })
 
     const header = contentEl.createEl('div', {
@@ -401,7 +434,7 @@ export const editingPlan = async (e: MouseEvent) => {
             placeholder: 'Name',
             id: 'input-name',
             type: 'text',
-            value: plan.item.name,
+            value: plan.name,
         }
     })
 
@@ -411,7 +444,7 @@ export const editingPlan = async (e: MouseEvent) => {
             placeholder: 'Emoji',
             id: 'input-emoji',
             type: 'text',
-            value: plan.item.emoji ?? ''
+            value: plan.emoji ?? ''
         }
     })
     inputEmoji.addEventListener('input', () => {
@@ -429,7 +462,7 @@ export const editingPlan = async (e: MouseEvent) => {
             placeholder: 'Note',
             id: 'input-comment',
             type: 'text',
-            value: plan.item.comment ?? '',
+            value: plan.comment ?? '',
         }
     })
 
@@ -451,55 +484,27 @@ export const editingPlan = async (e: MouseEvent) => {
         }
 
         const data: PlanData = {
-            id: plan.item.id,
+            id: plan.id,
             name: inputName.value.trim(),
             emoji: inputEmoji.value,
-            amount: plan.item.amount,
+            amount: plan.amount,
             comment: commentInput.value.trim(),
-            type: plan.item.type,
+            type: plan.type,
         }
 
         void editingPlanButton(data)
     })
 
-    const history = await getDataFile<HistoryData>('History');
+    const history = await getMainData<HistoryData>('history');
     if(history.status === 'error') {
         new Notice(history.error.message)
         console.error(history.error)
         return
     }
-    if(history.jsonData === undefined) throw new Error('History is undefined')
-    if(history.jsonData !== null) {
-        const now = new Date().getTime();
-
-        const groupedByDay = Object.values(
-            history.jsonData.reduce<Record<string, HistoryData[]>>(
-                (acc, item) => {
-                    const day = item.date.split('T')[0];
-
-                    if (!acc[day]) {
-                        acc[day] = [];
-                    }
-
-                    acc[day].push(item);
-                    return acc;
-                },
-                {}
-            )
-        ).sort(
-            (a, b) =>
-                new Date(b[0].date).getTime() -
-                new Date(a[0].date).getTime()
-        );
-
-        const result = groupedByDay.map(dayGroup =>
-            dayGroup.sort(
-                (a, b) =>
-                    Math.abs(new Date(a.date).getTime() - now) -
-                    Math.abs(new Date(b.date).getTime() - now)
-            )
-        );
-
+    const filteredHistory = history.jsonData.filter(
+        item => item.category.id === plan.id
+    );
+    if(filteredHistory.length !== 0) {
         contentEl.createEl('h1', {
             text: 'History of the plan'
         })
@@ -508,95 +513,7 @@ export const editingPlan = async (e: MouseEvent) => {
             cls: 'history-plan'
         })
 
-        for (const historyElement of result) {
-            const historyBlock = historyPlan.createEl('div', {
-                cls: 'history-block'
-            })
-            
-            const headerBlock = historyBlock.createEl('div', {
-                cls: 'header-block'
-            })
-            const dateBlock = headerBlock.createEl('div', {
-                cls: 'header-date-block'
-            })
-            dateBlock.createEl('p', {
-                text: humanizeDate(historyElement[0].date.split("T")[0])
-            })
-            const amountBlock = headerBlock.createEl('div', {
-                cls: 'header-amount-block'
-            })
-            amountBlock.createEl('span', {
-                text: `${SummarizingDataForTheDay(historyElement)}`
-            })
-            const dataList = historyBlock.createEl('ul', {
-                cls: 'data-list'
-            })
-            for (const e of historyElement) {
-                const dataItem = dataList.createEl('li', {
-                    cls: 'data-item',
-                    attr: {
-                        'data-id': e.id,
-                    }
-                })
-                dataItem.onclick = async (e) => {
-                    await editingHistory(e);
-                };
-                
-                const category = await searchElementById<PlanData>(e.category.id, e.type)
-                if(category.status === 'error') {
-                    new Notice(category.error.message)
-                    console.error(category.error)
-                    return
-                }
-                const bill = await searchElementById<BillData>(e.bill.id, 'Archive bills')
-                if(bill.status === 'error') {
-                    new Notice(bill.error.message)
-                    console.error(bill.error)
-                    return
-                }
-    
-                const dataText = dataItem.createEl('div', {
-                    cls: 'data-link'
-                })
-    
-                const divEmoji = dataText.createEl('div', {
-                    cls: 'data-link-emoji'
-                })
-                const divText = dataText.createEl('div', {
-                    cls: 'data-link-text'
-                })
-    
-                divEmoji.createEl('p', {
-                    text: `${category.item.emoji}`
-                })
-                divEmoji.createEl('span', {
-                    text: `${bill.item.emoji}`
-                })
-    
-                if(e.comment === '') {
-                    divText.createEl('p', {
-                        text: `${category.item.name}`
-                    })
-                    divText.createEl('span', {
-                        text: `${bill.item.name}`
-                    })
-                } else {
-                    divText.createEl('p', {
-                        text: `${e.comment}`
-                    })
-                    divText.createEl('span', {
-                        text: `${category.item.name} • ${bill.item.name}`
-                    })
-                }
-    
-                const dataAmount = dataItem.createEl('div', {
-                    cls: 'data-link'
-                })
-                dataAmount.createEl('p', {
-                    text: `${checkExpenceOrIncome(e.amount, e.type)} ${getCurrencySymbol(bill.item.currency)}`
-                })
-            }
-        }
+        void generationHistoryContent(historyPlan, { status: 'success', jsonData: filteredHistory })
     }
 }
 
@@ -638,7 +555,7 @@ export const editingBill = async (e: MouseEvent) => {
         return 'Element not found'
     }
 
-    const bill = await searchElementById<BillData>(id, 'Archive bills')
+    const bill = await searchElementById<BillData>(id, 'accounts')
     if(bill.status === 'error') {
         new Notice(bill.error.message)
         console.error(bill.error)
@@ -736,7 +653,7 @@ export const editingBill = async (e: MouseEvent) => {
         }
     })
 
-    const bills = await getDataArchiveFile('Archive bills')
+    const bills = await getAdditionalData<BillData>('accounts')
     if(bills.status === 'error') {
         new Notice(bills.error.message)
         console.error(bills.error)
@@ -840,7 +757,7 @@ export const transferBetweenBillsView = async (billId: string) => {
         return 'Element not found'
     }
 
-    const bills = await getDataArchiveFile<BillData>('Archive bills')
+    const bills = await getAdditionalData<BillData>('accounts')
     if(bills.status === 'error') {
         new Notice(bills.error.message)
         console.error(bills.error)

@@ -1,21 +1,22 @@
 import Big from "big.js";
 import { Notice } from "obsidian";
 import { stateManager, HistoryData, PlanData, BillData, DataFileResult } from "../../main";
-import { getDataFile, getDataArchiveFile, searchElementById, searchHistory } from "../controllers/searchData";
+import { getMainData, getAdditionalData, searchElementById, searchHistory } from "../controllers/searchData";
 import { addHistory, addPlan, addBills } from '../view/addView';
 import { editingHistory, editingPlan, editingBill } from '../view/editingView';
-import { humanizeDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheDayExpense, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingDataForTheDayIncome, getCurrencySymbol } from "../middleware/otherFunc";
+import { humanizeDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingData, getCurrencySymbol, mergeCategoriesData } from "../middleware/otherFunc";
 
 export const showHistory = async (mainContentBody: HTMLDivElement, mainContentButton: HTMLDivElement) => {
     stateManager({ openPageNow: "History" });
-    const history = await getDataFile<HistoryData>('History');
+
+    const history = await getMainData<HistoryData>('history');
     if(history.status === 'error') {
         new Notice(history.error.message)
         console.error(history.error)
         return
     }
 
-    if(history.jsonData === null) {
+    if(!history.jsonData.length) {
         const undefinedContent = mainContentBody.createEl('div', {
             cls: 'undefined-content'
         })
@@ -44,7 +45,7 @@ export const showHistory = async (mainContentBody: HTMLDivElement, mainContentBu
         cls: 'history-content'
     })
 
-    generationHistoryContent(historyContent, mainContentBody, history, mainContentButton).catch(err => { console.error('generationHistoryContent failed', err); });
+    generationHistoryContent(historyContent, history, mainContentButton, mainContentBody).catch(err => { console.error('generationHistoryContent failed', err); });
 }
 
 async function handleSearchInput(e: Event, historyContent: HTMLDivElement, mainContentBody: HTMLDivElement) {
@@ -59,11 +60,9 @@ async function handleSearchInput(e: Event, historyContent: HTMLDivElement, mainC
         return;
     }
 
-    if (result.jsonData === undefined) throw new Error('jsonData is null or undefined');
-
     historyContent.empty();
 
-    if (result.jsonData === null) {
+    if (!result.jsonData.length) {
         const undefinedContent = historyContent.createEl('div', {
             cls: 'undefined-content'
         });
@@ -73,20 +72,21 @@ async function handleSearchInput(e: Event, historyContent: HTMLDivElement, mainC
         undefinedContent.createEl('p', { text: 'No matching operations found.' });
     } else if (result.jsonData.length >= 1) {
         historyContent.removeClass('main-content-body--undefined');
-        void generationHistoryContent(historyContent, mainContentBody, result);
+        void generationHistoryContent(historyContent, result, mainContentBody);
     } else {
         historyContent.removeClass('main-content-body--undefined');
-        void generationHistoryContent(historyContent, mainContentBody, result);
+        void generationHistoryContent(historyContent, result, mainContentBody);
     }
 }
 
-async function generationHistoryContent(historyContent: HTMLDivElement, mainContentBody: HTMLDivElement, historyData: DataFileResult<HistoryData>, mainContentButton?: HTMLDivElement) {
+export async function generationHistoryContent(historyContent: HTMLDivElement,  historyData: DataFileResult<HistoryData>, mainContentButton?: HTMLDivElement, mainContentBody?: HTMLDivElement,) {
+    mainContentBody?.removeClass('main-content-body--padding')
     if(historyData.status === 'error') return historyData.error;
-    if(historyData.jsonData !== null) {
+    if(historyData.jsonData.length) {
         const now = new Date().getTime();
 
         const groupedByDay = Object.values(
-            historyData.jsonData.reduce<Record<string, HistoryData[]>>(
+        historyData.jsonData.reduce<Record<string, HistoryData[]>>(
                 (acc, item) => {
                     const day = item.date.split('T')[0];
 
@@ -99,7 +99,9 @@ async function generationHistoryContent(historyContent: HTMLDivElement, mainCont
                 },
                 {}
             )
-        ).sort(
+        )
+        .map(group => group.flat())
+        .sort(
             (a, b) =>
                 new Date(b[0].date).getTime() -
                 new Date(a[0].date).getTime()
@@ -114,7 +116,7 @@ async function generationHistoryContent(historyContent: HTMLDivElement, mainCont
         );
 
         if(historyData.jsonData.length >= 5) {
-            mainContentBody.addClass('main-content-body--padding')
+            mainContentBody?.addClass('main-content-body--padding')
         }
         for (const historyElement of result) {
             const historyBlock = historyContent.createEl('div', {
@@ -149,10 +151,10 @@ async function generationHistoryContent(historyContent: HTMLDivElement, mainCont
                 dataItem.onclick = (e: MouseEvent) => {
                     void editingHistory(e);
                 };
-
+                
                 const searchCategory = await searchElementById<PlanData>(element.category.id, element.type)
                 if (searchCategory.status === 'error') return new Notice(searchCategory.error.message)
-                const searchBill = await searchElementById<BillData>(element.bill.id, 'Archive bills')
+                const searchBill = await searchElementById<BillData>(element.bill.id, 'accounts')
                 if (searchBill.status === 'error') return new Notice(searchBill.error.message)
                     
                 const dataText = dataItem.createEl('div', {
@@ -185,7 +187,7 @@ async function generationHistoryContent(historyContent: HTMLDivElement, mainCont
                         text: `${element.comment}`
                     })
                     divText.createEl('span', {
-                        text: `${searchCategory.item.name} • ${searchBill.item.name}`
+                        text: `${searchBill.item.name} • ${searchCategory.item.name}`
                     })
                 }
 
@@ -209,24 +211,39 @@ async function generationHistoryContent(historyContent: HTMLDivElement, mainCont
 }
 
 export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButton: HTMLDivElement) => {
+    mainContentBody.removeClass('main-content-body--padding')
     stateManager({ openPageNow: "Plans" });
-    const expensePlan = await getDataFile<PlanData>('Expenditure plan');
-    if(expensePlan.status === 'error') {
-        new Notice(expensePlan.error.message)
-        console.error(expensePlan.error)
+    const additionalExpensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan');
+    if(additionalExpensePlan.status === 'error') {
+        new Notice(additionalExpensePlan.error.message)
+        console.error(additionalExpensePlan.error)
         return
     }
-    if(expensePlan.jsonData === undefined) throw new Error('jsonData is undefined');
+    const mainExpensePlan = await getMainData<PlanData>('expenditure_plan')
+    if(mainExpensePlan.status === 'error') {
+        new Notice(mainExpensePlan.error.message)
+        console.error(mainExpensePlan.error)
+        return
+    }
 
-    const incomePlan = await getDataFile<PlanData>('Income plan');
-    if(incomePlan.status === 'error') {
-        new Notice(incomePlan.error.message)
-        console.error(incomePlan.error)
+    const additionalIncomePlan = await getAdditionalData<PlanData>('categories', 'income_plan');
+    if(additionalIncomePlan.status === 'error') {
+        new Notice(additionalIncomePlan.error.message)
+        console.error(additionalIncomePlan.error)
         return
     }
+    const mainIncomePlan = await getMainData<PlanData>('income_plan')
+    if(mainIncomePlan.status === 'error') {
+        new Notice(mainIncomePlan.error.message)
+        console.error(mainIncomePlan.error)
+        return
+    }
+
+    const expensePlan = mergeCategoriesData(additionalExpensePlan.jsonData, mainExpensePlan.jsonData)
+    const incomePlan = mergeCategoriesData(additionalIncomePlan.jsonData, mainIncomePlan.jsonData)
 
     const allResult = [];
-    if(expensePlan.jsonData === null && incomePlan.jsonData === null) {
+    if(!expensePlan.length && !incomePlan.length) {
         const undefinedContent = mainContentBody.createEl('div', {
             cls: 'undefined-content'
         })
@@ -240,10 +257,10 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
             text: 'Enter any income and expenses to see how much money is actually left.'
         })
     } else {
-        if(expensePlan.jsonData !== null) {
+        if(expensePlan.length) {
             mainContentBody.removeClass('main-content-body--undefined')
-            const resultExpense = expensePlan.jsonData.slice().sort((a: PlanData, b: PlanData) => new Big(b.amount).cmp(new Big(a.amount)))
-            resultExpense.forEach(e => allResult.push(e))
+            const resultExpense = expensePlan.slice().sort((a: PlanData, b: PlanData) => new Big(b.amount).cmp(new Big(a.amount)))
+            resultExpense.forEach((e: PlanData) => allResult.push(e))
             const expensePlanBlock = mainContentBody.createEl('div', {
                 cls: 'plan-block'
             })
@@ -260,7 +277,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingDataForTheDayExpense(resultExpense))
+                text: String(SummarizingData(resultExpense))
             })
             const expenseDataList = expensePlanBlock.createEl('ul', {
                 cls: 'data-list'
@@ -290,11 +307,10 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 })
             })
         }
-        if(incomePlan.jsonData !== null) {
-            if(incomePlan.jsonData === undefined) throw new Error('incomePlanInfo is undefined')
+        if(incomePlan.length) {
             mainContentBody.removeClass('main-content-body--undefined')
-            const resultIncome = incomePlan.jsonData.slice().sort((a: PlanData, b: PlanData) => new Big(b.amount).cmp(new Big(a.amount)))
-            resultIncome.forEach(e => allResult.push(e))
+            const resultIncome = incomePlan.slice().sort((a: PlanData, b: PlanData) => new Big(b.amount).cmp(new Big(a.amount)))
+            resultIncome.forEach((e: PlanData) => allResult.push(e))
             const incomePlanBlock = mainContentBody.createEl('div', {
                 cls: 'plan-block'
             })
@@ -311,7 +327,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingDataForTheDayIncome(resultIncome))
+                text: String(SummarizingData(resultIncome))
             })
             const incomeDataList = incomePlanBlock.createEl('ul', {
                 cls: 'data-list'
@@ -357,16 +373,16 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
 }
 
 export const showBills = async (mainContentBody: HTMLDivElement, mainContentButton: HTMLDivElement) => {
+    mainContentBody.removeClass('main-content-body--padding')
     stateManager({ openPageNow: "Bills" });
-    const bills = await getDataArchiveFile<BillData>('Archive bills');
+    const bills = await getAdditionalData<BillData>('accounts');
     if(bills.status === 'error') {
         new Notice(bills.error.message)
         console.error(bills.error)
         return
     }
-    if(bills.jsonData === undefined) throw new Error('Bill is undefined')
 
-    if(bills.jsonData === null) {
+    if(!bills.jsonData.length) {
         const undefinedContent = mainContentBody.createEl('div', {
             cls: 'undefined-content'
         })
