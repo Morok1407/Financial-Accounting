@@ -1,8 +1,8 @@
 import Big from 'big.js'
 import { App } from 'obsidian'
 import { getAdditionalData } from "../controllers/searchData";
-import { HistoryData, ResultOfExecution, BillData } from "../../main";
-import { DB_PATH } from '../controllers/DB';
+import { HistoryData, ResultOfExecution, BillData, YearData } from "../../main";
+import MainPlugin from '../../main';
 
 declare const app: App;
 
@@ -33,15 +33,15 @@ export const checkForDeletionData = async (
     const adapter = app.vault.adapter;
 
     try {
-        const dbList = await adapter.list(DB_PATH);
+        const dbList = await adapter.list(MainPlugin.instance.dbPath);
 
         const yearFiles = dbList.files.filter(f => /\d{4}\.json$/.test(f));
 
         for (const filePath of yearFiles) {
             const raw = await adapter.read(filePath);
-            const yearData = JSON.parse(raw);
+            const yearData: YearData = JSON.parse(raw);
 
-            for (const month of Object.values(yearData.months) as any[]) {
+            for (const month of Object.values(yearData.months)) {
                 const found = month.history.some((item: HistoryData) => {
                     if (modifier === 'plan') return item?.category?.id === id;
                     if (modifier === 'bill') return item?.bill?.id === id;

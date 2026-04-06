@@ -3,18 +3,16 @@ import { ResultOfExecution, PlanData } from "../../main";
 import { updateFile } from "./editingData";
 import { getAllFile } from "./searchData";
 
-export const DB_PATH = '.obsidian/plugins/financial-accounting/db';
-
 export const initDB = async (): Promise<ResultOfExecution> => {
-    const accountsFilePath = `${DB_PATH}/accounts.json`;
-    const categoriesFilePath = `${DB_PATH}/categories.json`;
+    const accountsFilePath = `${MainPlugin.instance.dbPath}/accounts.json`;
+    const categoriesFilePath = `${MainPlugin.instance.dbPath}/categories.json`;
 
     const accountsFileTemplate = JSON.stringify({"accounts": []}, null, 4);
     const categoriesFileTemplate = JSON.stringify({"categories": {"income_plan": [], "expenditure_plan": [],}}, null, 4);
 
     try {
-        if (!(await MainPlugin.instance.app.vault.adapter.exists(DB_PATH))) {
-            await MainPlugin.instance.app.vault.createFolder(DB_PATH);
+        if (!(await MainPlugin.instance.app.vault.adapter.exists(MainPlugin.instance.dbPath))) {
+            await MainPlugin.instance.app.vault.createFolder(MainPlugin.instance.dbPath);
         }
 
         if (!(await MainPlugin.instance.app.vault.adapter.exists(accountsFilePath))) {
@@ -36,7 +34,7 @@ export const generateYearlyFile = async (): Promise<ResultOfExecution> => {
 
     try {
         for(let year = startYear; year <= new Date().getFullYear(); year++) {
-            const yearlyFilesPath = `${DB_PATH}/${year}.json`;
+            const yearlyFilesPath = `${MainPlugin.instance.dbPath}/${year}.json`;
 
             const yearlyFileTemplate = JSON.stringify({
                 "year": year,

@@ -4,7 +4,6 @@ import { checkBill } from "../middleware/checkData";
 import { expenditureTransaction, incomeTransaction } from "../middleware/transferring";
 import { HistoryData, PlanData, BillData, ResultOfExecution, stateManager } from "../../main";
 import MainPlugin from "../../main";
-import { DB_PATH } from "./DB";
 
 export const editingJsonToHistory = async (data: HistoryData, oldData: HistoryData): Promise<ResultOfExecution> => {
     if(data.type === 'expense') {
@@ -88,11 +87,11 @@ export const editingJsonToBill = async (data: BillData): Promise<ResultOfExecuti
 
 export const updateFile = async (file: string, data: BillData[] | HistoryData[] | PlanData[]): Promise<ResultOfExecution> => {
     try {
-        const fileExists = await MainPlugin.instance.app.vault.adapter.exists(`${DB_PATH}/${file}.json`);
-        if(!fileExists) { return { status: 'error', error: new Error(`File not found: ${DB_PATH}/${file}.json`) }; }
+        const fileExists = await MainPlugin.instance.app.vault.adapter.exists(`${MainPlugin.instance.dbPath}/${file}.json`);
+        if(!fileExists) { return { status: 'error', error: new Error(`File not found: ${MainPlugin.instance.dbPath}/${file}.json`) }; }
         
         await MainPlugin.instance.app.vault.adapter.write(
-            `${DB_PATH}/${file}.json`,
+            `${MainPlugin.instance.dbPath}/${file}.json`,
             JSON.stringify(data, null, 4)
         );
 

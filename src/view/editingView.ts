@@ -2,7 +2,7 @@ import { Notice, setIcon } from 'obsidian';
 import MainPlugin from '../../main';
 import { FinancialAccountingView } from '../../main'
 import { searchElementById, getAdditionalData, getMainData } from '../controllers/searchData';
-import { HistoryData, PlanData, BillData, TransferData, DataItemResult, DataFileResult } from '../../main';
+import { HistoryData, PlanData, BillData, TransferData, DataItemResult } from '../../main';
 import { deleteBill, deletePlan, deleteHistory } from '../controllers/deleteData';
 import { editingJsonToHistory, editingJsonToPlan, editingJsonToBill } from '../controllers/editingData';
 import { transferBetweenBills } from '../middleware/transferring'
@@ -68,7 +68,7 @@ export const editingHistory = async (e: MouseEvent) => {
         cls: 'main-header'
     })
     header.createEl('h1', {
-        text: 'Операция'
+        text: 'Operation'
     })
 
     const exitButton = contentEl.createEl('div', {
@@ -174,9 +174,9 @@ export const editingHistory = async (e: MouseEvent) => {
             id: 'select-category'
         }
     })
-    await createOptionCategory()
+    createOptionCategory()
     
-    async function createOptionCategory() {
+    function createOptionCategory() {
         if(history.status === 'error') {
             new Notice(history.error.message)
             console.error(history.error)
@@ -292,6 +292,11 @@ export const editingHistory = async (e: MouseEvent) => {
             return
         }
 
+        if (!selectDate.value) {
+            new Notice('Select a date');
+            return
+        }
+
         const data: HistoryData = {
             id: history.item.id,
             amount: String(inputSum.value),
@@ -372,7 +377,7 @@ export const editingPlan = async (e: MouseEvent) => {
     const loader = sourceMap[type];
     if (!loader) return { status: 'error', error: new Error('Element not found') };
 
-    const result = await loader() as DataFileResult<PlanData>;
+    const result = await loader();
     if(result.status === 'error') {
         new Notice(result.error.message)
         console.error(result.error)

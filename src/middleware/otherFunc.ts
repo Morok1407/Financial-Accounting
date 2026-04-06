@@ -83,33 +83,37 @@ export function fillMonthDates(selectEl: HTMLSelectElement, oldDate?: string) {
             else if (diff === -1) option.selected = true;
         }
     } else {
-        const convertMonth = new Date(`${selectedMonth} 1, ${selectedYear}`);
-        const selectedMonthNumber = isNaN(convertMonth.getTime()) ? null : convertMonth.getMonth();
-
-        if (selectedMonthNumber === null) {
-            throw new Error("Invalid month or year");
+        const monthIndex = Number(selectedMonth) - 1;
+        if (isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+            throw new Error("Invalid month");
         }
 
         const year = Number(selectedYear);
-        const month = selectedMonthNumber;
-
+        const month = monthIndex;
         const daysInMonth = new Date(year, month + 1, 0).getDate();
 
         for (let d = daysInMonth; d >= 1; d--) {
             const date = new Date(year, month, d);
-
             const day = date.getDate();
             const weekday = dayNames[date.getDay()];
             const monthName = monthNames[month];
-
             const label = `${day} ${monthName}, ${weekday}`;
-
             const value = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
             selectEl.createEl("option", {
                 text: label,
                 attr: { value }
             });
         }
+
+        selectEl.createEl('option', {
+        text: 'Select a date',
+        attr: {
+            value: '',
+            selected: '',
+            disabled: '',
+            hidden: '',
+        },
+    })
     }
 }
 

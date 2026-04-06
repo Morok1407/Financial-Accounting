@@ -5,7 +5,6 @@ import { HistoryData, PlanData, BillData, ResultOfExecution, stateManager } from
 import { getDate } from '../middleware/otherFunc';
 import { expenditureTransaction, incomeTransaction } from "../middleware/transferring"
 import MainPlugin from "../../main";
-import { DB_PATH } from "./DB";
 
 export const deleteHistory = async (element: HistoryData): Promise<ResultOfExecution> => {
     const { selectedYear, selectedMonth } = stateManager();
@@ -46,7 +45,7 @@ export const deletePlan = async (data: PlanData): Promise<ResultOfExecution> => 
     const additionalData = await getAllFile('categories');
     if(additionalData.status === 'error') return { status: 'error', error: additionalData.error };
 
-    const BD = await MainPlugin.instance.app.vault.adapter.list(DB_PATH);
+    const BD = await MainPlugin.instance.app.vault.adapter.list(MainPlugin.instance.dbPath);
 
     const yearsFiles = BD.files.filter(path => /\/\d{4}\.json$/.test(path))
 
@@ -55,25 +54,7 @@ export const deletePlan = async (data: PlanData): Promise<ResultOfExecution> => 
     }
 
     try {
-        yearsFiles.forEach(async (filePath) => {
-            const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
-            const jsonData = JSON.parse(file);
-
-            for (const month in jsonData.months) {
-                if(data.type === 'income') {
-                    const newPlan = jsonData.months[month].income_plan.filter((item: PlanData) => item.id !== data.id);
-                    jsonData.months[month].income_plan = newPlan;
-                } else if (data.type === 'expense') {
-                    const newPlan = jsonData.months[month].expenditure_plan.filter((item: PlanData) => item.id !== data.id);
-                    jsonData.months[month].expenditure_plan = newPlan;
-                } else {
-                    throw new Error('The specified type is not suitable');
-                }
-            }
-
-            const result = await updateFile(`${jsonData.year}`, jsonData);
-            if (result.status === 'error') return { status: 'error', error: result.error };
-        })
+        await DelelteToAllFiles(yearsFiles, data)
 
         if(data.type === 'expense') {
             const newPlan = additionalData.categories.expenditure_plan.filter((item: PlanData) => item.id !== data.id);
@@ -91,6 +72,36 @@ export const deletePlan = async (data: PlanData): Promise<ResultOfExecution> => 
         return { status: 'success' }
     } catch (error) {
         return { status: 'error', error: error instanceof Error ? error : new Error(`Error checking for deletion: ${String(error)}`)}
+    }
+}
+
+async function DelelteToAllFiles(yearsFiles: string[], data: PlanData): Promise<ResultOfExecution> {
+    try {
+        for (const filePath of yearsFiles) {
+            const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
+            const jsonData = JSON.parse(file);
+
+            for (const month in jsonData.months) {
+                if (data.type === 'income') {
+                    const newPlan = jsonData.months[month].income_plan.filter((item: PlanData) => item.id !== data.id);
+                    jsonData.months[month].income_plan = newPlan;
+                } else if (data.type === 'expense') {
+                    const newPlan = jsonData.months[month].expenditure_plan.filter((item: PlanData) => item.id !== data.id);
+                    jsonData.months[month].expenditure_plan = newPlan;
+                } else {
+                    return { status: 'error', error: new Error('The specified type is not suitable') };
+                }
+            }
+
+            const result = await updateFile(`${jsonData.year}`, jsonData);
+            if (result.status === 'error') {
+                return { status: 'error', error: result.error };
+            }
+        }
+
+        return { status: 'success' };
+    } catch (error) {
+        return { status: 'error', error: error instanceof Error ? error : new Error(String(error)) };
     }
 }
 

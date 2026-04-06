@@ -37,6 +37,19 @@ export interface HistoryData {
     type: 'expense' | 'income';
 }
 
+export interface YearData {
+    year: string;
+    months: {
+        [month: string]: monthData;
+    };
+}
+
+export interface monthData {
+    income_plan: PlanData[];
+    expense_plan: PlanData[];
+    history: HistoryData[];
+}
+
 export type ResultOfExecution = 
     | {
         status: 'success';
@@ -176,6 +189,10 @@ export default class MainPlugin extends Plugin {
         await this.saveData(this.settings);
     }
 
+    get dbPath(): string {
+        return `${this.app.vault.configDir}/plugins/financial-accounting/db`;
+    }
+
     onunload(): void {
         this.unregisterTracking?.();
     }
@@ -296,35 +313,39 @@ class SettingsTab extends PluginSettingTab {
         selectEl.value = this.plugin.settings.baseCurrency;
 
         selectEl.addEventListener("change", async (event: Event) => {
-            const target = event.target as HTMLSelectElement;
-            const newCurrency = target.value;
-
-            const bills = await getAdditionalData<BillData>('accounts');
-            if (bills.status === 'error') {
-                new Notice(`Error fetching archive bills: ${bills.error.message}`);
-                return;
-            }
-
-            const generalBalanceBills = bills.jsonData?.filter(
-                bill => bill.generalBalance && bill.currency !== newCurrency
-            );
-
-            if (generalBalanceBills && generalBalanceBills.length > 0) {
-                const bill = generalBalanceBills[0];
-
-                selectEl.value = this.plugin.settings.baseCurrency;
-
-                new Notice(
-                    `Cannot change base currency. Bill "${bill.name}" is set to general balance with currency ${bill.currency}. Please change or disable general balance on this bill first.`
-                );
-                return;
-            }
-
-            this.plugin.settings.baseCurrency = newCurrency;
-            await this.plugin.saveSettings().catch(console.error);
-            new Notice(`Base currency changed to ${newCurrency}`);
+            SelectingTheBaseCurrency({ event, selectEl, plugin: this.plugin });
         });
     }
+}
+
+async function SelectingTheBaseCurrency({event, selectEl, plugin }: { event: Event; selectEl: HTMLSelectElement; plugin: MainPlugin }) {
+    const target = event.target as HTMLSelectElement;
+    const newCurrency = target.value;
+
+    const bills = await getAdditionalData<BillData>('accounts');
+    if (bills.status === 'error') {
+        new Notice(`Error fetching archive bills: ${bills.error.message}`);
+        return;
+    }
+
+    const generalBalanceBills = bills.jsonData?.filter(
+        bill => bill.generalBalance && bill.currency !== newCurrency
+    );
+
+    if (generalBalanceBills && generalBalanceBills.length > 0) {
+        const bill = generalBalanceBills[0];
+
+        selectEl.value = plugin.settings.baseCurrency;
+
+        new Notice(
+            `Cannot change base currency. Bill "${bill.name}" is set to general balance with currency ${bill.currency}. Please change or disable general balance on this bill first.`
+        );
+        return;
+    }
+
+    plugin.settings.baseCurrency = newCurrency;
+    await plugin.saveSettings().catch(console.error);
+    new Notice(`Base currency changed to ${newCurrency}`);
 }
 
 type State = {

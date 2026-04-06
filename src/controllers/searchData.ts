@@ -1,10 +1,9 @@
 import { stateManager, DataFileResult, HistoryData, PlanData, BillData, DataItemResult } from "../../main";
 import { getDate } from "../middleware/otherFunc";
-import { DB_PATH } from "./DB";
 import MainPlugin from "../../main";
 
 export const getAdditionalData = async <T>(option: 'accounts' | 'categories', categoriName?: 'income_plan' | 'expenditure_plan'): Promise<DataFileResult<T>> => {
-    const filePath = `${DB_PATH}/${option}.json`;
+    const filePath = `${MainPlugin.instance.dbPath}/${option}.json`;
 
     try {
         const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
@@ -24,7 +23,7 @@ export const getAdditionalData = async <T>(option: 'accounts' | 'categories', ca
             return { status: 'error', error: new Error('Invalid option provided') };
         }
     } catch (error) {
-        return { status: 'error', error: new Error(`Failed to read ${option} data`) };
+        return { status: 'error', error: error instanceof Error ? error : new Error(String(error))};
     }
 }
 
@@ -35,7 +34,7 @@ export const getMainData = async <T>(option: 'history' | 'income_plan' | 'expend
         ? { year: selectedYear, month: selectedMonth }
         : getDate();
     
-    const filePath = `${DB_PATH}/${year}.json`;
+    const filePath = `${MainPlugin.instance.dbPath}/${year}.json`;
 
     try {
         const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
@@ -45,19 +44,19 @@ export const getMainData = async <T>(option: 'history' | 'income_plan' | 'expend
         }
         return data;
     } catch (error) {
-        return { status: 'error', error: new Error('Failed to read data') };
+        return { status: 'error', error: error instanceof Error ? error : new Error(String(error))};
     }
 }
 
 export const getAllFile = async (option: string) => {
-    const filePath = `${DB_PATH}/${option}.json`;
+    const filePath = `${MainPlugin.instance.dbPath}/${option}.json`;
 
     try {
         const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
         const jsonData = JSON.parse(file);
         return jsonData;
     } catch (error) {
-        return { status: 'error', error: new Error('Failed to read all data') };
+        return { status: 'error', error: error instanceof Error ? error : new Error(String(error))};
     }
 }
 

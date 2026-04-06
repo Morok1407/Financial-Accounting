@@ -337,6 +337,11 @@ export const addHistory = async () => {
             return
         }
 
+        if (!selectDate.value) {
+            new Notice('Select a date');
+            return
+        }
+
         const data: HistoryData = {
             id: String(generateUUID()),
             amount: String(inputSum.value),
