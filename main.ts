@@ -312,40 +312,50 @@ class SettingsTab extends PluginSettingTab {
 
         selectEl.value = this.plugin.settings.baseCurrency;
 
-        selectEl.addEventListener("change", async (event: Event) => {
-            SelectingTheBaseCurrency({ event, selectEl, plugin: this.plugin });
+        selectEl.addEventListener("change",  (event: Event) => {
+            const result = SelectingTheBaseCurrency({ event, selectEl, plugin: this.plugin })
+            if(result instanceof Promise) {
+                result.catch(console.error);
+            }
         });
     }
 }
 
-async function SelectingTheBaseCurrency({event, selectEl, plugin }: { event: Event; selectEl: HTMLSelectElement; plugin: MainPlugin }) {
+async function SelectingTheBaseCurrency({event, selectEl, plugin }: { event: Event; selectEl: HTMLSelectElement; plugin: MainPlugin }): Promise<ResultOfExecution> {
     const target = event.target as HTMLSelectElement;
     const newCurrency = target.value;
 
     const bills = await getAdditionalData<BillData>('accounts');
     if (bills.status === 'error') {
         new Notice(`Error fetching archive bills: ${bills.error.message}`);
-        return;
+        return  {status: 'error', error: bills.error };
     }
 
     const generalBalanceBills = bills.jsonData?.filter(
         bill => bill.generalBalance && bill.currency !== newCurrency
     );
 
-    if (generalBalanceBills && generalBalanceBills.length > 0) {
-        const bill = generalBalanceBills[0];
-
-        selectEl.value = plugin.settings.baseCurrency;
-
-        new Notice(
-            `Cannot change base currency. Bill "${bill.name}" is set to general balance with currency ${bill.currency}. Please change or disable general balance on this bill first.`
-        );
-        return;
+    try {
+        if (generalBalanceBills && generalBalanceBills.length > 0) {
+            const bill = generalBalanceBills[0];
+    
+            selectEl.value = plugin.settings.baseCurrency;
+    
+            new Notice(
+                `Cannot change base currency. Bill "${bill.name}" is set to general balance with currency ${bill.currency}. Please change or disable general balance on this bill first.`
+            );
+            return { status: 'error', error: new Error(`General balance bill "${bill.name}" has currency ${bill.currency}`) };
+        }
+    
+        plugin.settings.baseCurrency = newCurrency;
+        await plugin.saveSettings().catch(console.error);
+        new Notice(`Base currency changed to ${newCurrency}`);
+        return { status: 'success' };
+    } catch (error) {
+        console.error("Error changing base currency:", error);
+        new Notice(`Error changing base currency: ${error instanceof Error ? error.message : String(error)}`);
+        return { status: 'error', error: error instanceof Error ? error : new Error(String(error)) };
     }
-
-    plugin.settings.baseCurrency = newCurrency;
-    await plugin.saveSettings().catch(console.error);
-    new Notice(`Base currency changed to ${newCurrency}`);
 }
 
 type State = {

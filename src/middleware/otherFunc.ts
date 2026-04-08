@@ -139,9 +139,19 @@ export function checkExpenceOrIncome(amount: string, type: 'expense' | 'income')
     }
 }
 
-export function SummarizingDataForTheDay(obj: PlanData[] | HistoryData[] | null): string {
-    const expense = SummarizingData(obj);
-    const income = SummarizingData(obj);
+export function SummarizingDataForTheDay(obj: PlanData[] | HistoryData[]): string {
+    let expense = new Big(0);
+    let income = new Big(0);
+
+    obj.forEach(e => {
+        if(e.type === 'expense') {
+            expense = expense.plus(new Big(e.amount));
+        } else if(e.type === 'income') {
+            income = income.plus(new Big(e.amount));
+        } else {
+            console.error("Invalid type:", e.type);
+        }
+    })
 
     if (expense.eq(0)) {
         return `+${income.toString()}`;
@@ -152,7 +162,7 @@ export function SummarizingDataForTheDay(obj: PlanData[] | HistoryData[] | null)
     }
 }
 
-export function SummarizingData(obj: PlanData[] | HistoryData[] | null): Big {
+export function SummarizingData(obj: PlanData[] | HistoryData[]): Big {
     if (!obj) return new Big(0);
 
     if ((obj as PlanData[])) {
@@ -165,7 +175,7 @@ export function SummarizingData(obj: PlanData[] | HistoryData[] | null): Big {
     return new Big(0);
 }
 
-export function SummarizingDataForTheTrueBills(obj: BillData[] | null): Big {
+export function SummarizingDataForTheTrueBills(obj: BillData[]): Big {
     if (!obj) return new Big(0);
 
     return obj.reduce((sum, e) => {
@@ -176,7 +186,7 @@ export function SummarizingDataForTheTrueBills(obj: BillData[] | null): Big {
     }, new Big(0));
 }
 
-export function SummarizingDataForTheFalseBills(obj: BillData[] | null): Big {
+export function SummarizingDataForTheFalseBills(obj: BillData[]): Big {
     if (!obj) return new Big(0);
 
     return obj.reduce((sum, e) => {
@@ -204,7 +214,7 @@ export function getCurrencySymbol(code: string) {
     const currency = currencies[code as CurrencyCode];
     return currency ? (currency.symbol || currency.symbolNative || code) : code;
 }
-export function switchBalanceLine(billsInfo: BillData[] | null, expenditurePlanInfo: PlanData[] | null) {
+export function switchBalanceLine(billsInfo: BillData[], expenditurePlanInfo: PlanData[]) {
     const fullSum = Number(SummarizingDataForTheTrueBills(billsInfo)) + Number(SummarizingData(expenditurePlanInfo))
     const percent = Number(SummarizingData(expenditurePlanInfo)) / fullSum * 100
     if(Number(SummarizingData(expenditurePlanInfo)) <= fullSum) {
