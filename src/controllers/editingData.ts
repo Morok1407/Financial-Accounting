@@ -2,7 +2,7 @@ import { getAllFile } from "./searchData";
 import { getDate} from "../middleware/otherFunc";
 import { checkBill } from "../middleware/checkData";
 import { expenditureTransaction, incomeTransaction } from "../middleware/transferring";
-import { HistoryData, PlanData, BillData, ResultOfExecution, stateManager } from "../../main";
+import { HistoryData, PlanData, BillData, ResultOfExecution, stateManager, accountsData, categoriesData, YearData, PlanDataWithoutAmount } from "../../main";
 import MainPlugin from "../../main";
 
 export const editingJsonToHistory = async (data: HistoryData, oldData: HistoryData): Promise<ResultOfExecution> => {
@@ -27,13 +27,13 @@ export const editingJsonToHistory = async (data: HistoryData, oldData: HistoryDa
         return { status: 'error', error: new Error('The specified type is not suitable')}
     }
 
-    const allData = await getAllFile(year);
+    const allData = await getAllFile<YearData>(year);
     if (allData.status === 'error') return { status: 'error', error: allData.error };
 
     try {
-        allData.months[month].history = allData.months[month].history.map((item: HistoryData) => item.id === data.id ? {...item, ...data} : item);
+        allData.json.months[month].history = allData.json.months[month].history.map((item: HistoryData) => item.id === data.id ? {...item, ...data} : item);
 
-        const result = await updateFile(`${allData.year}`, allData);
+        const result = await updateFile(`${allData.json.year}`, allData.json);
         if (result.status === 'error') return { status: 'error', error: result.error };
 
         return { status: "success"}
@@ -43,20 +43,20 @@ export const editingJsonToHistory = async (data: HistoryData, oldData: HistoryDa
 }
 
 export const editingJsonToPlan = async (data: PlanData): Promise<ResultOfExecution> => {
-    const allCategories = await getAllFile('categories');
+    const allCategories = await getAllFile<categoriesData>('categories');
     if (allCategories.status === 'error') return { status: 'error', error: allCategories.error };
     
     try {         
-        const plan = data.type === 'expense' ? allCategories.categories.expenditure_plan : allCategories.categories.income_plan;
-        const updatedPlan = plan.map((item: PlanData) => item.id === data.id ? {...item, ...data} : item);
+        const plan = data.type === 'expense' ? allCategories.json.categories.expenditure_plan : allCategories.json.categories.income_plan;
+        const updatedPlan = plan.map((item: PlanDataWithoutAmount) => item.id === data.id ? {...item, ...data} : item);
         if(data.type === 'expense') {
-            allCategories.categories.expenditure_plan = updatedPlan;
+            allCategories.json.categories.expenditure_plan = updatedPlan;
         } else if (data.type === 'income') {
-            allCategories.categories.income_plan = updatedPlan;
+            allCategories.json.categories.income_plan = updatedPlan;
         } else {
             return { status: 'error', error: new Error('The specified type is not suitable')}
         }
-        const result = await updateFile('categories', allCategories);
+        const result = await updateFile('categories', allCategories.json);
         if (result.status === 'error') return { status: 'error', error: result.error };
 
         return { status: "success" }
@@ -70,13 +70,13 @@ export const editingJsonToBill = async (data: BillData): Promise<ResultOfExecuti
         data.balance = '0'
     }
 
-    const allData = await getAllFile('accounts')
+    const allData = await getAllFile<accountsData>('accounts')
     if (allData.status === 'error') return { status: 'error', error: allData.error };
     
     try {
-        allData.accounts = allData.accounts.map((item: BillData) => item.id === data.id ? {...item, ...data} : item);
+        allData.json.accounts = allData.json.accounts.map((item: BillData) => item.id === data.id ? {...item, ...data} : item);
 
-        const result = await updateFile('accounts', allData);
+        const result = await updateFile('accounts', allData.json);
         if (result.status === 'error') return { status: 'error', error: result.error };
 
         return { status: "success" }
@@ -85,7 +85,7 @@ export const editingJsonToBill = async (data: BillData): Promise<ResultOfExecuti
     }
 }
 
-export const updateFile = async (file: string, data: BillData[] | HistoryData[] | PlanData[]): Promise<ResultOfExecution> => {
+export const updateFile = async (file: string, data: BillData[] | HistoryData[] | PlanData[] | accountsData | categoriesData | YearData): Promise<ResultOfExecution> => {
     try {
         const fileExists = await MainPlugin.instance.app.vault.adapter.exists(`${MainPlugin.instance.dbPath}/${file}.json`);
         if(!fileExists) { return { status: 'error', error: new Error(`File not found: ${MainPlugin.instance.dbPath}/${file}.json`) }; }

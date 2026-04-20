@@ -45,7 +45,7 @@ export const showHistory = async (mainContentBody: HTMLDivElement, mainContentBu
         cls: 'history-content'
     })
 
-    generationHistoryContent(historyContent, history, mainContentButton, mainContentBody).catch(err => { console.error('generationHistoryContent failed', err); });
+    generationHistoryContent(historyContent, history, mainContentBody, mainContentButton).catch(err => { console.error('generationHistoryContent failed', err); });
 }
 
 async function handleSearchInput(e: Event, historyContent: HTMLDivElement, mainContentBody: HTMLDivElement) {
@@ -79,7 +79,7 @@ async function handleSearchInput(e: Event, historyContent: HTMLDivElement, mainC
     }
 }
 
-export async function generationHistoryContent(historyContent: HTMLDivElement,  historyData: DataFileResult<HistoryData>, mainContentButton?: HTMLDivElement, mainContentBody?: HTMLDivElement,) {
+export async function generationHistoryContent(historyContent: HTMLDivElement,  historyData: DataFileResult<HistoryData>, mainContentBody?: HTMLDivElement, mainContentButton?: HTMLDivElement) {
     mainContentBody?.removeClass('main-content-body--padding')
     if(historyData.status === 'error') return historyData.error;
     if(historyData.jsonData.length) {

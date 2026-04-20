@@ -8,6 +8,8 @@ import { generateYearlyFile } from './src/controllers/DB';
 const FINANCIAL_ACCOUNTING_VIEW = "financial-accounting-view";
 const { year } = getDate();
 
+/* =========== Main Types =========== */
+
 export interface BillData {
     readonly id: string;
     name: string;
@@ -27,6 +29,8 @@ export interface PlanData {
     type: 'expense' | 'income';
 }
 
+export type PlanDataWithoutAmount = Omit<PlanData, 'amount'>;
+
 export interface HistoryData {
     readonly id: string;
     amount: string;
@@ -35,6 +39,12 @@ export interface HistoryData {
     comment?: string;
     date: string;
     type: 'expense' | 'income';
+}
+
+export interface CurrencyType {
+    readonly code: string;
+    readonly name: string;
+    readonly symbol: string;
 }
 
 export interface YearData {
@@ -46,9 +56,34 @@ export interface YearData {
 
 export interface monthData {
     income_plan: PlanData[];
-    expense_plan: PlanData[];
+    expenditure_plan: PlanData[];
     history: HistoryData[];
 }
+
+export interface accountsData {
+    accounts: BillData[];
+}
+
+type categoriesType = {
+    expenditure_plan: PlanDataWithoutAmount[];
+    income_plan: PlanDataWithoutAmount[];
+}
+
+export interface categoriesData {
+    categories: categoriesType;
+}
+
+/* =========== Result Types =========== */
+
+export type ResultOfAllData<T> =
+    | {
+        status: 'success';
+        json: T;
+    }
+    | {
+        status: 'error';
+        error: Error;
+    };
 
 export type ResultOfExecution = 
     | {
@@ -58,7 +93,6 @@ export type ResultOfExecution =
         status: 'error';
         error: Error;
     };
-
 
 export type TransferData =
     | {
@@ -94,12 +128,6 @@ export type DataItemResult<T> =
         status: 'error';
         error: Error;
     };
-
-export interface CurrencyType {
-    readonly code: string;
-    readonly name: string;
-    readonly symbol: string;
-}
 
 export default class MainPlugin extends Plugin {
     static instance: MainPlugin;

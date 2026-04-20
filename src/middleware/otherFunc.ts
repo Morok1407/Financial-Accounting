@@ -1,6 +1,6 @@
 import Big from 'big.js';
 import currencies from '../../currencies.json'
-import { stateManager, PlanData, BillData, HistoryData } from "../../main";
+import { stateManager, PlanData, BillData, HistoryData, YearData } from "../../main";
 import { moment, Notice } from "obsidian";
 import { getAllFile } from '../controllers/searchData'
 
@@ -263,15 +263,15 @@ export function humanizeDate(dateStr: string) {
     return prefix ? `${prefix}, ${formattedDate}` : formattedDate;
 }
 export async function IncomeAndExpensesForTheMonth(month: string, year: string, div: HTMLDivElement) {
-    const allData = await getAllFile(year);
+    const allData = await getAllFile<YearData>(year);
     if (allData.status === "error") {
         new Notice(allData.error.message);
         console.error(allData.error);
         return
     }
 
-    const totalExpense = SummarizingData(allData.months[month].expenditure_plan);
-    const totalIncome = SummarizingData(allData.months[month].income_plan);
+    const totalExpense = SummarizingData(allData.json.months[month].expenditure_plan);
+    const totalIncome = SummarizingData(allData.json.months[month].income_plan);
 
     if (totalIncome.gte(totalExpense)) {
         div.createEl("span", {
@@ -297,7 +297,7 @@ export async function IncomeAndExpensesForTheMonth(month: string, year: string, 
 }
 
 export async function TheSumOfExpensesAndIncomeForTheYear(year: string): Promise<string | undefined> {
-    const allData = await getAllFile(year);
+    const allData = await getAllFile<YearData>(year);
     if (allData.status === "error") {
         new Notice(allData.error.message);
         console.error(allData.error);
@@ -306,9 +306,9 @@ export async function TheSumOfExpensesAndIncomeForTheYear(year: string): Promise
 
     let totalExpense = new Big(0);
     let totalIncome = new Big(0);
-    for (const month in allData.months) {
-        totalExpense = totalExpense.plus(SummarizingData(allData.months[month].expenditure_plan));
-        totalIncome = totalIncome.plus(SummarizingData(allData.months[month].income_plan));
+    for (const month in allData.json.months) {
+        totalExpense = totalExpense.plus(SummarizingData(allData.json.months[month].expenditure_plan));
+        totalIncome = totalIncome.plus(SummarizingData(allData.json.months[month].income_plan));
     }
 
     return `-${totalExpense.toString()} +${totalIncome.toString()}`;

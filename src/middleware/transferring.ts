@@ -1,5 +1,5 @@
 import Big from 'big.js';
-import { BillData, PlanData, HistoryData, ResultOfExecution, stateManager, TransferData } from "../../main";
+import { BillData, PlanData, HistoryData, ResultOfExecution, stateManager, TransferData, accountsData, YearData } from "../../main";
 import { getAllFile } from "../controllers/searchData";
 import { updateFile } from "../controllers/editingData";
 import { getDate } from './otherFunc';
@@ -14,7 +14,7 @@ export const expenditureTransaction = async (
 ): Promise<ResultOfExecution> => {
     const amount = new Big(data.amount);
 
-    const billsRes = await getAllFile('accounts');
+    const billsRes = await getAllFile<accountsData>('accounts');
     if (billsRes.status === 'error') return { status: 'error', error: billsRes.error };
     
     const { selectedYear, selectedMonth } = stateManager();
@@ -23,19 +23,19 @@ export const expenditureTransaction = async (
             ? { year: selectedYear, month: selectedMonth }
             : getDate();
 
-    const plansRes = await getAllFile(year);
+    const plansRes = await getAllFile<YearData>(year);
     if (plansRes.status === 'error') return { status: 'error', error: plansRes.error };
 
-    let bills: BillData[] = billsRes.accounts;
-    let plans: PlanData[] = plansRes.months[month].expenditure_plan;
+    let bills: BillData[] = billsRes.json.accounts;
+    let plans: PlanData[] = plansRes.json.months[month].expenditure_plan;
 
     const update = async (): Promise<ResultOfExecution> => {
-        billsRes.accounts = bills;
-        plansRes.months[month].expenditure_plan = plans;
-        const billUpdate = await updateFile('accounts', billsRes);
+        billsRes.json.accounts = bills;
+        plansRes.json.months[month].expenditure_plan = plans;
+        const billUpdate = await updateFile('accounts', billsRes.json);
         if (billUpdate.status === 'error') return { status: 'error', error: billUpdate.error };
 
-        const planUpdate = await updateFile(`${year}`, plansRes);
+        const planUpdate = await updateFile(`${year}`, plansRes.json);
         if (planUpdate.status === 'error') return { status: 'error', error: planUpdate.error };
 
         return { status: 'success'};
@@ -62,13 +62,13 @@ export const expenditureTransaction = async (
         updatePlan(oldData.category.id, oldAmount.times(-1));
         await update();
 
-        const newBillsRes = await getAllFile('accounts');
-        const newPlansRes = await getAllFile(year);
+        const newBillsRes = await getAllFile<accountsData>('accounts');
+        const newPlansRes = await getAllFile<YearData>(year);
         if(newBillsRes.status === 'error') return { status: 'error', error: newBillsRes.error };
         if(newPlansRes.status === 'error') return { status: 'error', error: newPlansRes.error };
 
-        bills = newBillsRes.accounts;
-        plans = newPlansRes.months[month].expenditure_plan;
+        bills = newBillsRes.json.accounts;
+        plans = newPlansRes.json.months[month].expenditure_plan;
 
         updateBill(data.bill.id, amount.times(-1));
         updatePlan(data.category.id, amount);
@@ -101,7 +101,7 @@ export const incomeTransaction = async (
 ): Promise<ResultOfExecution> => {
     const amount = new Big(data.amount);
 
-    const billsRes = await getAllFile('accounts');
+    const billsRes = await getAllFile<accountsData>('accounts');
     if (billsRes.status === 'error') return { status: 'error', error: billsRes.error };
 
     const { selectedYear, selectedMonth } = stateManager();
@@ -110,19 +110,19 @@ export const incomeTransaction = async (
             ? { year: selectedYear, month: selectedMonth }
             : getDate();
     
-    const plansRes = await getAllFile(year);
+    const plansRes = await getAllFile<YearData>(year);
     if (plansRes.status === 'error') return { status: 'error', error: plansRes.error };
 
-    let bills: BillData[] = billsRes.accounts;
-    let plans: PlanData[] = plansRes.months[month].income_plan;
+    let bills: BillData[] = billsRes.json.accounts;
+    let plans: PlanData[] = plansRes.json.months[month].income_plan;
 
     const update = async (): Promise<ResultOfExecution> => {
-        billsRes.accounts = bills;
-        plansRes.months[month].income_plan = plans;
-        const billUpdate = await updateFile('accounts', billsRes);
+        billsRes.json.accounts = bills;
+        plansRes.json.months[month].income_plan = plans;
+        const billUpdate = await updateFile('accounts', billsRes.json);
         if (billUpdate.status === 'error') return { status: 'error', error: billUpdate.error };
 
-        const planUpdate = await updateFile(`${year}`, plansRes);
+        const planUpdate = await updateFile(`${year}`, plansRes.json);
         if (planUpdate.status === 'error') return { status: 'error', error: planUpdate.error };
 
         return { status: 'success'};
@@ -153,13 +153,13 @@ export const incomeTransaction = async (
         updatePlan(oldData.category.id, oldAmount.times(-1));
         await update();
 
-        const newBillsRes = await getAllFile('accounts');
-        const newPlansRes = await getAllFile(year);
+        const newBillsRes = await getAllFile<accountsData>('accounts');
+        const newPlansRes = await getAllFile<YearData>(year);
         if(newBillsRes.status === 'error') return { status: 'error', error: newBillsRes.error };
         if(newPlansRes.status === 'error') return { status: 'error', error: newPlansRes.error };
 
-        bills = newBillsRes.accounts;
-        plans = newPlansRes.months[month].income_plan;
+        bills = newBillsRes.json.accounts;
+        plans = newPlansRes.json.months[month].income_plan;
 
         updateBill(data.bill.id, amount);
         updatePlan(data.category.id, amount);
@@ -190,11 +190,11 @@ export const transferBetweenBills = async (data: TransferData): Promise<ResultOf
         return { status: 'error', error: new Error('Cannot transfer to the same bill') };
     }
 
-    const bills = await getAllFile('accounts');
+    const bills = await getAllFile<accountsData>('accounts');
     if(bills.status === 'error') return { status: 'error', error: bills.error };
 
-    const fromBill = bills.accounts.find((b: BillData) => b.id === data.fromBillId);
-    const toBill = bills.accounts.find((b: BillData) => b.id === data.toBillId);
+    const fromBill = bills.json.accounts.find((b: BillData) => b.id === data.fromBillId);
+    const toBill = bills.json.accounts.find((b: BillData) => b.id === data.toBillId);
 
     if (!fromBill || !toBill) {
         return { status: 'error', error: new Error('One or both bills not found') };
@@ -221,7 +221,7 @@ export const transferBetweenBills = async (data: TransferData): Promise<ResultOf
     const newFromBalance = fromBalance.minus(debit);
     const newToBalance = toBalance.plus(credit);
 
-    const newBills = bills.accounts.map((bill: BillData) => {
+    const newBills = bills.json.accounts.map((bill: BillData) => {
         if (bill.id === fromBill.id) {
             return { ...bill, balance: newFromBalance.toFixed(2) };
         }
@@ -231,10 +231,10 @@ export const transferBetweenBills = async (data: TransferData): Promise<ResultOf
         return bill;
     });
 
-    bills.accounts = newBills;
+    bills.json.accounts = newBills;
 
     try {
-        await updateFile('accounts', bills);
+        await updateFile('accounts', bills.json);
 
         return { status: 'success' };
     } catch (error) {

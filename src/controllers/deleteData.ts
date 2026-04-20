@@ -1,7 +1,7 @@
 import { getAllFile } from "./searchData";
 import { updateFile } from "./editingData";
 import { checkForDeletionData } from "../middleware/checkData";
-import { HistoryData, PlanData, BillData, ResultOfExecution, stateManager } from "../../main";
+import { HistoryData, PlanData, BillData, ResultOfExecution, stateManager, YearData, categoriesData, PlanDataWithoutAmount, accountsData } from "../../main";
 import { getDate } from '../middleware/otherFunc';
 import { expenditureTransaction, incomeTransaction } from "../middleware/transferring"
 import MainPlugin from "../../main";
@@ -23,14 +23,14 @@ export const deleteHistory = async (element: HistoryData): Promise<ResultOfExecu
         return { status: 'error', error: new Error('Unknown transaction type') }
     }
 
-    const allData = await getAllFile(year)
+    const allData = await getAllFile<YearData>(year)
     if (allData.status === 'error') return { status: 'error', error: allData.error };
 
     try {
-        const newHistory = allData.months[month].history.filter((item: HistoryData) => item.id !== element.id);
-        allData.months[month].history = newHistory;
+        const newHistory = allData.json.months[month].history.filter((item: HistoryData) => item.id !== element.id);
+        allData.json.months[month].history = newHistory;
 
-        const result = await updateFile(`${allData.year}`, allData);
+        const result = await updateFile(`${allData.json.year}`, allData.json);
         if (result.status === 'error') return { status: 'error', error: result.error };
 
         return { status: 'success' };
@@ -42,7 +42,7 @@ export const deleteHistory = async (element: HistoryData): Promise<ResultOfExecu
 export const deletePlan = async (data: PlanData): Promise<ResultOfExecution> => {
     if(await checkForDeletionData(data.id, 'plan')) return { status: 'error', error: new Error(`The bill ${data.emoji} • ${data.name} cannot be deleted because it is used in history.`)}
 
-    const additionalData = await getAllFile('categories');
+    const additionalData = await getAllFile<categoriesData>('categories');
     if(additionalData.status === 'error') return { status: 'error', error: additionalData.error };
 
     const BD = await MainPlugin.instance.app.vault.adapter.list(MainPlugin.instance.dbPath);
@@ -57,16 +57,16 @@ export const deletePlan = async (data: PlanData): Promise<ResultOfExecution> => 
         await DelelteToAllFiles(yearsFiles, data)
 
         if(data.type === 'expense') {
-            const newPlan = additionalData.categories.expenditure_plan.filter((item: PlanData) => item.id !== data.id);
-            additionalData.categories.expenditure_plan = newPlan;
+            const newPlan = additionalData.json.categories.expenditure_plan.filter((item: PlanDataWithoutAmount) => item.id !== data.id);
+            additionalData.json.categories.expenditure_plan = newPlan;
         } else if (data.type === 'income') {
-            const newPlan = additionalData.categories.income_plan.filter((item: PlanData) => item.id !== data.id);
-            additionalData.categories.income_plan = newPlan;
+            const newPlan = additionalData.json.categories.income_plan.filter((item: PlanDataWithoutAmount) => item.id !== data.id);
+            additionalData.json.categories.income_plan = newPlan;
         } else {
             return { status: 'error', error: new Error('The plan has an invalid type.')}
         }
 
-        const result = await updateFile('categories', additionalData);
+        const result = await updateFile('categories', additionalData.json);
         if (result.status === 'error') return { status: 'error', error: result.error };
 
         return { status: 'success' }
@@ -109,16 +109,16 @@ export const deleteBill = async (item: BillData): Promise<ResultOfExecution> => 
     const { id, name, emoji } = item;
     if(!id) return { status: 'error', error: new Error('Element not found')}
 
-    const allData = await getAllFile('accounts')
+    const allData = await getAllFile<accountsData>('accounts')
     if (allData.status === 'error') return { status: 'error', error: allData.error };
 
     try {
         if(await checkForDeletionData(id, 'bill')) return { status: 'error', error: new Error(`The bill ${emoji} • ${name} cannot be deleted because it is used in history.`)}
         
-        const newBills = allData.accounts.filter((item: BillData) => item.id !== id);
-        allData.accounts = newBills;
+        const newBills = allData.json.accounts.filter((item: BillData) => item.id !== id);
+        allData.json.accounts = newBills;
 
-        const result = await updateFile('accounts', allData);
+        const result = await updateFile('accounts', allData.json);
         if (result.status === 'error') return { status: 'error', error: result.error };
 
         return { status: 'success' }

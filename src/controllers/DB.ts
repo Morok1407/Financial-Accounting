@@ -1,5 +1,5 @@
 import MainPlugin from "../../main";
-import { ResultOfExecution, PlanData } from "../../main";
+import { ResultOfExecution, PlanDataWithoutAmount, categoriesData } from "../../main";
 import { updateFile } from "./editingData";
 import { getAllFile } from "./searchData";
 
@@ -68,7 +68,7 @@ export const generateYearlyFile = async (): Promise<ResultOfExecution> => {
 }
 
 const dataDuplication = async (filePath: string): Promise<ResultOfExecution> => {
-    const additionalData = await getAllFile('categories');
+    const additionalData = await getAllFile<categoriesData>('categories');
     if(additionalData.status === 'error') return { status: 'error', error: additionalData.error };
 
     try {
@@ -76,11 +76,11 @@ const dataDuplication = async (filePath: string): Promise<ResultOfExecution> => 
         const jsonData = JSON.parse(file);
 
         for (const month in jsonData.months) {
-            additionalData.categories.income_plan.forEach((item: PlanData) => {
+            additionalData.json.categories.income_plan.forEach((item: PlanDataWithoutAmount) => {
                 jsonData.months[month].income_plan.push({id: item.id, amount: '0'});
             });
 
-            additionalData.categories.expenditure_plan.forEach((item: PlanData) => {
+            additionalData.json.categories.expenditure_plan.forEach((item: PlanDataWithoutAmount) => {
                 jsonData.months[month].expenditure_plan.push({id: item.id, amount: '0'});
             });
         }

@@ -1,4 +1,4 @@
-import { stateManager, DataFileResult, HistoryData, PlanData, BillData, DataItemResult } from "../../main";
+import { stateManager, DataFileResult, HistoryData, PlanData, BillData, DataItemResult, ResultOfAllData } from "../../main";
 import { getDate } from "../middleware/otherFunc";
 import MainPlugin from "../../main";
 
@@ -48,13 +48,13 @@ export const getMainData = async <T>(option: 'history' | 'income_plan' | 'expend
     }
 }
 
-export const getAllFile = async (option: string) => {
+export const getAllFile = async <T>(option: string): Promise<ResultOfAllData<T>> => {
     const filePath = `${MainPlugin.instance.dbPath}/${option}.json`;
 
     try {
         const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
         const jsonData = JSON.parse(file);
-        return jsonData;
+        return { status: 'success', json: jsonData };
     } catch (error) {
         return { status: 'error', error: error instanceof Error ? error : new Error(String(error))};
     }
