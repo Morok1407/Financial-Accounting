@@ -22,7 +22,7 @@
 .finance-header button {
   cursor: pointer;
   font-size: 20px;
-  background-color: #233547;
+  background-color: var(--background-modifier-active-hover);
   border-radius: 24px;
   gap: 6px;
 }
@@ -77,7 +77,7 @@
   width: 250px;
   height: 3px;
   position: relative;
-  background-color: #a0a5ac;
+  background-color: var(--background-modifier-border);
   border-radius: 100px;
 }
 .balance-line::after {
@@ -85,7 +85,7 @@
   z-index: 10;
   position: absolute;
   inset: 0;
-  background-color: #5288c1;
+  background-color: var(--interactive-accent);
   border-radius: 100px;
   width: var(--after-width, 100%);
   height: 100%;
@@ -150,13 +150,13 @@
 .main-nav a {
   all: unset;
   cursor: pointer;
-  color: #94afb3;
+  color: var(--text-muted);
   font-size: 18px;
   margin-bottom: 4px;
 }
 
 .home_button--active {
-  color: #5288c1 !important;
+  color: var(--interactive-accent) !important;
 }
 
 .main-header {
@@ -168,7 +168,7 @@
 
 .main-content {
   width: 100%;
-  background-color: #232e3c;
+  background-color: var(--background-modifier-active-hover);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -230,8 +230,8 @@
 
 .add-button {
   cursor: pointer;
-  background-color: #5288c1 !important;
-  color: white !important;
+  background-color: var(--interactive-accent) !important;
+  color: var(--text-on-accent) !important;
   width: 100% !important;
   height: 50px !important;
   margin: 0 11px 12px 0;
@@ -261,12 +261,12 @@
   width: 32px;
   height: 32px;
   margin: 3px;
-  color: red;
+  color: var(--color-red);
 }
 
 .main-add-form {
   width: 100%;
-  background-color: #232e3c;
+  background-color: var(--background-modifier-active-hover);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -276,7 +276,7 @@
 .main-form_radio {
   display: flex;
   margin: 30px 20px 0 20px;
-  background-color: #17212b;
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black);
   border-radius: 10px;
 }
 
@@ -310,7 +310,7 @@
 }
 
 .main-radion-button--active {
-  background-color: #303942 !important;
+  background-color: var(--interactive-accent-hover) !important;
 }
 
 .form-inputs {
@@ -318,8 +318,8 @@
   width: 100%;
   padding: 24px 16px !important;
   border-radius: 10px !important;
-  background-color: #17212b !important;
-  border: 1px #333c45 solid !important;
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black) !important;
+  border: 1px var(--background-modifier-border) solid !important;
 }
 
 .form-selects {
@@ -327,8 +327,8 @@
   width: 100%;
   height: 48px;
   border-radius: 10px !important;
-  background-color: #17212b !important;
-  border: 1px #333c45 solid !important;
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black) !important;
+  border: 1px var(--background-modifier-border) solid !important;
 }
 
 .form-checkbox-div {
@@ -351,7 +351,8 @@
 }
 
 .button-selects-date--active {
-  background-color: #5288c1 !important;
+  background-color: var(--interactive-accent) !important;
+  color: var(--text-on-accent) !important;
 }
 
 .form-transfer-expense-div {
@@ -443,7 +444,7 @@
   margin: 0;
   padding: 6px 12px;
   min-height: 60px;
-  background: #17212b;
+  background: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black);
   cursor: pointer;
 }
 
@@ -491,7 +492,7 @@
 }
 .data-link-text span {
   font-size: 14px;
-  color: #a0a5ac;
+  color: var(--text-muted);
 }
 
 .data-link-amount {
@@ -507,7 +508,7 @@
 }
 
 .data-link-amount-income p {
-  color: #2f9c4d;
+  color: var(--color-green);
 }
 
 .calendar-main {
@@ -515,7 +516,7 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  background-color: #232e3c;
+  background-color: var(--background-modifier-active-hover);
   border-radius: 12px;
 }
 
@@ -546,7 +547,7 @@
 }
 .calendar-list li {
   list-style: none;
-  background-color: #17212b;
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black);
   width: 100%;
   padding: 12px 16px;
   cursor: pointer;
@@ -569,23 +570,23 @@
 }
 
 .expense-all-month-failure {
-  color: #ff4f44;
+  color: var(--color-red);
   font-size: 17px;
 }
 
 .expense-all-month-success {
-  color: #f5f5f5;
+  color: var(--text-normal);
   font-size: 17px;
 }
 
 .income-all-month {
-  color: #abafb3;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
 .history-item {
   width: 100%;
-  background-color: #232e3c;
+  background-color: var(--background-modifier-active-hover);
   display: flex;
   flex-direction: column;
   position: relative;
