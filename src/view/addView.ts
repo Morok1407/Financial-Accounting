@@ -516,6 +516,12 @@ export const addPlan = () => {
             return
         }
 
+        if(!inputEmoji.value) {
+            inputEmoji.focus()
+            new Notice('Enter the emoji')
+            return
+        }
+
         const data: PlanData = {
             id: String(generateUUID()),
             name: inputName.value.trim(),
@@ -700,6 +706,12 @@ export const addBills = () => {
         if(!inputName.value) {
             inputName.focus()
             new Notice('Enter the name')
+            return
+        }
+
+        if(!inputEmoji.value) {
+            inputEmoji.focus()
+            new Notice('Enter the emoji')
             return
         }
         

@@ -192,11 +192,14 @@ export async function generationHistoryContent(historyContent: HTMLDivElement,  
                 }
 
                 const dataAmount = dataItem.createEl('div', {
-                    cls: 'data-link'
+                    cls: 'data-link-amount'
                 })
                 dataAmount.createEl('p', {
                     text: `${checkExpenceOrIncome(element.amount, element.type)} ${getCurrencySymbol(searchBill.item.currency)}`
                 })
+                if(element.type === 'income') {
+                    dataAmount.addClass('data-link-amount-income')
+                }
             }
         }
     }

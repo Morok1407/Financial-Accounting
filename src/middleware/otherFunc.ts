@@ -131,9 +131,9 @@ export function checkExpenceOrIncome(amount: string, type: 'expense' | 'income')
     const bigAmount = new Big(amount);
 
     if (type === 'expense') {
-        return `- ${bigAmount.toString()}`;
+        return `- ${formatNumbers(bigAmount.toString())}`;
     } else if (type === 'income') {
-        return `+ ${bigAmount.toString()}`;
+        return `+ ${formatNumbers(bigAmount.toString())}`;
     } else {
         return "Error";
     }
@@ -154,11 +154,11 @@ export function SummarizingDataForTheDay(obj: PlanData[] | HistoryData[]): strin
     })
 
     if (expense.eq(0)) {
-        return `+${income.toString()}`;
+        return `+${formatNumbers(income.toString())}`;
     } else if (income.eq(0)) {
-        return `-${expense.toString()}`;
+        return `-${formatNumbers(expense.toString())}`;
     } else {
-        return `-${expense.toString()} +${income.toString()}`;
+        return `-${formatNumbers(expense.toString())} +${formatNumbers(income.toString())}`;
     }
 }
 
@@ -275,22 +275,22 @@ export async function IncomeAndExpensesForTheMonth(month: string, year: string, 
 
     if (totalIncome.gte(totalExpense)) {
         div.createEl("span", {
-            text: `-${totalExpense.toString()}`,
+            text: `-${formatNumbers(totalExpense.toString())}`,
             cls: "expense-all-month-success",
         });
 
         div.createEl("span", {
-            text: `+${totalIncome.toString()}`,
+            text: `+${formatNumbers(totalIncome.toString())}`,
             cls: "income-all-month",
         });
     } else {
         div.createEl("span", {
-            text: `-${totalExpense.toString()}`,
+            text: `-${formatNumbers(totalExpense.toString())}`,
             cls: "expense-all-month-failure",
         });
 
         div.createEl("span", {
-            text: `+${totalIncome.toString()}`,
+            text: `+${formatNumbers(totalIncome.toString())}`,
             cls: "income-all-month",
         });
     }
@@ -311,7 +311,7 @@ export async function TheSumOfExpensesAndIncomeForTheYear(year: string): Promise
         totalIncome = totalIncome.plus(SummarizingData(allData.json.months[month].income_plan));
     }
 
-    return `-${totalExpense.toString()} +${totalIncome.toString()}`;
+    return `-${formatNumbers(totalExpense.toString())} +${formatNumbers(totalIncome.toString())}`;
 }
 
 export function getLocalTimeISO() {
@@ -334,3 +334,16 @@ export const mergeCategoriesData = (
         };
     });
 };
+
+export function formatNumbers(input: string): string {
+    return input.replace(/\d+(\.\d+)?/g, (num) => {
+        const [integerPart, decimalPart] = num.split(".");
+
+        const formattedInt = integerPart.replace(
+            /\B(?=(\d{3})+(?!\d))/g,
+            " "
+        );
+
+        return decimalPart ? `${formattedInt}.${decimalPart}` : formattedInt;
+    });
+}

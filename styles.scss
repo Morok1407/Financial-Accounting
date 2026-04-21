@@ -398,22 +398,38 @@
 }
 
 .header-block {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  width: 100%;
+  padding: 10px 12px;
 }
 
 .header-date-block {
+  flex: 1;
+  min-width: 0;
+
+  p {
+    margin: 0;
     overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
-    width: 200px;
-    p {
-        margin: 0;
-    }
+  }
 }
+
+.header-amount-block {
+  margin-left: auto;
+  flex-shrink: 0;   
+
+  span {
+    white-space: nowrap; 
+    font-variant-numeric: tabular-nums; 
+  }
+}
+
+// Где используется?
 .header-type-block {
     overflow: hidden;
     white-space: nowrap;
@@ -421,9 +437,6 @@
     p {
         margin: 0;
     }
-}
-.header-amount-block {
-    white-space: nowrap;
 }
 
 .data-list {
@@ -444,62 +457,89 @@
 }
 
 .data-item {
-    position: relative;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #17212b;
-    padding: 2px 12px;
-    min-height: 60px;
-    cursor: pointer;
-}
-.data-link {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 
-    span {
-        font-size: 24px;
-    }
-    p {
-        font-size: 16px;
-        margin: 0;
-    }
+  margin: 0;
+  padding: 6px 12px;
+  min-height: 60px;
+
+  background: #17212b;
+  cursor: pointer;
 }
+
+.data-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .data-link-emoji {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    p {
-        font-size: 24px;
-        margin: 0;
-    }
-    span {
-        position: absolute;
-        bottom: -4px;
-        right: -4px;
-        font-size: 14px;
-    }
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  p {
+    font-size: 24px;
+    margin: 0;
+  }
+
+  span {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    font-size: 14px;
+  }
 }
+
 .data-link-text {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  flex: 1;
+  min-width: 0;
+
+  p,
+  span {
+    margin: 0;
     overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
-    width: 150px;
-    padding: 2px;
-    p {
-        margin: 0;
-        font-size: 16px;
-    }
-    span {
-        font-size: 14px;
-        color: #a0a5ac;
-    }
+  }
+
+  p {
+    font-size: 16px;
+  }
+
+  span {
+    font-size: 14px;
+    color: #a0a5ac;
+  }
+}
+
+.data-link-amount {
+  margin-left: auto;
+  flex-shrink: 0;
+
+  p {
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+    font-size: 16px;
+  }
+}
+
+.data-link-amount-income {
+  p {
+    color: #2f9c4d;
+  }
 }
 
 // =======================================================
@@ -584,7 +624,7 @@
 
 // ===========================================
 
-.history-plan {
+.history-item {
     width: 100%;
     background-color: #232e3c;
     display: flex;

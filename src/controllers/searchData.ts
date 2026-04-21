@@ -105,20 +105,8 @@ export const searchHistory = async (
             getAdditionalData<BillData>('accounts')
         ]);
 
-        if (history.status === 'error') {
-            return history
-        }
-
-        if (!history.jsonData) {
-            throw new Error('History jsonData is null or undefined');
-        }
-
-        if(expenditure.status === 'error' || income.status === 'error' || bills.status === 'error') {
-            throw new Error('One of the additional data files returned an error');
-        }
-
-        if (!expenditure.jsonData|| !income.jsonData || !bills.jsonData) {
-            throw new Error('Additional data is null or undefined');
+        if(expenditure.status === 'error' || income.status === 'error' || bills.status === 'error' || history.status === 'error') {
+            return { status: 'error', error: new Error('Failed to load data for search') };
         }
 
         const additionalData = [

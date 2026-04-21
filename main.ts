@@ -13,7 +13,7 @@ const { year } = getDate();
 export interface BillData {
     readonly id: string;
     name: string;
-    emoji?: string;
+    emoji: string;
     balance: string;
     currency: string;
     generalBalance: boolean;
@@ -23,7 +23,7 @@ export interface BillData {
 export interface PlanData {
     readonly id: string;
     name: string;
-    emoji?: string;
+    emoji: string;
     amount: string;
     comment?: string;
     type: 'expense' | 'income';

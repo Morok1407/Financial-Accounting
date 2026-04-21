@@ -488,6 +488,12 @@ export const editingPlan = async (e: MouseEvent) => {
             return
         }
 
+        if(!inputEmoji.value) {
+            inputEmoji.focus()
+            new Notice('Enter the emoji')
+            return
+        }
+
         const data: PlanData = {
             id: plan.id,
             name: inputName.value.trim(),
@@ -515,7 +521,7 @@ export const editingPlan = async (e: MouseEvent) => {
         })
 
         const historyPlan = contentEl.createEl('div', {
-            cls: 'history-plan'
+            cls: 'history-item'
         })
 
         void generationHistoryContent(historyPlan, { status: 'success', jsonData: filteredHistory })
@@ -717,6 +723,12 @@ export const editingBill = async (e: MouseEvent) => {
             return
         }
 
+        if(!inputEmoji.value) {
+            inputEmoji.focus()
+            new Notice('Enter the emoji')
+            return
+        }
+
         const data: BillData = {
             id: bill.item.id,
             name: inputName.value.trim(),
@@ -729,6 +741,27 @@ export const editingBill = async (e: MouseEvent) => {
 
         void editingBillButton(data)
     })
+
+    const history = await getMainData<HistoryData>('history');
+    if(history.status === 'error') {
+        new Notice(history.error.message)
+        console.error(history.error)
+        return
+    }
+    const filteredHistory = history.jsonData.filter(
+        item => item.bill.id === bill.item.id
+    );
+    if(filteredHistory.length !== 0) {
+        contentEl.createEl('h1', {
+            text: 'History of the bill'
+        })
+
+        const historyBill = contentEl.createEl('div', {
+            cls: 'history-item'
+        })
+
+        void generationHistoryContent(historyBill, { status: 'success', jsonData: filteredHistory })
+    }
 }
 
 async function deleteBillButton(bill: BillData): Promise<void> {
