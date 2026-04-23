@@ -40,7 +40,7 @@ export const deleteHistory = async (element: HistoryData): Promise<ResultOfExecu
 }
 
 export const deletePlan = async (data: PlanData): Promise<ResultOfExecution> => {
-    if(await checkForDeletionData(data.id, 'plan')) return { status: 'error', error: new Error(`The bill ${data.emoji} • ${data.name} cannot be deleted because it is used in history.`)}
+    if(await checkForDeletionData(data.id, 'plan')) return { status: 'error', error: new Error(`The category ${data.emoji} • ${data.name} cannot be deleted because it is used in history.`)}
 
     const additionalData = await getAllFile<categoriesData>('categories');
     if(additionalData.status === 'error') return { status: 'error', error: additionalData.error };
@@ -113,7 +113,7 @@ export const deleteBill = async (item: BillData): Promise<ResultOfExecution> => 
     if (allData.status === 'error') return { status: 'error', error: allData.error };
 
     try {
-        if(await checkForDeletionData(id, 'bill')) return { status: 'error', error: new Error(`The bill ${emoji} • ${name} cannot be deleted because it is used in history.`)}
+        if(await checkForDeletionData(id, 'bill')) return { status: 'error', error: new Error(`The account ${emoji} • ${name} cannot be deleted because it is used in history.`)}
         
         const newBills = allData.json.accounts.filter((item: BillData) => item.id !== id);
         allData.json.accounts = newBills;

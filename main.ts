@@ -1,4 +1,4 @@
-import { Plugin, ItemView, WorkspaceLeaf, Platform, PluginSettingTab, Setting, Notice, App } from 'obsidian';
+import { Plugin, ItemView, WorkspaceLeaf, Platform, PluginSettingTab, Setting, Notice, App, Modal } from 'obsidian';
 import { showInitialView, showAnotherInitialView } from './src/view/homeView'; 
 import { getDate } from './src/middleware/otherFunc';
 import { getCurrencyGroups } from './src/middleware/otherFunc';
@@ -18,6 +18,7 @@ export interface BillData {
     currency: string;
     generalBalance: boolean;
     comment?: string;
+    archived: boolean;
 }
 
 export interface PlanData {
@@ -27,6 +28,7 @@ export interface PlanData {
     amount: string;
     comment?: string;
     type: 'expense' | 'income';
+    archived: boolean;
 }
 
 export type PlanDataWithoutAmount = Omit<PlanData, 'amount'>;
@@ -440,8 +442,46 @@ function waitForMobileNavBar(callback: (el: HTMLElement) => void) {
         if (el) {
             callback(el as HTMLElement);
             observer.disconnect();
+
+            document.styleSheets[0].insertRule(
+                '.add-button { margin: 0 12px 10px 12px !important; }',
+                document.styleSheets[0].cssRules.length
+            );
         }
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
+}
+
+export class ConfirmModal extends Modal {
+    private resolve!: (result: boolean) => void;
+
+    constructor(app: App, private message: string = "Are you sure?") {
+        super(app);
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        this.modalEl.addClass("confirm-modal");
+
+        contentEl.createEl("h2", { text: this.message });
+
+        const buttonsDiv = contentEl.createEl("div", { cls: "confirm-buttons" });
+        const yesBtn = buttonsDiv.createEl("button", { text: "Yes", cls: "btn-yes" });
+        const noBtn  = buttonsDiv.createEl("button", { text: "No",  cls: "btn-no"  });
+
+        yesBtn.onclick = () => { this.resolve(true);  this.close(); };
+        noBtn.onclick  = () => { this.resolve(false); this.close(); };
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+
+    openAndWait(): Promise<boolean> {
+        return new Promise((resolve) => {
+            this.resolve = resolve;
+            this.open();
+        });
+    }
 }

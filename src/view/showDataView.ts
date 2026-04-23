@@ -115,9 +115,6 @@ export async function generationHistoryContent(historyContent: HTMLDivElement,  
             )
         );
 
-        if(historyData.jsonData.length >= 5) {
-            mainContentBody?.addClass('main-content-body--padding')
-        }
         for (const historyElement of result) {
             const historyBlock = historyContent.createEl('div', {
                 cls: 'history-block'
@@ -245,7 +242,12 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
     const expensePlan = mergeCategoriesData(additionalExpensePlan.jsonData, mainExpensePlan.jsonData)
     const incomePlan = mergeCategoriesData(additionalIncomePlan.jsonData, mainIncomePlan.jsonData)
 
-    const allResult = [];
+    const arcivedExpensePlan = expensePlan.filter((e: PlanData) => e.archived)
+    const arcivedIncomePlan = incomePlan.filter((e: PlanData) => e.archived)
+
+    const notArcivedExpensePlan = expensePlan.filter((e: PlanData) => !e.archived)
+    const notArcivedIncomePlan = incomePlan.filter((e: PlanData) => !e.archived)
+
     if(!expensePlan.length && !incomePlan.length) {
         const undefinedContent = mainContentBody.createEl('div', {
             cls: 'undefined-content'
@@ -260,10 +262,9 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
             text: 'Enter any income and expenses to see how much money is actually left.'
         })
     } else {
-        if(expensePlan.length) {
+        if(notArcivedExpensePlan.length) {
             mainContentBody.removeClass('main-content-body--undefined')
-            const resultExpense = expensePlan.slice().sort((a: PlanData, b: PlanData) => new Big(b.amount).cmp(new Big(a.amount)))
-            resultExpense.forEach((e: PlanData) => allResult.push(e))
+            const resultExpense = notArcivedExpensePlan.slice().sort((a: PlanData, b: PlanData) => new Big(b.amount).cmp(new Big(a.amount)))
             const expensePlanBlock = mainContentBody.createEl('div', {
                 cls: 'plan-block'
             })
@@ -299,10 +300,16 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 const dataText = dataItem.createEl('div', {
                     cls: 'data-link'
                 })
-                dataText.createEl('span', {
+                const divEmoji = dataText.createEl('div', {
+                    cls: 'data-link-emoji'
+                })
+                const divText = dataText.createEl('div', {
+                    cls: 'data-link-text'
+                })
+                divEmoji.createEl('p', {
                     text: `${e.emoji}`
                 })
-                dataText.createEl('p', {
+                divText.createEl('p', {
                     text: `${e.name}`
                 })
                 dataItem.createEl('p', {
@@ -310,10 +317,82 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 })
             })
         }
-        if(incomePlan.length) {
+        if(arcivedExpensePlan.length) {
             mainContentBody.removeClass('main-content-body--undefined')
-            const resultIncome = incomePlan.slice().sort((a: PlanData, b: PlanData) => new Big(b.amount).cmp(new Big(a.amount)))
-            resultIncome.forEach((e: PlanData) => allResult.push(e))
+            const resultExpense = arcivedExpensePlan.slice().sort((a: PlanData, b: PlanData) => new Big(b.amount).cmp(new Big(a.amount)))
+            const expensePlanBlock = mainContentBody.createEl('div', {
+                cls: 'plan-block'
+            })
+            const expenseDateBlock = expensePlanBlock.createEl('div', {
+                cls: 'header-block'
+            })
+            const typeBlock = expenseDateBlock.createEl('div', {
+                cls: 'header-type-block'
+            })
+            typeBlock.createEl('span', {
+                text: 'Archived expense'
+            })
+            const amountBlock = expenseDateBlock.createEl('div', {
+                cls: 'header-amount-block'
+            })
+            amountBlock.createEl('span', {
+                text: String(SummarizingData(resultExpense))
+            })
+            const expenseDataList = expensePlanBlock.createEl('ul', {
+                cls: 'data-list'
+            })
+            const showButton = expenseDataList.createEl('li', {
+                cls: 'data-item archived-button'
+            })
+            const showDivEmoji = showButton.createEl('div', {
+                cls: 'data-link-emoji'
+            })
+            const showDivText = showButton.createEl('div', {
+                cls: 'data-link-text'
+            })
+            showDivEmoji.createEl('p', {
+                text: '🗃️'
+            })
+            showDivText.createEl('p', {
+                text: `${arcivedExpensePlan.length} archived`,
+            })
+            showButton.onclick = () => {
+                showButton.remove()
+                resultExpense.forEach((e: PlanData) => {
+                    const dataItem = expenseDataList.createEl('li', {
+                        cls: 'data-item archived-item',
+                        attr: {
+                                'data-id': e.id,
+                                'data-type': e.type
+                            }
+                    })
+                    dataItem.onclick = (e: MouseEvent) => {
+                        void editingPlan(e);
+                    };
+                    const dataText = dataItem.createEl('div', {
+                        cls: 'data-link'
+                    })
+                    const divEmoji = dataText.createEl('div', {
+                    cls: 'data-link-emoji'
+                    })
+                    const divText = dataText.createEl('div', {
+                        cls: 'data-link-text'
+                    })
+                    divEmoji.createEl('p', {
+                        text: `${e.emoji}`
+                    })
+                    divText.createEl('p', {
+                        text: `${e.name}`
+                    })
+                    dataItem.createEl('p', {
+                        text: String(e.amount)
+                    })
+                })
+            }
+        }
+        if(notArcivedIncomePlan.length) {
+            mainContentBody.removeClass('main-content-body--undefined')
+            const resultIncome = notArcivedIncomePlan.slice().sort((a: PlanData, b: PlanData) => new Big(b.amount).cmp(new Big(a.amount)))
             const incomePlanBlock = mainContentBody.createEl('div', {
                 cls: 'plan-block'
             })
@@ -349,10 +428,16 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 const dataText = dataItem.createEl('div', {
                     cls: 'data-link'
                 })
-                dataText.createEl('span', {
+                const divEmoji = dataText.createEl('div', {
+                    cls: 'data-link-emoji'
+                })
+                const divText = dataText.createEl('div', {
+                    cls: 'data-link-text'
+                })
+                divEmoji.createEl('p', {
                     text: `${e.emoji}`
                 })
-                dataText.createEl('p', {
+                divText.createEl('p', {
                     text: `${e.name}`
                 })
                 dataItem.createEl('p', {
@@ -360,10 +445,79 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 })
             })
         }
-    }
-
-    if(allResult.length > 5) {
-        mainContentBody.addClass('main-content-body--padding')
+        if(arcivedIncomePlan.length) {
+            mainContentBody.removeClass('main-content-body--undefined')
+            const resultIncome = arcivedIncomePlan.slice().sort((a: PlanData, b: PlanData) => new Big(b.amount).cmp(new Big(a.amount)))
+            const incomePlanBlock = mainContentBody.createEl('div', {
+                cls: 'plan-block'
+            })
+            const incomeDateBlock = incomePlanBlock.createEl('div', {
+                cls: 'header-block'
+            })
+            const typeBlock = incomeDateBlock.createEl('div', {
+                cls: 'header-type-block'
+            })
+            typeBlock.createEl('span', {
+                text: 'Archived income'
+            })
+            const amountBlock = incomeDateBlock.createEl('div', {
+                cls: 'header-amount-block'
+            })
+            amountBlock.createEl('span', {
+                text: String(SummarizingData(resultIncome))
+            })
+            const incomeDataList = incomePlanBlock.createEl('ul', {
+                cls: 'data-list'
+            })
+            const showButton = incomeDataList.createEl('li', {
+                cls: 'data-item archived-button'
+            })
+            const showDivEmoji = showButton.createEl('div', {
+                cls: 'data-link-emoji'
+            })
+            const showDivText = showButton.createEl('div', {
+                cls: 'data-link-text'
+            })
+            showDivEmoji.createEl('p', {
+                text: '🗃️'
+            })
+            showDivText.createEl('p', {
+                text: `${arcivedIncomePlan.length} archived`,
+            })
+            showButton.onclick = () => {
+                showButton.remove()
+                resultIncome.forEach((e: PlanData) => {
+                    const dataItem = incomeDataList.createEl('li', {
+                        cls: 'data-item archived-item',
+                        attr: {
+                                'data-id': e.id,
+                                'data-type': e.type
+                            }
+                    })
+                    dataItem.onclick = (e: MouseEvent) => {
+                        void editingPlan(e);
+                    };
+                    const dataText = dataItem.createEl('div', {
+                        cls: 'data-link'
+                    })
+                    const divEmoji = dataText.createEl('div', {
+                        cls: 'data-link-emoji'
+                    })
+                    const divText = dataText.createEl('div', {
+                        cls: 'data-link-text'
+                    })
+                    divEmoji.createEl('p', {
+                        text: `${e.emoji}`
+                    })
+                    divText.createEl('p', {
+                        text: `${e.name}`
+                    })
+                    dataItem.createEl('p', {
+                        text: String(e.amount)
+                    })
+                })
+            }
+        }
     }
 
     const addPlanButton = mainContentButton.createEl('button', {
@@ -385,6 +539,11 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
         return
     }
 
+    const notArcivedMainBills = bills.jsonData.filter((e: BillData) => !e.archived && e.generalBalance)
+    const notArcivedAdditionalBills = bills.jsonData.filter((e: BillData) => !e.archived && !e.generalBalance)
+    const arcivedMainBills = bills.jsonData.filter((e: BillData) => e.archived && e.generalBalance)
+    const arcivedAdditionalBills = bills.jsonData.filter((e: BillData) => e.archived && !e.generalBalance)
+
     if(!bills.jsonData.length) {
         const undefinedContent = mainContentBody.createEl('div', {
             cls: 'undefined-content'
@@ -399,10 +558,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
             text: 'Enter any income and expenses to see how much money is actually left.'
         })
     } else {
-        if(bills.jsonData.length > 5) {
-            mainContentBody.addClass('main-content-body--padding')
-        }
-        if(bills.jsonData.filter((e: BillData) => e.generalBalance).length >= 1) {
+        if(notArcivedMainBills.length >= 1) {
             mainContentBody.removeClass('main-content-body--undefined')
             const trueBillBlock = mainContentBody.createEl('div', {
                 cls: 'bill-block'
@@ -420,16 +576,88 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingDataForTheTrueBills(bills.jsonData))
+                text: String(SummarizingDataForTheTrueBills(notArcivedMainBills))
             })
             const trueDataList = trueBillBlock.createEl('ul', {
                 cls: 'data-list'
             })
 
-            bills.jsonData.forEach((e: BillData) => {
-                if(e.generalBalance) {
+            notArcivedMainBills.forEach((e: BillData) => {
+                const dataItem = trueDataList.createEl('li', {
+                    cls: 'data-item',
+                    attr: {
+                            'data-id': e.id
+                        }
+                })
+                dataItem.onclick = async (e: MouseEvent) => {
+                    await editingBill(e);
+                }
+                const dataText = dataItem.createEl('div', {
+                    cls: 'data-link'
+                })
+                const divEmoji = dataText.createEl('div', {
+                    cls: 'data-link-emoji'
+                })
+                const divText = dataText.createEl('div', {
+                    cls: 'data-link-text'
+                })
+                divEmoji.createEl('p', {
+                    text: `${e.emoji}`
+                })
+                divText.createEl('p', {
+                    text: `${e.name}`
+                })
+                dataItem.createEl('p', {
+                    text: `${String(e.balance)} ${getCurrencySymbol(e.currency)}`
+                })
+            })
+        }
+
+        if(arcivedMainBills.length >= 1) {
+            mainContentBody.removeClass('main-content-body--undefined')
+            const trueBillBlock = mainContentBody.createEl('div', {
+                cls: 'bill-block'
+            })
+            const trueDateBlock = trueBillBlock.createEl('div', {
+                cls: 'header-block'
+            })
+            const typeBlock = trueDateBlock.createEl('div', {
+                cls: 'header-type-block'
+            })
+            typeBlock.createEl('span', {
+                text: 'Archived main'
+            })
+            const amountBlock = trueDateBlock.createEl('div', {
+                cls: 'header-amount-block'
+            })
+            amountBlock.createEl('span', {
+                text: String(SummarizingDataForTheTrueBills(arcivedMainBills))
+            })
+            const trueDataList = trueBillBlock.createEl('ul', {
+                cls: 'data-list'
+            })
+
+            const showButton = trueDataList.createEl('li', {
+                cls: 'data-item archived-button'
+            })
+            const showDivEmoji = showButton.createEl('div', {
+                cls: 'data-link-emoji'
+            })
+            const showDivText = showButton.createEl('div', {
+                cls: 'data-link-text'
+            })
+            showDivEmoji.createEl('p', {
+                text: '🗃️'
+            })
+            showDivText.createEl('p', {
+                text: `${arcivedMainBills.length} archived`,
+            })
+
+            showButton.onclick = () => {
+                showButton.remove()
+                arcivedMainBills.forEach((e: BillData) => {
                     const dataItem = trueDataList.createEl('li', {
-                        cls: 'data-item',
+                        cls: 'data-item archived-item',
                         attr: {
                                 'data-id': e.id
                             }
@@ -440,20 +668,26 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                     const dataText = dataItem.createEl('div', {
                         cls: 'data-link'
                     })
-                    dataText.createEl('span', {
+                    const divEmoji = dataText.createEl('div', {
+                        cls: 'data-link-emoji'
+                    })
+                    const divText = dataText.createEl('div', {
+                        cls: 'data-link-text'
+                    })
+                    divEmoji.createEl('p', {
                         text: `${e.emoji}`
                     })
-                    dataText.createEl('p', {
+                    divText.createEl('p', {
                         text: `${e.name}`
                     })
                     dataItem.createEl('p', {
                         text: `${String(e.balance)} ${getCurrencySymbol(e.currency)}`
                     })
-                }
-            })
+                })
+            }
         }
         
-        if(bills.jsonData.filter((e: BillData) => !e.generalBalance).length >= 1) {
+        if(notArcivedAdditionalBills.length >= 1) {
             mainContentBody.removeClass('main-content-body--undefined')
             const falseBillBlock = mainContentBody.createEl('div', {
                 cls: 'bill-block'
@@ -471,16 +705,88 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingDataForTheFalseBills(bills.jsonData))
+                text: String(SummarizingDataForTheFalseBills(notArcivedAdditionalBills))
             })
             const falseDataList = falseBillBlock.createEl('ul', {
                 cls: 'data-list'
             })
             
-            bills.jsonData.forEach((e: BillData) => {
-                if(!e.generalBalance) {
-                    const dataItem = falseDataList.createEl('li', {
-                        cls: 'data-item',
+            notArcivedAdditionalBills.forEach((e: BillData) => {
+                const dataItem = falseDataList.createEl('li', {
+                    cls: 'data-item',
+                    attr: {
+                            'data-id': e.id
+                        }
+                })
+                dataItem.onclick = async (e: MouseEvent) => {
+                    await editingBill(e);
+                }
+                const dataText = dataItem.createEl('div', {
+                    cls: 'data-link'
+                })
+                const divEmoji = dataText.createEl('div', {
+                    cls: 'data-link-emoji'
+                })
+                const divText = dataText.createEl('div', {
+                    cls: 'data-link-text'
+                })
+                divEmoji.createEl('p', {
+                    text: `${e.emoji}`
+                })
+                divText.createEl('p', {
+                    text: `${e.name}`
+                })
+                dataItem.createEl('p', {
+                    text: `${String(e.balance)} ${getCurrencySymbol(e.currency)}`
+                })
+            })
+        }
+
+        if(arcivedAdditionalBills.length >= 1) {
+            mainContentBody.removeClass('main-content-body--undefined')
+            const trueBillBlock = mainContentBody.createEl('div', {
+                cls: 'bill-block'
+            })
+            const trueDateBlock = trueBillBlock.createEl('div', {
+                cls: 'header-block'
+            })
+            const typeBlock = trueDateBlock.createEl('div', {
+                cls: 'header-type-block'
+            })
+            typeBlock.createEl('span', {
+                text: 'Archived main'
+            })
+            const amountBlock = trueDateBlock.createEl('div', {
+                cls: 'header-amount-block'
+            })
+            amountBlock.createEl('span', {
+                text: String(SummarizingDataForTheTrueBills(arcivedAdditionalBills))
+            })
+            const trueDataList = trueBillBlock.createEl('ul', {
+                cls: 'data-list'
+            })
+
+            const showButton = trueDataList.createEl('li', {
+                cls: 'data-item archived-button'
+            })
+            const showDivEmoji = showButton.createEl('div', {
+                cls: 'data-link-emoji'
+            })
+            const showDivText = showButton.createEl('div', {
+                cls: 'data-link-text'
+            })
+            showDivEmoji.createEl('p', {
+                text: '🗃️'
+            })
+            showDivText.createEl('p', {
+                text: `${arcivedMainBills.length} archived`,
+            })
+
+            showButton.onclick = () => {
+                showButton.remove()
+                arcivedAdditionalBills.forEach((e: BillData) => {
+                    const dataItem = trueDataList.createEl('li', {
+                        cls: 'data-item archived-item',
                         attr: {
                                 'data-id': e.id
                             }
@@ -491,17 +797,23 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                     const dataText = dataItem.createEl('div', {
                         cls: 'data-link'
                     })
-                    dataText.createEl('span', {
+                    const divEmoji = dataText.createEl('div', {
+                        cls: 'data-link-emoji'
+                    })
+                    const divText = dataText.createEl('div', {
+                        cls: 'data-link-text'
+                    })
+                    divEmoji.createEl('p', {
                         text: `${e.emoji}`
                     })
-                    dataText.createEl('p', {
+                    divText.createEl('p', {
                         text: `${e.name}`
                     })
                     dataItem.createEl('p', {
                         text: `${String(e.balance)} ${getCurrencySymbol(e.currency)}`
                     })
-                }
-            })
+                })
+            }
         }
     }
 

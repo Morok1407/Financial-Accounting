@@ -42,6 +42,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  scrollbar-gutter: stable;
 }
 
 .balance {
@@ -173,12 +174,17 @@
   flex-direction: column;
   position: relative;
   border-radius: 12px;
+  margin-bottom: 60px !important;
 }
 
 .main-content-body {
   display: flex;
   flex-direction: column;
   padding: 16px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .main-content-body--undefined {
@@ -186,10 +192,6 @@
   align-items: center;
   justify-content: center;
   padding: 43% 0;
-}
-
-.main-content-body--padding {
-  padding-bottom: 60px;
 }
 
 .history-content {
@@ -227,14 +229,17 @@
   padding: 16px;
   padding-top: 0;
 }
+.main-content-button button {
+  margin: 0 24px 10px 12px;
+}
 
 .add-button {
   cursor: pointer;
   background-color: var(--interactive-accent) !important;
   color: var(--text-on-accent) !important;
   width: 100% !important;
-  height: 50px !important;
-  margin: 0 11px 12px 0;
+  height: 55px !important;
+  font-size: 15px !important;
 }
 
 .exit-button {
@@ -276,8 +281,15 @@
 .main-form_radio {
   display: flex;
   margin: 30px 20px 0 20px;
-  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black);
   border-radius: 10px;
+}
+
+.theme-dark .main-form_radio {
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black) !important;
+}
+
+.theme-light .main-form_radio {
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 90%, white) !important;
 }
 
 .main-form-input {
@@ -318,8 +330,15 @@
   width: 100%;
   padding: 24px 16px !important;
   border-radius: 10px !important;
-  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black) !important;
   border: 1px var(--background-modifier-border) solid !important;
+}
+
+.theme-dark .form-inputs {
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black) !important;
+}
+
+.theme-light .form-inputs {
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 90%, white) !important;
 }
 
 .form-selects {
@@ -327,8 +346,15 @@
   width: 100%;
   height: 48px;
   border-radius: 10px !important;
-  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black) !important;
   border: 1px var(--background-modifier-border) solid !important;
+}
+
+.theme-dark .form-selects {
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black) !important;
+}
+
+.theme-light .form-selects {
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 90%, white) !important;
 }
 
 .form-checkbox-div {
@@ -365,6 +391,17 @@
 .form-transfer-expense-div svg {
   width: 30px;
   height: 30px;
+}
+
+.form-archive-div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.form-archive-div span {
+  font-size: 18px;
 }
 
 .history-block {
@@ -444,8 +481,19 @@
   margin: 0;
   padding: 6px 12px;
   min-height: 60px;
-  background: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black);
   cursor: pointer;
+}
+
+.archived-item {
+  filter: grayscale(100%);
+}
+
+.theme-dark .data-item {
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black) !important;
+}
+
+.theme-light .data-item {
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 90%, white) !important;
 }
 
 .data-link {
@@ -547,7 +595,6 @@
 }
 .calendar-list li {
   list-style: none;
-  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black);
   width: 100%;
   padding: 12px 16px;
   cursor: pointer;
@@ -561,6 +608,14 @@
 }
 .calendar-list li > * {
   pointer-events: none;
+}
+
+.theme-dark .calendar-list li {
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black) !important;
+}
+
+.theme-light .calendar-list li {
+  background-color: color-mix(in srgb, var(--background-modifier-active-hover) 90%, white) !important;
 }
 
 .story-month {
@@ -596,6 +651,44 @@
 
 .currency-optgroup[label] {
   display: flex;
+}
+
+.confirm-modal .modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+}
+
+.confirm-modal h2 {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  font-size: 1.1em;
+}
+
+.confirm-modal .confirm-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.confirm-modal .btn-yes {
+  padding: 6px 20px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background-color: #e53935;
+  color: white;
+}
+
+.confirm-modal .btn-no {
+  padding: 6px 20px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background-color: #4caf50;
+  color: white;
 }
 
 /*# sourceMappingURL=styles.css.map */

@@ -155,13 +155,14 @@ export const addHistory = async () => {
             id: 'select-bills'
         }
     })
+    const accounts = bills.jsonData.filter(bill => !bill.archived)
 
     // --- Main ---
-    if(bills.jsonData.some(i => i.generalBalance === true)) {
+    if(accounts.some(i => i.generalBalance === true)) {
         const mainGroup = document.createElement("optgroup");
         mainGroup.label = "Main";
         
-        (bills.jsonData).forEach(bill => {
+        (accounts).forEach(bill => {
             if(bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
@@ -174,11 +175,11 @@ export const addHistory = async () => {
     }
 
     // --- Additional ---
-    if(bills.jsonData.some(i => i.generalBalance === false)) {
+    if(accounts.some(i => i.generalBalance === false)) {
         const additionalGroup = document.createElement("optgroup");
         additionalGroup.label = "Additional";
         
-        (bills.jsonData).forEach(bill => {
+        (accounts).forEach(bill => {
             if(!bill.generalBalance) {
                 const option = document.createElement("option");
                 option.value = bill.id;
@@ -191,8 +192,8 @@ export const addHistory = async () => {
     }
 
     if(history.jsonData.length === 0) {
-        bills.jsonData.sort((a, b) => Number(b.balance) - Number(a.balance))
-        selectBills.value = bills.jsonData[0].id;
+        accounts.sort((a, b) => Number(b.balance) - Number(a.balance))
+        selectBills.value = accounts[0].id;
     } else {
         const counts: Record<string, number> = {};
 
@@ -209,12 +210,12 @@ export const addHistory = async () => {
                 maxCount = counts[billId];
                 mostFrequentBillId = billId;
             } else if (counts[billId] === maxCount) {
-                bills.jsonData.sort((a, b) => Number(b.balance) - Number(a.balance));
-                selectBills.value = bills.jsonData[0].id;
+                accounts.sort((a, b) => Number(b.balance) - Number(a.balance));
+                selectBills.value = accounts[0].id;
             }
         }
 
-        const sorted = bills.jsonData.sort((a, b) => {
+        const sorted = accounts.sort((a, b) => {
             if (a.id === mostFrequentBillId) return -1;
             if (b.id === mostFrequentBillId) return 1;
             return 0;
@@ -236,7 +237,8 @@ export const addHistory = async () => {
             selectCategory.empty()
             if(expensePlan) {
                 expensePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
-                expensePlan.forEach(plan => {
+                const categories = expensePlan.filter(plan => !plan.archived)
+                categories.forEach(plan => {
                     selectCategory.createEl('option', {
                         text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
                         attr: { 
@@ -249,7 +251,8 @@ export const addHistory = async () => {
             selectCategory.empty()
             if(incomePlan) {
                 incomePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
-                incomePlan.forEach(plan => {
+                const categories = incomePlan.filter(plan => !plan.archived)
+                categories.forEach(plan => {
                     selectCategory.createEl('option', {
                         text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
                         attr: { 
@@ -529,6 +532,7 @@ export const addPlan = () => {
             amount: '0',
             comment: commentInput.value.trim(),
             type: resultRadio,
+            archived: false,
         }
 
         void addPlanButton(data)
@@ -723,6 +727,7 @@ export const addBills = () => {
             currency: currencySelect.value,
             generalBalance: checkboxInput.checked,
             comment: commentInput.value.trim(),
+            archived: false,
         }
         
         void addBillsButton(data)

@@ -16,6 +16,9 @@
 //  --color-red                → расход / ошибка
 // ============================================================
 
+$intermediate-blace-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black);
+$intermediate-white-color: color-mix(in srgb, var(--background-modifier-active-hover) 90%, white);
+
 .disable-mobile-nav-bar {
     display: none !important;
 }
@@ -62,6 +65,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    scrollbar-gutter: stable;
 }
 
 .balance {
@@ -202,12 +206,17 @@
     flex-direction: column;
     position: relative;
     border-radius: 12px;
+    margin-bottom: 60px !important;
 }
 
 .main-content-body {
     display: flex;
     flex-direction: column;
     padding: 16px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    min-height: 0;
 }
 .main-content-body--undefined {
     flex-direction: row;
@@ -215,9 +224,7 @@
     justify-content: center;
     padding: 43% 0;
 }
-.main-content-body--padding {
-    padding-bottom: 60px;
-}
+
 .history-content {
     display: flex;
     flex-direction: column;
@@ -254,6 +261,10 @@
     width: 100%;
     padding: 16px;
     padding-top: 0;
+
+    button {
+        margin: 0 24px 10px 12px;
+    }
 }
 
 .add-button {
@@ -261,8 +272,8 @@
     background-color: var(--interactive-accent) !important;
     color: var(--text-on-accent) !important;
     width: 100% !important;
-    height: 50px !important;
-    margin: 0 11px 12px 0;
+    height: 55px !important;
+    font-size: 15px !important;
 }
 
 .exit-button {
@@ -306,8 +317,14 @@
 .main-form_radio {
     display: flex;
     margin: 30px 20px 0 20px;
-    background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black);
     border-radius: 10px;
+}
+.theme-dark .main-form_radio {
+    background-color: $intermediate-blace-color !important;
+}
+
+.theme-light .main-form_radio {
+    background-color: $intermediate-white-color !important;
 }
 
 .main-form-input {
@@ -348,8 +365,14 @@
     width: 100%;
     padding: 24px 16px !important;
     border-radius: 10px !important;
-    background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black) !important;
     border: 1px var(--background-modifier-border) solid !important;
+}
+.theme-dark .form-inputs {
+    background-color: $intermediate-blace-color !important;
+}
+
+.theme-light .form-inputs {
+    background-color: $intermediate-white-color !important;
 }
 
 .form-selects {
@@ -357,8 +380,14 @@
     width: 100%;
     height: 48px;
     border-radius: 10px !important;
-    background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black) !important;
     border: 1px var(--background-modifier-border) solid !important;
+}
+.theme-dark .form-selects {
+    background-color: $intermediate-blace-color !important;
+}
+
+.theme-light .form-selects {
+    background-color: $intermediate-white-color !important;
 }
 
 .form-checkbox-div {
@@ -399,6 +428,17 @@
     }
 }
 
+.form-archive-div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+
+    span {
+        font-size: 18px;
+    }
+}
 // =======================================================
 
 .history-block {
@@ -474,44 +514,53 @@
 }
 
 .data-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding: 6px 12px;
+    min-height: 60px;
+    cursor: pointer;
 
-  margin: 0;
-  padding: 6px 12px;
-  min-height: 60px;
+}
+.archived-item {
+    filter: grayscale(100%);
+}
 
-  background: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black);
-  cursor: pointer;
+.theme-dark .data-item {
+    background-color: $intermediate-blace-color !important;
+}
+
+.theme-light .data-item {
+    background-color: $intermediate-white-color !important;
 }
 
 .data-link {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
 }
 
 .data-link-emoji {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 
-  p {
-    font-size: 24px;
-    margin: 0;
-  }
+    p {
+        font-size: 24px;
+        margin: 0;
+    }
 
-  span {
-    position: absolute;
-    bottom: -4px;
-    right: -4px;
-    font-size: 14px;
-  }
+    span {
+        position: absolute;
+        bottom: -4px;
+        right: -4px;
+        font-size: 14px;
+    }
 }
 
 .data-link-text {
@@ -604,7 +653,6 @@
     
     li {
         list-style: none; 
-        background-color: color-mix(in srgb, var(--background-modifier-active-hover) 70%, black);
         width: 100%;
         padding: 12px 16px;
         cursor: pointer;
@@ -619,6 +667,17 @@
     }
     li > * {
         pointer-events: none;
+    }
+}
+.theme-dark .calendar-list {
+    li {
+        background-color: $intermediate-blace-color !important;
+    }
+}
+
+.theme-light .calendar-list {
+    li {
+        background-color: $intermediate-white-color !important;
     }
 }
 .story-month {
@@ -653,4 +712,44 @@
 
 .currency-optgroup[label] {
     display: flex;
+}
+
+// ==============================================
+
+.confirm-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px;
+}
+
+.confirm-modal h2 {
+    display: flex;
+    justify-content: center;
+    margin: 0;
+    font-size: 1.1em;
+}
+
+.confirm-modal .confirm-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.confirm-modal .btn-yes {
+    padding: 6px 20px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    background-color: #e53935;
+    color: white;
+}
+
+.confirm-modal .btn-no {
+    padding: 6px 20px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    background-color: #4caf50;
+    color: white;
 }

@@ -1,6 +1,6 @@
 import { Notice, setIcon } from 'obsidian';
 import MainPlugin from '../../main';
-import { FinancialAccountingView } from '../../main'
+import { FinancialAccountingView, ConfirmModal } from '../../main'
 import { searchElementById, getAdditionalData, getMainData } from '../controllers/searchData';
 import { HistoryData, PlanData, BillData, TransferData, DataItemResult } from '../../main';
 import { deleteBill, deletePlan, deleteHistory } from '../controllers/deleteData';
@@ -187,7 +187,8 @@ export const editingHistory = async (e: MouseEvent) => {
             selectCategory.empty()
 
             expensePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
-            expensePlan.forEach(plan => {
+            const categories = expensePlan.filter(plan => !plan.archived)
+            categories.forEach(plan => {
                 if(plan.id === history.item.category.id) {
                     selectCategory.createEl('option', {
                         text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
@@ -204,7 +205,8 @@ export const editingHistory = async (e: MouseEvent) => {
             selectCategory.empty()
 
             incomePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
-            incomePlan.forEach(plan => {
+            const categories = incomePlan.filter(plan => !plan.archived)
+            categories.forEach(plan => {
                 if(plan.id === history.item.category.id) {
                     selectCategory.createEl('option', {
                         text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
@@ -471,6 +473,46 @@ export const editingPlan = async (e: MouseEvent) => {
         }
     })
 
+    const archiveButtonDiv = mainFormInput.createEl('div', {
+        cls: 'form-archive-div'
+    })
+    setIcon(archiveButtonDiv, plan.archived ? 'archive-x' : 'archive')
+    archiveButtonDiv.createEl('span', {
+        text: plan.archived ? 'Unarchive' : 'Archive',
+    })
+    archiveButtonDiv.addEventListener('click', async () => {
+        const modal = new ConfirmModal(MainPlugin.instance.app, `Are you sure you want to ${plan.archived ? 'unarchive' : 'archive'} ${plan.emoji} • ${plan.name}?`);
+        const result = await modal.openAndWait();
+
+        if (plan.archived && result) {
+            const data: PlanData = {
+                id: plan.id,
+                name: inputName.value.trim(),
+                emoji: inputEmoji.value,
+                amount: plan.amount,
+                comment: commentInput.value.trim(),
+                type: plan.type,
+                archived: false,
+            }
+
+            void editingPlanButton(data)
+        } else if (!plan.archived && result) {
+            const data: PlanData = {
+                id: plan.id,
+                name: inputName.value.trim(),
+                emoji: inputEmoji.value,
+                amount: plan.amount,
+                comment: commentInput.value.trim(),
+                type: plan.type,
+                archived: true,
+            }
+
+            void editingPlanButton(data)
+        } else {
+            return
+        }
+    });
+
     const addButton = mainFormInput.createEl('button', {
         text: 'Add',
         cls: 'add-button',
@@ -501,6 +543,7 @@ export const editingPlan = async (e: MouseEvent) => {
             amount: plan.amount,
             comment: commentInput.value.trim(),
             type: plan.type,
+            archived: plan.archived,
         }
 
         void editingPlanButton(data)
@@ -533,7 +576,7 @@ async function deletePlanButton(plan: PlanData): Promise<void> {
     if(redultOfDelete.status === "success") {
         setTimeout(() => {
             FinancialAccountingView.instance.onOpen().catch(console.error)
-            new Notice('The plan has been removed.')
+            new Notice(`${plan.emoji} • ${plan.name} has been removed.`)
         }, 100)
     } else {
         new Notice(redultOfDelete.error.message)
@@ -546,7 +589,7 @@ async function editingPlanButton(data: PlanData): Promise<void> {
     if(resultOfadd.status === "success") {
         setTimeout(() => {
             FinancialAccountingView.instance.onOpen().catch(console.error)
-            new Notice('The plan has been edited.')
+            new Notice(`${data.emoji} • ${data.name} has been edited.`)
         }, 100)
     } else {
         new Notice(resultOfadd.error.message)
@@ -707,6 +750,48 @@ export const editingBill = async (e: MouseEvent) => {
         cls: 'form-text',
     })
 
+    const archiveButtonDiv = mainFormInput.createEl('div', {
+        cls: 'form-archive-div'
+    })
+    setIcon(archiveButtonDiv, bill.item.archived ? 'archive-x' : 'archive')
+    archiveButtonDiv.createEl('span', {
+        text: bill.item.archived ? 'Unarchive' : 'Archive',
+    })
+    archiveButtonDiv.addEventListener('click', async () => {
+        const modal = new ConfirmModal(MainPlugin.instance.app, `Are you sure you want to ${bill.item.archived ? 'unarchive' : 'archive'} ${bill.item.emoji} • ${bill.item.name}?`);
+        const result = await modal.openAndWait();
+
+        if (bill.item.archived && result) {
+            const data: BillData = {
+                id: bill.item.id,
+                name: inputName.value.trim(),
+                emoji: inputEmoji.value,
+                balance: String(currentBalance.value.trim()),
+                currency: bill.item.currency,
+                generalBalance: checkboxInput.checked,
+                comment: commentInput.value.trim(),
+                archived: false
+            }
+
+            void editingBillButton(data)
+        } else if (!bill.item.archived && result) {
+            const data: BillData = {
+                id: bill.item.id,
+                name: inputName.value.trim(),
+                emoji: inputEmoji.value,
+                balance: String(currentBalance.value.trim()),
+                currency: bill.item.currency,
+                generalBalance: checkboxInput.checked,
+                comment: commentInput.value.trim(),
+                archived: true,
+            }
+
+            void editingBillButton(data)
+        } else {
+            return
+        }
+    });
+
     const addButton = mainFormInput.createEl('button', {
         text: 'Add',
         cls: 'add-button',
@@ -737,6 +822,7 @@ export const editingBill = async (e: MouseEvent) => {
             currency: bill.item.currency,
             generalBalance: checkboxInput.checked,
             comment: commentInput.value.trim(),
+            archived: bill.item.archived,
         }
 
         void editingBillButton(data)
@@ -769,7 +855,7 @@ async function deleteBillButton(bill: BillData): Promise<void> {
     if(redultOfDelete.status === "success") {
         setTimeout(() => {
             FinancialAccountingView.instance.onOpen().catch(console.error)
-            new Notice('The bill has been removed.')
+            new Notice(`${bill.emoji} • ${bill.name} has been removed.`)
         }, 100)
     } else {
         new Notice(redultOfDelete.error.message)
@@ -782,7 +868,7 @@ async function editingBillButton(data: BillData): Promise<void> {
     if(resultOfadd.status === "success") {
         setTimeout(() => {
             FinancialAccountingView.instance.onOpen().catch(console.error)
-            new Notice('The bill has been edited.')
+            new Notice(`${data.emoji} • ${data.name} has been edited.`)
         }, 100)
     } else {
         new Notice(resultOfadd.error.message)
