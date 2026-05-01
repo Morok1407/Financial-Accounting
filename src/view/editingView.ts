@@ -480,11 +480,16 @@ export const editingPlan = async (e: MouseEvent) => {
     archiveButtonDiv.createEl('span', {
         text: plan.archived ? 'Unarchive' : 'Archive',
     })
-    archiveButtonDiv.addEventListener('click', async () => {
-        const modal = new ConfirmModal(MainPlugin.instance.app, `Are you sure you want to ${plan.archived ? 'unarchive' : 'archive'} ${plan.emoji} • ${plan.name}?`);
-        const result = await modal.openAndWait();
+    archiveButtonDiv.addEventListener('click', () => {
+        void (async () => {
+            const modal = new ConfirmModal(
+                MainPlugin.instance.app,
+                `Are you sure you want to ${plan.archived ? 'unarchive' : 'archive'} ${plan.emoji} • ${plan.name}?`
+            );
 
-        if (plan.archived && result) {
+            const result = await modal.openAndWait();
+            if (!result) return;
+
             const data: PlanData = {
                 id: plan.id,
                 name: inputName.value.trim(),
@@ -492,25 +497,11 @@ export const editingPlan = async (e: MouseEvent) => {
                 amount: plan.amount,
                 comment: commentInput.value.trim(),
                 type: plan.type,
-                archived: false,
-            }
+                archived: !plan.archived,
+            };
 
-            void editingPlanButton(data)
-        } else if (!plan.archived && result) {
-            const data: PlanData = {
-                id: plan.id,
-                name: inputName.value.trim(),
-                emoji: inputEmoji.value,
-                amount: plan.amount,
-                comment: commentInput.value.trim(),
-                type: plan.type,
-                archived: true,
-            }
-
-            void editingPlanButton(data)
-        } else {
-            return
-        }
+            editingPlanButton(data);
+        })();
     });
 
     const addButton = mainFormInput.createEl('button', {
@@ -757,11 +748,12 @@ export const editingBill = async (e: MouseEvent) => {
     archiveButtonDiv.createEl('span', {
         text: bill.item.archived ? 'Unarchive' : 'Archive',
     })
-    archiveButtonDiv.addEventListener('click', async () => {
-        const modal = new ConfirmModal(MainPlugin.instance.app, `Are you sure you want to ${bill.item.archived ? 'unarchive' : 'archive'} ${bill.item.emoji} • ${bill.item.name}?`);
-        const result = await modal.openAndWait();
+    archiveButtonDiv.addEventListener('click', () => {
+        void (async () => {
+            const modal = new ConfirmModal(MainPlugin.instance.app, `Are you sure you want to ${bill.item.archived ? 'unarchive' : 'archive'} ${bill.item.emoji} • ${bill.item.name}?`);
+            const result = await modal.openAndWait();
+            if (!result) return;
 
-        if (bill.item.archived && result) {
             const data: BillData = {
                 id: bill.item.id,
                 name: inputName.value.trim(),
@@ -770,26 +762,11 @@ export const editingBill = async (e: MouseEvent) => {
                 currency: bill.item.currency,
                 generalBalance: checkboxInput.checked,
                 comment: commentInput.value.trim(),
-                archived: false
+                archived: !bill.item.archived,
             }
-
-            void editingBillButton(data)
-        } else if (!bill.item.archived && result) {
-            const data: BillData = {
-                id: bill.item.id,
-                name: inputName.value.trim(),
-                emoji: inputEmoji.value,
-                balance: String(currentBalance.value.trim()),
-                currency: bill.item.currency,
-                generalBalance: checkboxInput.checked,
-                comment: commentInput.value.trim(),
-                archived: true,
-            }
-
-            void editingBillButton(data)
-        } else {
-            return
-        }
+            
+            editingBillButton(data)
+        })
     });
 
     const addButton = mainFormInput.createEl('button', {
