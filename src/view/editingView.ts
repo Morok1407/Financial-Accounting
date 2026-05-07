@@ -480,12 +480,9 @@ export const editingPlan = async (e: MouseEvent) => {
     archiveButtonDiv.createEl('span', {
         text: plan.archived ? 'Unarchive' : 'Archive',
     })
-    archiveButtonDiv.addEventListener('click', () => {
-        void (async () => {
-            const modal = new ConfirmModal(
-                MainPlugin.instance.app,
-                `Are you sure you want to ${plan.archived ? 'unarchive' : 'archive'} ${plan.emoji} • ${plan.name}?`
-            );
+    archiveButtonDiv.addEventListener('click', async () => {
+        const handleArchive = async () => {
+            const modal = new ConfirmModal(MainPlugin.instance.app, `Are you sure you want to ${plan.archived ? 'unarchive' : 'archive'} ${plan.emoji} • ${plan.name}?`);
 
             const result = await modal.openAndWait();
             if (!result) return;
@@ -501,7 +498,9 @@ export const editingPlan = async (e: MouseEvent) => {
             };
 
             editingPlanButton(data);
-        })();
+        };
+
+        handleArchive().catch(console.error);
     });
 
     const addButton = mainFormInput.createEl('button', {
@@ -749,11 +748,10 @@ export const editingBill = async (e: MouseEvent) => {
         text: bill.item.archived ? 'Unarchive' : 'Archive',
     })
     archiveButtonDiv.addEventListener('click', () => {
-        void (async () => {
+        const handleArchive = async () => {
             const modal = new ConfirmModal(MainPlugin.instance.app, `Are you sure you want to ${bill.item.archived ? 'unarchive' : 'archive'} ${bill.item.emoji} • ${bill.item.name}?`);
             const result = await modal.openAndWait();
             if (!result) return;
-
             const data: BillData = {
                 id: bill.item.id,
                 name: inputName.value.trim(),
@@ -763,10 +761,12 @@ export const editingBill = async (e: MouseEvent) => {
                 generalBalance: checkboxInput.checked,
                 comment: commentInput.value.trim(),
                 archived: !bill.item.archived,
-            }
-            
-            editingBillButton(data)
-        })
+            };
+
+            editingBillButton(data);
+        };
+
+        handleArchive().catch(console.error);
     });
 
     const addButton = mainFormInput.createEl('button', {
