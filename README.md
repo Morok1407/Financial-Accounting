@@ -1,299 +1,147 @@
-# Finance Accounting Plugin
+# 💰 Financial Accounting
 
-## English
-
-### Description
-
-**Finance Accounting** is a technical Obsidian plugin designed for structured personal finance tracking directly inside your vault.
-The plugin provides a UI-based workflow for managing **income**, **expenses**, **accounts (bills)**, **plans**, and **history**, using Markdown files with embedded JSON blocks as the primary data source.
-
-The plugin operates fully offline and stores all data locally in the Obsidian vault, ensuring transparency, portability, and long-term maintainability.
+> A personal finance control system built directly into [Obsidian](https://obsidian.md/) — no internet connection required.
 
 ---
 
-### Core Features
+## Overview
 
-* 📊 **Income & Expense tracking**
-* 💳 **Multiple bills/accounts** with balances
-* 🧾 **Transaction history** with filtering and search
-* 📅 **Calendar-based monthly overview**
-* 📈 **Income and expense plans**
-* 🌍 **Multi-currency support** (ISO 4217-based)
-* ⚡ Fully offline, no external APIs
+**Financial Accounting** is an Obsidian plugin that turns your vault into a fully offline personal finance manager. Track income and expenses, manage multiple accounts, plan budgets by category, and browse transaction history — all without leaving Obsidian and without sending any data to external services.
 
 ---
 
-### Data Architecture
+## Features
 
-The plugin uses **Markdown files** with embedded `json` code blocks as structured storage.
+- **💳 Accounts (Bills)** — Create multiple accounts with individual currencies, emoji labels, and balance tracking. Designate accounts as "Main" (included in the general balance) or "Additional".
+- **📊 Budget Plans** — Define monthly income and expense categories with planned amounts. Archived categories are supported.
+- **📋 Transaction History** — Log every income and expense operation with amount, category, account, date, and an optional note. Full search across all transactions.
+- **🔄 Transfers Between Accounts** — Move funds between your own accounts, including cross-currency transfers.
+- **🗓 Calendar View** — Browse history by year and month. Navigate to any past period to view its data.
+- **🔢 Multi-currency Support** — Over 150 world currencies supported. Set a base currency in settings; accounts in non-base currencies are tracked separately.
+- **📱 Mobile Compatible** — Works on both desktop and mobile versions of Obsidian with an adaptive interface.
+- **🔒 Fully Offline** — All data is stored as JSON files inside your vault. No external requests, no accounts, no cloud sync.
 
-Example:
+---
 
-```json
-[
-    {
-        "id": "8122254c-4f86-4cfd-86aa-fcf038548cc4",
-        "amount": 1000,
-        "bill": {
-            "id": "782e29c2-cc5a-45e3-a879-c5736df09d5f"
-        },
-        "category": {
-            "id": "250ff0bb-ae54-4381-8b2e-a3ccd39a8194"
-        },
-        "comment": "",
-        "date": "2025-03-03T15:35:52",
-        "type": "income"
-    },
-    {
-        "id": "d20aeec7-2503-4cb7-8df4-c3d69319b330",
-        "amount": 7725,
-        "bill": {
-            "id": "782e29c2-cc5a-45e3-a879-c5736df09d5f"
-        },
-        "category": {
-            "id": "d7feac5b-7074-4b58-8814-09697fee53c4"
-        },
-        "comment": "",
-        "date": "2025-03-03T15:36:54",
-        "type": "expense"
-    }
-]
+## Installation
+
+### Manual Installation
+
+1. Download the latest release files: `main.js`, `manifest.json`, `styles.css`.
+2. Create a folder at: `<your-vault>/.obsidian/plugins/financial-accounting/`
+3. Place the downloaded files into that folder.
+4. Restart Obsidian and enable the plugin in **Settings → Community Plugins**.
+
+---
+
+## Getting Started
+
+After enabling the plugin, a **dollar sign icon** (💲) will appear in the left ribbon. Click it to open the Financial Accounting panel.
+
+### Step 1 — Configure Settings
+
+Go to **Settings → Financial Accounting**:
+
+- **Initial year of accounting** — The earliest year for which annual data files will be generated.
+- **Main currency** — Your base currency (default: USD). Used for all budget plans and the general balance display.
+
+### Step 2 — Add an Account
+
+Navigate to the **Bills** tab and click **"Add a bill"**. Fill in:
+
+| Field | Description |
+|---|---|
+| Name | Account name (e.g. "Cash", "Debit Card") |
+| Emoji | A visual icon for the account |
+| Currency | The account's currency |
+| Current balance | Starting balance |
+| Note | Optional comment |
+| General balance | Whether to include this account in the total balance |
+
+> ⚠️ Only accounts in the base currency can be included in the general balance.
+
+### Step 3 — Create Budget Categories
+
+Navigate to the **Plan** tab and click **"Create a category"**. Choose **Expense** or **Income**, then fill in the name and an emoji. Categories appear in both the plan and in the operation form.
+
+### Step 4 — Log Transactions
+
+Click the ribbon icon or use the command **"Open the finance panel"**, then click **"Add an expense or income"** at the bottom of the History tab. Fill in:
+
+- Type: **Expense** or **Income**
+- Amount
+- Account
+- Category
+- Note (optional)
+- Date (with quick buttons: Today / Yesterday / The day before yesterday)
+
+---
+
+## Interface Overview
+
+The plugin panel has three tabs:
+
+### History
+Shows all transactions for the selected period, grouped by day. Each entry displays the category emoji, account emoji, name/note, and the signed amount. Tap any entry to edit or delete it. Use the search bar to filter by amount, type, category name, or note.
+
+### Plan
+Shows all budget categories split into **Expense** and **Income** sections, sorted by planned amount. Archived categories are collapsed behind a toggle. Tap a category to edit its name, emoji, note, or archive status.
+
+### Bills
+Shows all accounts split into **Main** and **Additional** sections. Each account displays its current balance and currency. Tap an account to edit it, view its transaction history, or initiate a transfer to another account.
+
+---
+
+## Data Storage
+
+All data is stored as JSON files inside your vault at:
+
+```
+<vault>/.obsidian/plugins/financial-accounting/db/
 ```
 
-This approach allows:
+| File | Contents |
+|---|---|
+| `accounts.json` | All accounts and their current balances |
+| `categories.json` | All income and expense plan categories |
+| `YYYY.json` | Per-year file with monthly history and plan amounts |
 
-* manual editing if needed
-* long-term data safety without vendor lock-in
-
----
-
-### Views & UI
-
-The plugin registers a custom Obsidian view that includes:
-
-* balance overview
-* income vs expense indicators
-* progress bars
-* history lists
-* add/edit forms
-* calendar navigation
-
-All UI styles are scoped and defined in `styles.css`.
+A new year file is automatically created for every year from the configured start year up to the current year.
 
 ---
 
-### Currency Support
+## Commands
 
-The plugin ships with a built-in currency registry:
-
-* ISO code (USD, EUR, KZT, etc.)
-* native symbols
-* decimal precision
-* minor units
-
-This allows correct formatting and future currency conversion extensions.
+| Command | Description |
+|---|---|
+| `Open the finance panel` | Opens the Financial Accounting side panel |
 
 ---
 
-### Installation
+## Settings
 
-#### From Community Plugins (planned)
-
-1. Open **Settings → Community plugins**
-2. Disable Safe Mode
-3. Search for **Finance Accounting**
-4. Install and enable
-
-#### Manual Installation
-
-1. Download the plugin release
-2. Copy files into:
-
-   ```
-   .obsidian/plugins/finance-accounting-plugin/
-   ```
-3. Enable the plugin in Obsidian settings
+| Setting | Description | Default |
+|---|---|---|
+| Initial year of accounting | Earliest year for data generation | Current year |
+| Main currency | Base currency for plans and general balance | USD |
 
 ---
 
-### Compatibility
+## Limitations
 
-* **Obsidian** ≥ 0.15.0
-* Desktop & Mobile
-* Windows / macOS / Linux
-
----
-
-### Development Notes
-
-* Bundled with **esbuild**
-* TypeScript
-* UI logic separated from data logic
+- Transactions can only be added to accounts in the **base currency**. Accounts in other currencies are for tracking balances only.
+- Deleting a category or account that is referenced in transaction history is blocked until all related transactions are removed.
 
 ---
 
-### Roadmap / Future Plans
+## Author
 
-* 🔄 Transfers between bills
-* 📤 Export to CSV / JSON
-* 📊 Charts and analytics
-* 🔐 Optional data validation
-* 🌐 Currency conversion (optional API)
-* 🧩 Plugin API for extensions
+**Bugayev Daniil**
+GitHub: [@Morok1407](https://github.com/Morok1407)
 
 ---
 
-### License
+## License
 
 MIT License
 You are free to use, modify, and distribute this plugin.
-
----
-
-## Русский
-
-### Описание
-
-**Finance Accounting** — технический плагин для Obsidian, предназначенный для структурированного учета личных финансов прямо внутри хранилища заметок.
-Плагин предоставляет UI-интерфейс для работы с **доходами**, **расходами**, **счетами**, **планами** и **историей операций**, используя Markdown-файлы с JSON-блоками в качестве источника данных.
-
-Плагин полностью офлайн и хранит все данные локально в vault Obsidian.
-
----
-
-### Основные возможности
-
-* 📊 Учет доходов и расходов
-* 💳 Несколько счетов с балансами
-* 🧾 История операций с поиском
-* 📅 Календарный обзор по месяцам
-* 📈 Планы доходов и расходов
-* 🌍 Поддержка множества валют (ISO 4217)
-* ⚡ Работа без интернета
-
----
-
-### Архитектура данных
-
-Хранение данных осуществляется в **Markdown-файлах** с JSON-блоками.
-
-Пример:
-
-```json
-[
-    {
-        "id": "8122254c-4f86-4cfd-86aa-fcf038548cc4",
-        "amount": 1000,
-        "bill": {
-            "id": "782e29c2-cc5a-45e3-a879-c5736df09d5f"
-        },
-        "category": {
-            "id": "250ff0bb-ae54-4381-8b2e-a3ccd39a8194"
-        },
-        "comment": "",
-        "date": "2025-03-03T15:35:52",
-        "type": "income"
-    },
-    {
-        "id": "d20aeec7-2503-4cb7-8df4-c3d69319b330",
-        "amount": 7725,
-        "bill": {
-            "id": "782e29c2-cc5a-45e3-a879-c5736df09d5f"
-        },
-        "category": {
-            "id": "d7feac5b-7074-4b58-8814-09697fee53c4"
-        },
-        "comment": "",
-        "date": "2025-03-03T15:36:54",
-        "type": "expense"
-    }
-]
-```
-
-Преимущества:
-
-* возможность ручного редактирования
-* отсутствие привязки к сервисам
-
----
-
-### Интерфейс
-
-Плагин добавляет кастомное представление Obsidian, включающее:
-
-* общий баланс
-* сравнение доходов и расходов
-* прогресс-бары
-* списки операций
-* формы добавления и редактирования
-* календарную навигацию
-
-Все стили изолированы и описаны в `styles.css`.
-
----
-
-### Поддержка валют
-
-Встроенный справочник валют содержит:
-
-* ISO-код
-* символ
-* точность дробной части
-* минимальные единицы
-
-Это упрощает расширение функционала в будущем.
-
----
-
-### Установка
-
-#### Через Community Plugins (в планах)
-
-1. **Settings → Community plugins**
-2. Отключить Safe Mode
-3. Найти **Finance Accounting**
-4. Установить и включить
-
-#### Ручная установка
-
-1. Скачать релиз
-2. Скопировать файлы в:
-
-   ```
-   .obsidian/plugins/finance-accounting-plugin/
-   ```
-3. Активировать плагин в настройках
-
----
-
-### Совместимость
-
-* **Obsidian** ≥ 0.15.0
-* Desktop и Mobile
-* Windows / macOS / Linux
-
----
-
-### Заметки для разработчиков
-
-* Сборка через **esbuild**
-* TypeScript
-* Разделение UI и логики данных
-
----
-
-### Планы развития
-
-* 🔄 Переводы между счетами
-* 📤 Экспорт данных
-* 📊 Графики и аналитика
-* 🔐 Валидация данных
-* 🌐 Конвертация валют
-* 🧩 Расширяемый API
-
----
-
-### Лицензия
-
-MIT License
-Свободное использование и модификация.
