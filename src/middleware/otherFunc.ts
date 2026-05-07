@@ -1,10 +1,11 @@
 import Big from 'big.js';
+import moment from "moment";
 import currencies from '../../currencies.json'
 import { stateManager, PlanData, BillData, HistoryData, YearData } from "../../main";
-import { moment, Notice } from "obsidian";
+import { Notice } from "obsidian";
 import { getAllFile } from '../controllers/searchData'
 
-type Moment = ReturnType<typeof moment>;
+type Moment = moment.Moment;
 
 export const popularCodes : string[] = ["USD", "EUR", "RUB", "KZT", "UZS"];
 

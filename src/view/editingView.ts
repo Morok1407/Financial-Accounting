@@ -480,7 +480,7 @@ export const editingPlan = async (e: MouseEvent) => {
     archiveButtonDiv.createEl('span', {
         text: plan.archived ? 'Unarchive' : 'Archive',
     })
-    archiveButtonDiv.addEventListener('click', async () => {
+    archiveButtonDiv.addEventListener('click', () => {
         const handleArchive = async () => {
             const modal = new ConfirmModal(MainPlugin.instance.app, `Are you sure you want to ${plan.archived ? 'unarchive' : 'archive'} ${plan.emoji} • ${plan.name}?`);
 
@@ -497,7 +497,7 @@ export const editingPlan = async (e: MouseEvent) => {
                 archived: !plan.archived,
             };
 
-            editingPlanButton(data);
+            void editingPlanButton(data);
         };
 
         handleArchive().catch(console.error);
@@ -763,7 +763,7 @@ export const editingBill = async (e: MouseEvent) => {
                 archived: !bill.item.archived,
             };
 
-            editingBillButton(data);
+            void editingBillButton(data);
         };
 
         handleArchive().catch(console.error);
