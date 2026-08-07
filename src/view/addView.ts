@@ -5,7 +5,7 @@ import { addJsonToHistory, addJsonToPlan, addJsonToBills } from "../controllers/
 import { getAdditionalData, getMainData, searchElementById } from "../controllers/searchData";
 import { stateManager } from "../../main";
 import { HistoryData, PlanData, BillData  } from "../../main";
-import { getCurrencySymbol, fillMonthDates, getLocalTimeISO, selectRelativeDate, getCurrencyGroups, generateUUID, mergeCategoriesData } from "../middleware/otherFunc";
+import { getCurrencySymbol, fillMonthDates, getLocalTimeISO, selectRelativeDate, getCurrencyGroups, generateUUID } from "../middleware/otherFunc";
 
 export const addHistory = async () => {
     const bills = await getAdditionalData<BillData>('accounts');
@@ -16,41 +16,23 @@ export const addHistory = async () => {
     }
     if(bills.jsonData.length === 0) return new Notice('Add a bill')
 
-    const additionalExpensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan')
-    if (additionalExpensePlan.status === 'error') {
-        new Notice(additionalExpensePlan.error.message)
-        console.error(additionalExpensePlan.error)
+    const expensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan')
+    if (expensePlan.status === 'error') {
+        new Notice(expensePlan.error.message)
+        console.error(expensePlan.error)
         return
     }
-    if(additionalExpensePlan.jsonData.length === 0) return new Notice('Add a expenditure plan')
+    if(expensePlan.jsonData.length === 0) return new Notice('Add a expenditure plan')
+
+    const incomePlan = await getAdditionalData<PlanData>('categories', 'income_plan')
+    if (incomePlan.status === 'error') {
+        new Notice(incomePlan.error.message)
+        console.error(incomePlan.error)
+        return
+    }
+    if(incomePlan.jsonData.length === 0) return new Notice('Add a income plan')
     
-    const mainExpensePlan = await getMainData<PlanData>('expenditure_plan')
-    if (mainExpensePlan.status === 'error') {
-        new Notice(mainExpensePlan.error.message)
-        console.error(mainExpensePlan.error)
-        return
-    }
-
-    const expensePlan = mergeCategoriesData(additionalExpensePlan.jsonData, mainExpensePlan.jsonData)
-
-    const additionalIncomePlan = await getAdditionalData<PlanData>('categories', 'income_plan')
-    if (additionalIncomePlan.status === 'error') {
-        new Notice(additionalIncomePlan.error.message)
-        console.error(additionalIncomePlan.error)
-        return
-    }
-    if(additionalIncomePlan.jsonData.length === 0) return new Notice('Add a income plan')
-
-    const mainIncomePlan = await getMainData<PlanData>('income_plan')
-    if (mainIncomePlan.status === 'error') {
-        new Notice(mainIncomePlan.error.message)
-        console.error(mainIncomePlan.error)
-        return
-    }
-
-    const incomePlan = mergeCategoriesData(additionalIncomePlan.jsonData, mainIncomePlan.jsonData)
-    
-    const history = await getMainData<HistoryData>('history')
+    const history = await getMainData()
     if (history.status === 'error') {
         new Notice(history.error.message)
         console.error(history.error)
@@ -235,9 +217,9 @@ export const addHistory = async () => {
     function createOptionCategory() {
         if(resultRadio === 'expense'){
             selectCategory.empty()
-            if(expensePlan) {
-                expensePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
-                const categories = expensePlan.filter(plan => !plan.archived)
+            if(expensePlan && expensePlan.status === 'success') {
+                expensePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
+                const categories = expensePlan.jsonData.filter(plan => !plan.archived)
                 categories.forEach(plan => {
                     selectCategory.createEl('option', {
                         text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
@@ -249,9 +231,9 @@ export const addHistory = async () => {
             }
         } else {
             selectCategory.empty()
-            if(incomePlan) {
-                incomePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
-                const categories = incomePlan.filter(plan => !plan.archived)
+            if(incomePlan && incomePlan.status === 'success') {
+                incomePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
+                const categories = incomePlan.jsonData.filter(plan => !plan.archived)
                 categories.forEach(plan => {
                     selectCategory.createEl('option', {
                         text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,

@@ -1,14 +1,72 @@
+import { Notice } from "obsidian";
+import Big from "big.js";
 import { stateManager, DataFileResult, HistoryData, PlanData, BillData, DataItemResult, ResultOfAllData } from "../../main";
 import { getDate } from "../middleware/otherFunc";
 import MainPlugin from "../../main";
 
-export const getAdditionalData = async <T>(option: 'accounts' | 'categories', categoriName?: 'income_plan' | 'expenditure_plan'): Promise<DataFileResult<T>> => {
-    const filePath = `${MainPlugin.instance.dbPath}/${option}.json`;
+export const getMainData = async (): Promise<DataFileResult<HistoryData>> => {
+    const { selectedYear, selectedMonth } = stateManager();
+    const { year, month } =
+    selectedYear && selectedMonth
+        ? { year: selectedYear, month: selectedMonth }
+        : getDate();
+    
+    const filePath = `${MainPlugin.instance.dbPath}/${year}.json`;
 
     try {
         const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
+        const jsonData: HistoryData[] = JSON.parse(file).months[month].history;
+        const data: DataFileResult<HistoryData> = {
+            jsonData, status: 'success'
+        }
+        return data;
+    } catch (error) {
+        return { status: 'error', error: error instanceof Error ? error : new Error(String(error))};
+    }
+}
+
+export const getAdditionalData = async <T extends { id: string }>(option: 'accounts' | 'categories', categoriName?: 'income_plan' | 'expenditure_plan'): Promise<DataFileResult<T>> => {
+    const filePath = `${MainPlugin.instance.dbPath}/${option}.json`;
+
+    try {
+        const mainData = await getMainData();
+        if (mainData.status === "error") {
+            new Notice(mainData.error.message);
+            console.error(mainData.error);
+            return { status: 'error', error: mainData.error };
+        }
+        
+        const categoryMap = new Map<string, Big>();
+
+        mainData.jsonData
+        .forEach(item => {
+            const categoryId = item.category.id;
+
+            const currentAmount = categoryMap.get(categoryId) ?? new Big(0);
+
+            categoryMap.set(
+                categoryId,
+                currentAmount.plus(item.amount)
+            );
+        });
+
+        const amountData = Array.from(categoryMap, ([id, amount]) => ({
+            id,
+            amount: amount.toNumber()
+        }));
+        
+        const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
         if(categoriName === 'income_plan' || categoriName === 'expenditure_plan') {
-            const jsonData: T[] = JSON.parse(file)[option][categoriName];
+            const metaData: T[] = JSON.parse(file)[option][categoriName];
+            const amountMap = new Map(
+                amountData.map(item => [item.id, item.amount])
+            );
+            
+            const jsonData = metaData.map(item => ({
+                ...item,
+                amount: amountMap.get(item.id) ?? 0,
+            }));
+
             const data: DataFileResult<T> = {
                 jsonData, status: 'success'
             }
@@ -27,27 +85,6 @@ export const getAdditionalData = async <T>(option: 'accounts' | 'categories', ca
     }
 }
 
-export const getMainData = async <T>(option: 'history' | 'income_plan' | 'expenditure_plan'): Promise<DataFileResult<T>> => {
-    const { selectedYear, selectedMonth } = stateManager();
-    const { year, month } =
-    selectedYear && selectedMonth
-        ? { year: selectedYear, month: selectedMonth }
-        : getDate();
-    
-    const filePath = `${MainPlugin.instance.dbPath}/${year}.json`;
-
-    try {
-        const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
-        const jsonData: T[] = JSON.parse(file).months[month][option];
-        const data: DataFileResult<T> = {
-            jsonData, status: 'success'
-        }
-        return data;
-    } catch (error) {
-        return { status: 'error', error: error instanceof Error ? error : new Error(String(error))};
-    }
-}
-
 export const getAllFile = async <T>(option: string): Promise<ResultOfAllData<T>> => {
     const filePath = `${MainPlugin.instance.dbPath}/${option}.json`;
 
@@ -60,9 +97,12 @@ export const getAllFile = async <T>(option: string): Promise<ResultOfAllData<T>>
     }
 }
 
-export const searchElementById = async <T extends HistoryData | PlanData | BillData>(id: string, modifier: 'history' | 'expense' | 'income' | 'accounts'): Promise<DataItemResult<T | BillData>> => {
+export const searchElementById = async <T extends HistoryData | PlanData | BillData>(
+    id: string, 
+    modifier: 'history' | 'expense' | 'income' | 'accounts'
+): Promise<DataItemResult<T | BillData>> => {
     const sourceMap = {
-        history: () => getMainData<T>('history'),
+        history: () => getMainData(),
         accounts: () => getAdditionalData<T>('accounts'),
         expense: () => getAdditionalData<T>('categories', 'expenditure_plan'),
         income: () => getAdditionalData<T>('categories', 'income_plan'),
@@ -75,11 +115,15 @@ export const searchElementById = async <T extends HistoryData | PlanData | BillD
         const result = await loader();
         if (result.status === 'error') return { status: 'error', error: result.error };
 
-        const item = result.jsonData.find(item => item.id === id);
-        if(item === undefined) return { status: 'error', error: new Error('Item is undefined') };
+        const items = result.jsonData as unknown as (T | BillData)[];
+        const item = items.find(item => item.id === id);
+
+        if (item === undefined) return { status: 'error', error: new Error('Item is undefined') };
+        
         const dataItem: DataItemResult<T | BillData> = {
-            item, status: 'success',
-        }
+            item, 
+            status: 'success',
+        };
         return dataItem;
 
     } catch (err) {
@@ -99,7 +143,7 @@ export const searchHistory = async (
             income,
             bills
         ] = await Promise.all([
-            getMainData<HistoryData>('history'),
+            getMainData(),
             getAdditionalData<PlanData>('categories', 'expenditure_plan'),
             getAdditionalData<PlanData>('categories', 'income_plan'),
             getAdditionalData<BillData>('accounts')

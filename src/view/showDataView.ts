@@ -4,12 +4,12 @@ import { stateManager, HistoryData, PlanData, BillData, DataFileResult } from ".
 import { getMainData, getAdditionalData, searchElementById, searchHistory } from "../controllers/searchData";
 import { addHistory, addPlan, addBills } from '../view/addView';
 import { editingHistory, editingPlan, editingBill } from '../view/editingView';
-import { humanizeDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingData, getCurrencySymbol, mergeCategoriesData } from "../middleware/otherFunc";
+import { humanizeDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingData, getCurrencySymbol } from "../middleware/otherFunc";
 
 export const showHistory = async (mainContentBody: HTMLDivElement, mainContentButton: HTMLDivElement) => {
     stateManager({ openPageNow: "History" });
 
-    const history = await getMainData<HistoryData>('history');
+    const history = await getMainData();
     if(history.status === 'error') {
         new Notice(history.error.message)
         console.error(history.error)
@@ -213,42 +213,27 @@ export async function generationHistoryContent(historyContent: HTMLDivElement,  
 export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButton: HTMLDivElement) => {
     mainContentBody.removeClass('main-content-body--padding')
     stateManager({ openPageNow: "Plans" });
-    const additionalExpensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan');
-    if(additionalExpensePlan.status === 'error') {
-        new Notice(additionalExpensePlan.error.message)
-        console.error(additionalExpensePlan.error)
-        return
-    }
-    const mainExpensePlan = await getMainData<PlanData>('expenditure_plan')
-    if(mainExpensePlan.status === 'error') {
-        new Notice(mainExpensePlan.error.message)
-        console.error(mainExpensePlan.error)
+    const expensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan');
+    if(expensePlan.status === 'error') {
+        new Notice(expensePlan.error.message)
+        console.error(expensePlan.error)
         return
     }
 
-    const additionalIncomePlan = await getAdditionalData<PlanData>('categories', 'income_plan');
-    if(additionalIncomePlan.status === 'error') {
-        new Notice(additionalIncomePlan.error.message)
-        console.error(additionalIncomePlan.error)
-        return
-    }
-    const mainIncomePlan = await getMainData<PlanData>('income_plan')
-    if(mainIncomePlan.status === 'error') {
-        new Notice(mainIncomePlan.error.message)
-        console.error(mainIncomePlan.error)
+    const incomePlan = await getAdditionalData<PlanData>('categories', 'income_plan');
+    if(incomePlan.status === 'error') {
+        new Notice(incomePlan.error.message)
+        console.error(incomePlan.error)
         return
     }
 
-    const expensePlan = mergeCategoriesData(additionalExpensePlan.jsonData, mainExpensePlan.jsonData)
-    const incomePlan = mergeCategoriesData(additionalIncomePlan.jsonData, mainIncomePlan.jsonData)
+    const arcivedExpensePlan = expensePlan.jsonData.filter((e: PlanData) => e.archived)
+    const arcivedIncomePlan = incomePlan.jsonData.filter((e: PlanData) => e.archived)
 
-    const arcivedExpensePlan = expensePlan.filter((e: PlanData) => e.archived)
-    const arcivedIncomePlan = incomePlan.filter((e: PlanData) => e.archived)
+    const notArcivedExpensePlan = expensePlan.jsonData.filter((e: PlanData) => !e.archived)
+    const notArcivedIncomePlan = incomePlan.jsonData.filter((e: PlanData) => !e.archived)
 
-    const notArcivedExpensePlan = expensePlan.filter((e: PlanData) => !e.archived)
-    const notArcivedIncomePlan = incomePlan.filter((e: PlanData) => !e.archived)
-
-    if(!expensePlan.length && !incomePlan.length) {
+    if(!expensePlan.jsonData.length && !incomePlan.jsonData.length) {
         const undefinedContent = mainContentBody.createEl('div', {
             cls: 'undefined-content'
         })
@@ -281,7 +266,8 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingData(resultExpense))
+                text: String(SummarizingData(resultExpense)),
+                cls: 'expense-plan-amount'
             })
             const expenseDataList = expensePlanBlock.createEl('ul', {
                 cls: 'data-list'
@@ -313,7 +299,8 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                     text: `${e.name}`
                 })
                 dataItem.createEl('p', {
-                    text: String(e.amount)
+                    text: String(e.amount),
+                    cls: 'expense-plan-amount'
                 })
             })
         }
@@ -336,7 +323,8 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingData(resultExpense))
+                text: String(SummarizingData(resultExpense)),
+                cls: 'expense-plan-amount'
             })
             const expenseDataList = expensePlanBlock.createEl('ul', {
                 cls: 'data-list'
@@ -385,7 +373,8 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                         text: `${e.name}`
                     })
                     dataItem.createEl('p', {
-                        text: String(e.amount)
+                        text: String(e.amount),
+                        cls: 'expense-plan-amount'
                     })
                 })
             }
@@ -409,7 +398,8 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingData(resultIncome))
+                text: String(SummarizingData(resultIncome)),
+                cls: 'income-plan-amount'
             })
             const incomeDataList = incomePlanBlock.createEl('ul', {
                 cls: 'data-list'
@@ -441,7 +431,8 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                     text: `${e.name}`
                 })
                 dataItem.createEl('p', {
-                    text: String(e.amount)
+                    text: String(e.amount),
+                    cls: 'income-plan-amount'
                 })
             })
         }
@@ -464,7 +455,8 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingData(resultIncome))
+                text: String(SummarizingData(resultIncome)),
+                cls: 'income-plan-amount'
             })
             const incomeDataList = incomePlanBlock.createEl('ul', {
                 cls: 'data-list'
@@ -513,7 +505,8 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                         text: `${e.name}`
                     })
                     dataItem.createEl('p', {
-                        text: String(e.amount)
+                        text: String(e.amount),
+                        cls: 'income-plan-amount'
                     })
                 })
             }

@@ -7,7 +7,7 @@ import { deleteBill, deletePlan, deleteHistory } from '../controllers/deleteData
 import { editingJsonToHistory, editingJsonToPlan, editingJsonToBill } from '../controllers/editingData';
 import { transferBetweenBills } from '../middleware/transferring'
 import { generationHistoryContent } from './showDataView';
-import { fillMonthDates, getCurrencySymbol, mergeCategoriesData } from '../middleware/otherFunc';
+import { fillMonthDates, getCurrencySymbol } from '../middleware/otherFunc';
 
 export const editingHistory = async (e: MouseEvent) => {
     if (!(e.target instanceof HTMLElement)) return;
@@ -20,39 +20,21 @@ export const editingHistory = async (e: MouseEvent) => {
         return 'Element not found'
     }
 
-    const additionalExpensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan')
-    if (additionalExpensePlan.status === 'error') {
-        new Notice(additionalExpensePlan.error.message)
-        console.error(additionalExpensePlan.error)
+    const expensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan')
+    if (expensePlan.status === 'error') {
+        new Notice(expensePlan.error.message)
+        console.error(expensePlan.error)
         return
     }
-    if(additionalExpensePlan.jsonData.length === 0) return new Notice('Add a expenditure plan')
-    
-    const mainExpensePlan = await getMainData<PlanData>('expenditure_plan')
-    if (mainExpensePlan.status === 'error') {
-        new Notice(mainExpensePlan.error.message)
-        console.error(mainExpensePlan.error)
+    if(expensePlan.jsonData.length === 0) return new Notice('Add a expenditure plan')
+
+    const incomePlan = await getAdditionalData<PlanData>('categories', 'income_plan')
+    if (incomePlan.status === 'error') {
+        new Notice(incomePlan.error.message)
+        console.error(incomePlan.error)
         return
     }
-
-    const expensePlan = mergeCategoriesData(additionalExpensePlan.jsonData, mainExpensePlan.jsonData)
-
-    const additionalIncomePlan = await getAdditionalData<PlanData>('categories', 'income_plan')
-    if (additionalIncomePlan.status === 'error') {
-        new Notice(additionalIncomePlan.error.message)
-        console.error(additionalIncomePlan.error)
-        return
-    }
-    if(additionalIncomePlan.jsonData.length === 0) return new Notice('Add a income plan')
-
-    const mainIncomePlan = await getMainData<PlanData>('income_plan')
-    if (mainIncomePlan.status === 'error') {
-        new Notice(mainIncomePlan.error.message)
-        console.error(mainIncomePlan.error)
-        return
-    }
-
-    const incomePlan = mergeCategoriesData(additionalIncomePlan.jsonData, mainIncomePlan.jsonData)
+    if(incomePlan.jsonData.length === 0) return new Notice('Add a income plan')
 
     const history = await searchElementById<HistoryData>(id, 'history') as DataItemResult<HistoryData>;
     if(history.status === 'error') {
@@ -185,9 +167,9 @@ export const editingHistory = async (e: MouseEvent) => {
 
         if(history.item.type === 'expense'){
             selectCategory.empty()
-
-            expensePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
-            const categories = expensePlan.filter(plan => !plan.archived)
+            if(expensePlan.status === 'error') return new Notice(expensePlan.error.message)
+            expensePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
+            const categories = expensePlan.jsonData.filter(plan => !plan.archived)
             categories.forEach(plan => {
                 if(plan.id === history.item.category.id) {
                     selectCategory.createEl('option', {
@@ -203,9 +185,9 @@ export const editingHistory = async (e: MouseEvent) => {
             })
         } else if (history.item.type === 'income') {
             selectCategory.empty()
-
-            incomePlan.sort((a, b) => Number(b.amount) - Number(a.amount))
-            const categories = incomePlan.filter(plan => !plan.archived)
+            if(incomePlan.status === 'error') return new Notice(incomePlan.error.message)
+            incomePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
+            const categories = incomePlan.jsonData.filter(plan => !plan.archived)
             categories.forEach(plan => {
                 if(plan.id === history.item.category.id) {
                     selectCategory.createEl('option', {
@@ -539,7 +521,7 @@ export const editingPlan = async (e: MouseEvent) => {
         void editingPlanButton(data)
     })
 
-    const history = await getMainData<HistoryData>('history');
+    const history = await getMainData();
     if(history.status === 'error') {
         new Notice(history.error.message)
         console.error(history.error)
@@ -805,7 +787,7 @@ export const editingBill = async (e: MouseEvent) => {
         void editingBillButton(data)
     })
 
-    const history = await getMainData<HistoryData>('history');
+    const history = await getMainData();
     if(history.status === 'error') {
         new Notice(history.error.message)
         console.error(history.error)

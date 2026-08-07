@@ -321,21 +321,6 @@ export function getLocalTimeISO() {
     return d.toISOString().split('T')[1].split('.')[0];
 }
 
-export const mergeCategoriesData = (
-    additionPlan: PlanData[],
-    mainPlan: PlanData[]
-): PlanData[] => {
-    if (!additionPlan || !mainPlan) return [];
-    return mainPlan.map((item: PlanData) => {
-        const category = additionPlan.find((c: PlanData) => c.id === item.id);
-        if (!category) return item;
-        return {
-            ...category,
-            amount: item.amount,
-        };
-    });
-};
-
 export function formatNumbers(input: string): string {
     return input.replace(/\d+(\.\d+)?/g, (num) => {
         const [integerPart, decimalPart] = num.split(".");

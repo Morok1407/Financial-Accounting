@@ -2,7 +2,7 @@
 	"id": "financial-accounting",
 	"name": "Financial Accounting",
 	"version": "1.0.0",
-	"minAppVersion": "0.15.0",
+	"minAppVersion": "1.8.0",
 	"description": "Financial control system directly without internet connection.",
 	"author": "Bugayev Daniil",
 	"authorUrl": "https://github.com/Morok1407",

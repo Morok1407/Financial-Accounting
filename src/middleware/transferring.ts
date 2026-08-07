@@ -1,8 +1,7 @@
 import Big from 'big.js';
-import { BillData, PlanData, HistoryData, ResultOfExecution, stateManager, TransferData, accountsData, YearData } from "../../main";
+import { BillData, HistoryData, ResultOfExecution, TransferData, accountsData } from "../../main";
 import { getAllFile } from "../controllers/searchData";
 import { updateFile } from "../controllers/editingData";
-import { getDate } from './otherFunc';
 
 Big.DP = 2;
 Big.RM = Big.roundHalfUp;
@@ -16,27 +15,13 @@ export const expenditureTransaction = async (
 
     const billsRes = await getAllFile<accountsData>('accounts');
     if (billsRes.status === 'error') return { status: 'error', error: billsRes.error };
-    
-    const { selectedYear, selectedMonth } = stateManager();
-        const { year, month } =
-        selectedYear && selectedMonth
-            ? { year: selectedYear, month: selectedMonth }
-            : getDate();
-
-    const plansRes = await getAllFile<YearData>(year);
-    if (plansRes.status === 'error') return { status: 'error', error: plansRes.error };
 
     let bills: BillData[] = billsRes.json.accounts;
-    let plans: PlanData[] = plansRes.json.months[month].expenditure_plan;
 
     const update = async (): Promise<ResultOfExecution> => {
         billsRes.json.accounts = bills;
-        plansRes.json.months[month].expenditure_plan = plans;
         const billUpdate = await updateFile('accounts', billsRes.json);
         if (billUpdate.status === 'error') return { status: 'error', error: billUpdate.error };
-
-        const planUpdate = await updateFile(`${year}`, plansRes.json);
-        if (planUpdate.status === 'error') return { status: 'error', error: planUpdate.error };
 
         return { status: 'success'};
     };
@@ -47,43 +32,30 @@ export const expenditureTransaction = async (
         );
     };
 
-    const updatePlan = (planId: string, delta: Big) => {
-        plans = plans.map((p: PlanData) =>
-            p.id === planId ? { ...p, amount: new Big(p.amount).plus(delta).toFixed(2) } : p
-        );
-    };
-
     const caseEdit = async (): Promise<ResultOfExecution> => {
         if (!oldData) return { status: 'error', error: new Error('Old data is required for edit') };
         
         const oldAmount = new Big(oldData.amount)
 
         updateBill(oldData.bill.id, oldAmount);
-        updatePlan(oldData.category.id, oldAmount.times(-1));
         await update();
 
         const newBillsRes = await getAllFile<accountsData>('accounts');
-        const newPlansRes = await getAllFile<YearData>(year);
         if(newBillsRes.status === 'error') return { status: 'error', error: newBillsRes.error };
-        if(newPlansRes.status === 'error') return { status: 'error', error: newPlansRes.error };
 
         bills = newBillsRes.json.accounts;
-        plans = newPlansRes.json.months[month].expenditure_plan;
 
         updateBill(data.bill.id, amount.times(-1));
-        updatePlan(data.category.id, amount);
         return await update();
     }
 
     switch (modifier) {
         case 'add':
             updateBill(data.bill.id, amount.times(-1));
-            updatePlan(data.category.id, amount);
             return await update();
 
         case 'remove':
             updateBill(data.bill.id, amount);
-            updatePlan(data.category.id, amount.times(-1));
             return await update();
 
         case 'edit':
@@ -104,26 +76,12 @@ export const incomeTransaction = async (
     const billsRes = await getAllFile<accountsData>('accounts');
     if (billsRes.status === 'error') return { status: 'error', error: billsRes.error };
 
-    const { selectedYear, selectedMonth } = stateManager();
-        const { year, month } =
-        selectedYear && selectedMonth
-            ? { year: selectedYear, month: selectedMonth }
-            : getDate();
-    
-    const plansRes = await getAllFile<YearData>(year);
-    if (plansRes.status === 'error') return { status: 'error', error: plansRes.error };
-
     let bills: BillData[] = billsRes.json.accounts;
-    let plans: PlanData[] = plansRes.json.months[month].income_plan;
 
     const update = async (): Promise<ResultOfExecution> => {
         billsRes.json.accounts = bills;
-        plansRes.json.months[month].income_plan = plans;
         const billUpdate = await updateFile('accounts', billsRes.json);
         if (billUpdate.status === 'error') return { status: 'error', error: billUpdate.error };
-
-        const planUpdate = await updateFile(`${year}`, plansRes.json);
-        if (planUpdate.status === 'error') return { status: 'error', error: planUpdate.error };
 
         return { status: 'success'};
     };
@@ -136,45 +94,30 @@ export const incomeTransaction = async (
         );
     };
 
-    const updatePlan = (planId: string, delta: Big) => {
-        plans = plans.map((p: PlanData) =>
-            p.id === planId
-                ? { ...p, amount: new Big(p.amount).plus(delta).toFixed(2) }
-                : p
-        );
-    };
-
     const caseEdit = async (): Promise<ResultOfExecution> => {
         if (!oldData) return { status: 'error', error: new Error('Old data is required for edit') };
 
         const oldAmount = new Big(oldData.amount)
 
         updateBill(oldData.bill.id, oldAmount.times(-1));
-        updatePlan(oldData.category.id, oldAmount.times(-1));
         await update();
 
         const newBillsRes = await getAllFile<accountsData>('accounts');
-        const newPlansRes = await getAllFile<YearData>(year);
         if(newBillsRes.status === 'error') return { status: 'error', error: newBillsRes.error };
-        if(newPlansRes.status === 'error') return { status: 'error', error: newPlansRes.error };
 
         bills = newBillsRes.json.accounts;
-        plans = newPlansRes.json.months[month].income_plan;
 
         updateBill(data.bill.id, amount);
-        updatePlan(data.category.id, amount);
         return await update();
     }
 
     switch (modifier) {
         case 'add':
             updateBill(data.bill.id, amount);
-            updatePlan(data.category.id, amount);
             return await update();
 
         case 'remove':
             updateBill(data.bill.id, amount.times(-1));
-            updatePlan(data.category.id, amount.times(-1));
             return await update();
 
         case 'edit':

@@ -118,6 +118,7 @@
 .balance_expenses-check p {
   margin: 0;
   font-size: 18px;
+  color: var(--color-red);
 }
 
 .balance_body-income {
@@ -141,6 +142,7 @@
 .balance_income-check p {
   margin: 0;
   font-size: 18px;
+  color: var(--color-green);
 }
 
 .main-nav {
@@ -484,6 +486,14 @@
   cursor: pointer;
 }
 
+.expense-plan-amount {
+  color: var(--color-red);
+}
+
+.income-plan-amount {
+  color: var(--color-green);
+}
+
 .archived-item {
   filter: grayscale(100%);
 }
@@ -553,6 +563,7 @@
   overflow: hidden;
   text-overflow: clip;
   font-size: 16px;
+  color: var(--color-red);
 }
 
 .data-link-amount-income p {

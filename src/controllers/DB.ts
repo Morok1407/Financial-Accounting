@@ -39,18 +39,18 @@ export const generateYearlyFile = async (): Promise<ResultOfExecution> => {
             const yearlyFileTemplate = JSON.stringify({
                 "year": year,
                 "months": {
-                    "1":  { "income_plan": [], "expenditure_plan": [], "history": [] },
-                    "2":  { "income_plan": [], "expenditure_plan": [], "history": [] },
-                    "3":  { "income_plan": [], "expenditure_plan": [], "history": [] },
-                    "4":  { "income_plan": [], "expenditure_plan": [], "history": [] },
-                    "5":  { "income_plan": [], "expenditure_plan": [], "history": [] },
-                    "6":  { "income_plan": [], "expenditure_plan": [], "history": [] },
-                    "7":  { "income_plan": [], "expenditure_plan": [], "history": [] },
-                    "8":  { "income_plan": [], "expenditure_plan": [], "history": [] },
-                    "9":  { "income_plan": [], "expenditure_plan": [], "history": [] },
-                    "10": { "income_plan": [], "expenditure_plan": [], "history": [] },
-                    "11": { "income_plan": [], "expenditure_plan": [], "history": [] },
-                    "12": { "income_plan": [], "expenditure_plan": [], "history": [] }
+                    "1":  { "history": [] },
+                    "2":  { "history": [] },
+                    "3":  { "history": [] },
+                    "4":  { "history": [] },
+                    "5":  { "history": [] },
+                    "6":  { "history": [] },
+                    "7":  { "history": [] },
+                    "8":  { "history": [] },
+                    "9":  { "history": [] },
+                    "10": { "history": [] },
+                    "11": { "history": [] },
+                    "12": { "history": [] }
                 }
             }, null, 4);
 

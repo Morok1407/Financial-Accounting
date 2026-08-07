@@ -5,7 +5,7 @@ import { stateManager, BillData, PlanData } from "../../main";
 import { getDate } from "../middleware/otherFunc";
 import { initDB, generateYearlyFile } from "../controllers/DB";
 import { showHistory, showPlans, showBills } from "./showDataView";
-import { getAdditionalData, getMainData } from "../controllers/searchData";
+import { getAdditionalData } from "../controllers/searchData";
 import { SummarizingDataForTheTrueBills, divideByRemainingDays, switchBalanceLine, SummarizingData, getCurrencySymbol, TheSumOfExpensesAndIncomeForTheYear, IncomeAndExpensesForTheMonth } from "../middleware/otherFunc";
 
 export const showInitialView = async (): Promise<void> => {
@@ -37,14 +37,14 @@ export const showInitialView = async (): Promise<void> => {
         return
     }
 
-    const expensePlan = await getMainData<PlanData>('expenditure_plan');
+    const expensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan');
     if (expensePlan.status === "error") {
         new Notice(expensePlan.error.message);
         console.error(expensePlan.error);
         return
     }
 
-    const incomePlan = await getMainData<PlanData>('income_plan');
+    const incomePlan = await getAdditionalData<PlanData>('categories', 'income_plan');
     if (incomePlan.status === "error") {
         new Notice(incomePlan.error.message);
         console.error(incomePlan.error);
@@ -331,6 +331,7 @@ export const initOtherMonth = async (e: MouseEvent): Promise<void> => {
     const dataYear = String(target?.dataset?.year);
 
     if (dataMonth === month && dataYear === year) {
+        stateManager({ selectedMonth: null, selectedYear: null });
         return FinancialAccountingView.instance?.onOpen();
     }
 
@@ -346,14 +347,14 @@ export const showAnotherInitialView = async (): Promise<void> => {
 
     const { selectedMonth, selectedYear } = stateManager();
 
-    const expensePlan = await getMainData<PlanData>("expenditure_plan");
+    const expensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan');
     if (expensePlan.status === "error") {
         new Notice(expensePlan.error.message);
         console.error(expensePlan.error);
         return
     }
 
-    const incomePlan = await getMainData<PlanData>("income_plan");
+    const incomePlan = await getAdditionalData<PlanData>('categories',"income_plan");
     if (incomePlan.status === "error") {
         new Notice(incomePlan.error.message);
         console.error(incomePlan.error);
