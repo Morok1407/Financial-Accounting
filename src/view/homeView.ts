@@ -2,13 +2,78 @@ import { setIcon, Notice } from "obsidian";
 import MainPlugin from "../../main";
 import { FinancialAccountingView } from '../../main'
 import { stateManager, BillData, PlanData } from "../../main";
-import { getDate } from "../middleware/otherFunc";
+import { getDate, formatNumbers } from "../middleware/otherFunc";
 import { initDB, generateYearlyFile } from "../controllers/DB";
-import { showHistory, showPlans, showBills } from "./showDataView";
+import { showHistory, showPlans, showBills, showHome } from "./showDataView";
 import { getAdditionalData } from "../controllers/searchData";
 import { SummarizingDataForTheTrueBills, divideByRemainingDays, switchBalanceLine, SummarizingData, getCurrencySymbol, TheSumOfExpensesAndIncomeForTheYear, IncomeAndExpensesForTheMonth } from "../middleware/otherFunc";
+import { addHistory } from "../view/addView";
 
 export const showInitialView = async (): Promise<void> => {
+    const initDBResult = await initDB();
+    if (initDBResult.status === "error") {
+        new Notice(initDBResult.error.message);
+        console.error(initDBResult.error);
+        return;
+    }
+
+    const generateYearlyFileResult = await generateYearlyFile();
+    if (generateYearlyFileResult.status === "error") {
+        new Notice(generateYearlyFileResult.error.message);
+        console.error(generateYearlyFileResult.error);
+        return;
+    }
+
+    if (!FinancialAccountingView.instance || !MainPlugin.instance) return;
+
+    stateManager({ selectedMonth: null, selectedYear: null });
+
+    const { contentEl } = FinancialAccountingView.instance;
+    const { month } = getDate();
+
+    contentEl.empty();
+    contentEl.addClass("finance-content");
+
+    const financeHeader = contentEl.createEl("div", {
+        cls: "finance-header",
+    });
+
+    const allMonths = [
+        "☃️ January",
+        "🌨️ February",
+        "🌷 March",
+        "🌱 April",
+        "☀️ May",
+        "🌳 June",
+        "🏖️ July",
+        "🌾 August",
+        "🍁 September",
+        "🍂 October",
+        "☔ November",
+        "❄️ December",
+    ];
+    const showAllMonthsButton = financeHeader.createEl("button", {
+        attr: {
+            id: "showAllMonths",
+        },
+    });
+    showAllMonthsButton.createEl("span", {
+        text: allMonths[Number(month) - 1],
+    });
+
+    showAllMonthsButton.addEventListener("click", () => {
+        if (contentEl.dataset.page === "home") {
+            contentEl.setAttribute("data-page", "months");
+            void showAllMonths();
+        }
+    });
+
+    contentEl.setAttribute("data-page", "home");
+
+    await homeButtons();
+}
+
+export const showInitialViewOld = async (): Promise<void> => {
     const initDBResult = await initDB();
     if (initDBResult.status === "error") {
         new Notice(initDBResult.error.message);
@@ -103,11 +168,11 @@ export const showInitialView = async (): Promise<void> => {
     });
 
     balanceTop.createEl("p", {
-        text: `${SummarizingDataForTheTrueBills(bills.jsonData).toString()} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+        text: `${formatNumbers(SummarizingDataForTheTrueBills(bills.jsonData).toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
     });
 
     balanceTop.createEl("span", {
-        text: `~${divideByRemainingDays(SummarizingDataForTheTrueBills(bills.jsonData))} for a day`,
+        text: `~${formatNumbers(divideByRemainingDays(SummarizingDataForTheTrueBills(bills.jsonData)).toString())} for a day`,
     });
 
     const balanceLine = balance.createEl("div", {
@@ -133,7 +198,7 @@ export const showInitialView = async (): Promise<void> => {
 
     setIcon(balanceExpensesCheck, "upload");
     balanceExpensesCheck.createEl("p", {
-        text: `${SummarizingData(expensePlan.jsonData).toString()}`,
+        text: `${formatNumbers(SummarizingData(expensePlan.jsonData).toString())}`,
     });
 
     const balanceIncome = balanceBody.createEl("div", {
@@ -150,7 +215,7 @@ export const showInitialView = async (): Promise<void> => {
 
     setIcon(balanceIncomeCheck, "download");
     balanceIncomeCheck.createEl("p", {
-        text: `${SummarizingData(incomePlan.jsonData).toString()}`,
+        text: `${formatNumbers(SummarizingData(incomePlan.jsonData).toString())}`,
     });
 
     await homeButtons();
@@ -161,87 +226,123 @@ const homeButtons = async (): Promise<void> => {
     const { openPageNow } = stateManager()
 
     const homeNav = contentEl.createEl("div", {
+        cls: "home-nav",
+    });
+    const mainNav = homeNav.createEl("div", {
         cls: "main-nav",
+    });
+    const addNav = homeNav.createEl("div", {
+        cls: "add-nav",
     });
     const mainContent = contentEl.createEl("div", {
         cls: "main-content",
     });
-    const mainContentBody = mainContent.createEl("div", {
-        cls: "main-content-body",
-    });
-    const mainContentButton = contentEl.createEl("div", {
-        cls: "main-content-button",
-    });
-
-    const historyButton = homeNav.createEl("a", {
-        text: "History",
-        cls: "home_button--active",
+    
+    const addButton = addNav.createEl("a", {
         attr: {
-        id: "history-button",
-        href: "#",
+            id: "add-button", 
+            href: "#" 
         },
     });
+    setIcon(addButton, "plus");
+    addButton.addEventListener("click", () => {
+        void addHistory();
+    })
+
+    const homeButton = mainNav.createEl("a", {
+        attr: {
+            id: "home-button", 
+            href: "#" 
+        },
+    });
+    setIcon(homeButton, "home");
+    homeButton.addEventListener("click", () => {
+        homeButton.addClass("home_button--active");
+        planButton.removeClass("home_button--active");
+        billsButton.removeClass("home_button--active");
+        historyButton.removeClass("home_button--active");
+        mainContent.empty();
+        void showHome(mainContent);
+    });
+
+    const historyButton = mainNav.createEl("a", {
+        attr: {
+            id: "history-button",
+            href: "#",
+        },
+    });
+    setIcon(historyButton, "list");
     historyButton.addEventListener("click", () => {
-        planButton.removeClass("home_button--active");
-        billsButton.removeClass("home_button--active");
         historyButton.addClass("home_button--active");
-        mainContentBody.empty();
-        mainContentButton.empty();
-        void showHistory(mainContentBody, mainContentButton);
+        homeButton.removeClass("home_button--active");
+        billsButton.removeClass("home_button--active");
+        planButton.removeClass("home_button--active");
+        mainContent.empty();
+        void showHistory(mainContent);
     });
 
-    const planButton = homeNav.createEl("a", {
-        text: "Plan",
+    const planButton = mainNav.createEl("a", {
         attr: {
-        id: "plan-button",
-        href: "#",
+            id: "plan-button",
+            href: "#",
         },
     });
+    setIcon(planButton, "square-chart-gantt");
     planButton.addEventListener("click", () => {
+        planButton.addClass("home_button--active");
+        homeButton.removeClass("home_button--active");
         historyButton.removeClass("home_button--active");
         billsButton.removeClass("home_button--active");
-        planButton.addClass("home_button--active");
-        mainContentBody.empty();
-        mainContentButton.empty();
-        void showPlans(mainContentBody, mainContentButton);
+        mainContent.empty();
+        void showPlans(mainContent);
     });
 
-    const billsButton = homeNav.createEl("a", {
-        text: "Bills",
+    const billsButton = mainNav.createEl("a", {
         attr: {
-        id: "bills-button",
-        href: "#",
+            id: "bills-button",
+            href: "#",
         },
     });
+    setIcon(billsButton, "wallet");
     billsButton.addEventListener("click", () => {
+        billsButton.addClass("home_button--active");
+        homeButton.removeClass("home_button--active");
         historyButton.removeClass("home_button--active");
         planButton.removeClass("home_button--active");
-        billsButton.addClass("home_button--active");
-        mainContentBody.empty();
-        mainContentButton.empty();
-        void showBills(mainContentBody, mainContentButton);
+        mainContent.empty();
+        void showBills(mainContent);
     });
 
-    if (!openPageNow || openPageNow === "History" || openPageNow === null) {
-        await showHistory(mainContentBody, mainContentButton);
+    if (!openPageNow || openPageNow === "Home" || openPageNow === null) {
+        void showHome(mainContent);
+        homeButton.addClass("home_button--active");
+        planButton.removeClass("home_button--active");
+        billsButton.removeClass("home_button--active");
+        historyButton.removeClass("home_button--active");
+    } else if (openPageNow === "History") {
+        void showHistory(mainContent);  
         historyButton.addClass("home_button--active");
+        homeButton.removeClass("home_button--active");
         billsButton.removeClass("home_button--active");
         planButton.removeClass("home_button--active");
     } else if (openPageNow === "Plans") {
-        await showPlans(mainContentBody, mainContentButton);
-        historyButton.removeClass("home_button--active");
+        void showPlans(mainContent);
         planButton.addClass("home_button--active");
+        homeButton.removeClass("home_button--active");
+        historyButton.removeClass("home_button--active");
         billsButton.removeClass("home_button--active");
     } else if (openPageNow === "Bills") {
-        await showBills(mainContentBody, mainContentButton);
+        void showBills(mainContent);
+        billsButton.addClass("home_button--active");
+        homeButton.removeClass("home_button--active");
         historyButton.removeClass("home_button--active");
         planButton.removeClass("home_button--active");
-        billsButton.addClass("home_button--active");
     } else {
-        await showHistory(mainContentBody, mainContentButton);  
-        historyButton.addClass("home_button--active");
-        billsButton.removeClass("home_button--active");
+        void showHome(mainContent);
+        homeButton.addClass("home_button--active");
         planButton.removeClass("home_button--active");
+        billsButton.removeClass("home_button--active");
+        historyButton.removeClass("home_button--active");
     }
 }
 
@@ -291,9 +392,7 @@ const showAllMonths = async (): Promise<void> => {
         cls: "calendar-list-title",
         });
         calendarUlTitle.createEl("span", { text: String(i) });
-        calendarUlTitle.createEl("span", {
-            text: await TheSumOfExpensesAndIncomeForTheYear(String(i)),
-        });
+        TheSumOfExpensesAndIncomeForTheYear(String(i), calendarUlTitle).toString();
 
         const calendarUl = calendarMain.createEl("ul", {
             cls: "calendar-list",
@@ -341,6 +440,79 @@ export const initOtherMonth = async (e: MouseEvent): Promise<void> => {
 }
 
 export const showAnotherInitialView = async (): Promise<void> => {
+    if (!FinancialAccountingView.instance || !MainPlugin.instance) return;
+
+    const nowYear: number = new Date().getFullYear()
+
+    const { selectedMonth, selectedYear } = stateManager();
+
+    const { contentEl } = FinancialAccountingView.instance;
+    contentEl.empty();
+
+    const exitButton = contentEl.createEl("div", {
+        cls: "exit-button",
+        attr: {
+        id: "exit-button",
+        },
+    });
+    setIcon(exitButton, "arrow-left");
+    exitButton.addEventListener("click", () => {
+        stateManager({ selectedMonth: null, selectedYear: null });
+        FinancialAccountingView.instance?.onOpen().catch(console.error);
+    });
+
+    const financeHeader = contentEl.createEl("div", {
+        cls: "finance-header",
+    });
+
+    const allMonths = [
+        "☃️ January",
+        "🌨️ February",
+        "🌷 March",
+        "🌱 April",
+        "☀️ May",
+        "🌳 June",
+        "🏖️ July",
+        "🌾 August",
+        "🍁 September",
+        "🍂 October",
+        "☔ November",
+        "❄️ December",
+    ];
+    const showAllMonthsButton = financeHeader.createEl("button", {
+        attr: {
+        id: "showAllMonths",
+        },
+    });
+    if(Number(selectedYear) === nowYear) {
+        showAllMonthsButton.createEl("span", {
+            text: allMonths[Number(selectedMonth) - 1],
+            attr: {
+                id: "showAllMonths",
+            },
+        });
+    } else {
+        showAllMonthsButton.createEl("span", {
+            text: `${allMonths[Number(selectedMonth) - 1]} ${selectedYear}`,
+            attr: {
+                id: "showAllMonths",
+            },
+        });
+    }
+
+    showAllMonthsButton.addEventListener("click", () => {
+        if (contentEl.dataset.page === "home") {
+        contentEl.setAttribute("data-page", "months");
+        void showAllMonths();
+        }
+    });
+    contentEl.setAttribute("data-page", "home");
+
+    await otherMonthHomeButtons();
+}
+
+
+export const showAnotherInitialViewOld = async (): Promise<void> => {
     if (!FinancialAccountingView.instance || !MainPlugin.instance) return;
 
     const nowYear: number = new Date().getFullYear()
@@ -403,14 +575,14 @@ export const showAnotherInitialView = async (): Promise<void> => {
         showAllMonthsButton.createEl("span", {
             text: allMonths[Number(selectedMonth) - 1],
             attr: {
-            id: "showAllMonths",
+                id: "showAllMonths",
             },
         });
     } else {
         showAllMonthsButton.createEl("span", {
             text: `${allMonths[Number(selectedMonth) - 1]} ${selectedYear}`,
             attr: {
-            id: "showAllMonths",
+                id: "showAllMonths",
             },
         });
     }
@@ -446,7 +618,7 @@ export const showAnotherInitialView = async (): Promise<void> => {
 
     setIcon(balanceExpensesCheck, "upload");
     balanceExpensesCheck.createEl("p", {
-        text: `${SummarizingData(expensePlan.jsonData).toString()}`,
+        text: `${formatNumbers(SummarizingData(expensePlan.jsonData).toString())}`,
     });
 
     const balanceIncome = balanceBody.createEl("div", {
@@ -463,7 +635,7 @@ export const showAnotherInitialView = async (): Promise<void> => {
 
     setIcon(balanceIncomeCheck, "download");
     balanceIncomeCheck.createEl("p", {
-        text: `${SummarizingData(incomePlan.jsonData).toString()}`,
+        text: `${formatNumbers(SummarizingData(incomePlan.jsonData).toString())}`,
     });
 
     await otherMonthHomeButtons();
@@ -471,51 +643,92 @@ export const showAnotherInitialView = async (): Promise<void> => {
 
 const otherMonthHomeButtons = async (): Promise<void> => {
     const { contentEl } = FinancialAccountingView.instance;
-
-    const homeNav = contentEl.createEl("div", { cls: "main-nav" });
-    const mainContent = contentEl.createEl("div", { cls: "main-content" });
-    const mainContentBody = mainContent.createEl("div", { cls: "main-content-body" });
-    const mainContentButton = contentEl.createEl("div", { cls: "main-content-button" });
-
-    const historyButton = homeNav.createEl("a", {
-        text: "History",
-        cls: "home_button--active",
-        attr: { id: "history-button", href: "#" },
-    });
-
-    historyButton.addEventListener("click", () => {
-        planButton.removeClass("home_button--active");
-        historyButton.addClass("home_button--active");
-        mainContentBody.empty();
-        mainContentButton.empty();
-        void showHistory(mainContentBody, mainContentButton);
-    });
-
-    const planButton = homeNav.createEl("a", {
-        text: "Plan",
-        attr: { id: "plan-button", href: "#" },
-    });
-    planButton.addEventListener("click", () => {
-        historyButton.removeClass("home_button--active");
-        planButton.addClass("home_button--active");
-        mainContentBody.empty();
-        mainContentButton.empty();
-        void showPlans(mainContentBody, mainContentButton);
-    });
-
     const { openPageNow } = stateManager()
 
-    if (!openPageNow || openPageNow === "History" || openPageNow === null) {
-        await showHistory(mainContentBody, mainContentButton);
+    const homeNav = contentEl.createEl("div", { cls: "home-nav" });
+    const mainNav = homeNav.createEl("div", {
+        cls: "main-nav",
+    });
+    const addNav = homeNav.createEl("div", {
+        cls: "add-nav",
+    });
+    const mainContent = contentEl.createEl("div", { cls: "main-content" });
+
+    const addButton = addNav.createEl("a", {
+        attr: {
+            id: "add-button", 
+            href: "#" 
+        },
+    });
+    setIcon(addButton, "plus");
+    addButton.addEventListener("click", () => {
+        void addHistory();
+    })
+
+    const homeButton = mainNav.createEl("a", {
+        attr: {
+            id: "home-button", 
+            href: "#" 
+        },
+    });
+    setIcon(homeButton, "home");
+    homeButton.addEventListener("click", () => {
+        homeButton.addClass("home_button--active");
+        planButton.removeClass("home_button--active");
+        historyButton.removeClass("home_button--active");
+        mainContent.empty();
+        void showHome(mainContent);
+    });
+
+    const historyButton = mainNav.createEl("a", {
+        attr: {
+            id: "history-button",
+            href: "#",
+        },
+    });
+    setIcon(historyButton, "list");
+    historyButton.addEventListener("click", () => {
         historyButton.addClass("home_button--active");
+        homeButton.removeClass("home_button--active");
+        planButton.removeClass("home_button--active");
+        mainContent.empty();
+        void showHistory(mainContent);
+    });
+
+    const planButton = mainNav.createEl("a", {
+        attr: {
+            id: "plan-button",
+            href: "#",
+        },
+    });
+    setIcon(planButton, "square-chart-gantt");
+    planButton.addEventListener("click", () => {
+        planButton.addClass("home_button--active");
+        homeButton.removeClass("home_button--active");
+        historyButton.removeClass("home_button--active");("home_button--active");
+        mainContent.empty();
+        void showPlans(mainContent);
+    });
+
+    if (!openPageNow || openPageNow === "Home" || openPageNow === null) {
+        void showHome(mainContent);
+        homeButton.addClass("home_button--active");
+        planButton.removeClass("home_button--active");
+        historyButton.removeClass("home_button--active");
+    } else if (openPageNow === "History") {
+        void showHistory(mainContent);  
+        historyButton.addClass("home_button--active");
+        homeButton.removeClass("home_button--active");
         planButton.removeClass("home_button--active");
     } else if (openPageNow === "Plans") {
-        await showPlans(mainContentBody, mainContentButton);
-        historyButton.removeClass("home_button--active");
+        void showPlans(mainContent);
         planButton.addClass("home_button--active");
+        homeButton.removeClass("home_button--active");
+        historyButton.removeClass("home_button--active");
     } else {
-        await showHistory(mainContentBody, mainContentButton);
-        historyButton.addClass("home_button--active");
+        void showHome(mainContent);
+        homeButton.addClass("home_button--active");
         planButton.removeClass("home_button--active");
+        historyButton.removeClass("home_button--active");
     }
 }

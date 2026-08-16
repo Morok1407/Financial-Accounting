@@ -553,7 +553,7 @@ export const addBills = () => {
         cls: 'main-header'
     })
     header.createEl('h1', {
-        text: 'Categories'
+        text: 'Accounts'
     })
 
     const mainAddForm = contentEl.createEl('form', {

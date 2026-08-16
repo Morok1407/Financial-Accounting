@@ -1,13 +1,144 @@
 import Big from "big.js";
-import { Notice } from "obsidian";
+import MainPlugin from "../../main";
+import { Notice, setIcon } from "obsidian";
 import { stateManager, HistoryData, PlanData, BillData, DataFileResult } from "../../main";
 import { getMainData, getAdditionalData, searchElementById, searchHistory } from "../controllers/searchData";
-import { addHistory, addPlan, addBills } from '../view/addView';
+import { addPlan, addBills } from '../view/addView';
 import { editingHistory, editingPlan, editingBill } from '../view/editingView';
-import { humanizeDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingData, getCurrencySymbol } from "../middleware/otherFunc";
+import { humanizeDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingData, getCurrencySymbol, formatNumbers, divideByRemainingDays, switchBalanceLine } from "../middleware/otherFunc";
 
-export const showHistory = async (mainContentBody: HTMLDivElement, mainContentButton: HTMLDivElement) => {
+export const showHome = async (mainContent: HTMLDivElement) => {
+    stateManager({ openPageNow: "Home" });
+
+    const bills = await getAdditionalData<BillData>('accounts');
+    if (bills.status === "error") {
+        new Notice(bills.error.message);
+        console.error(bills.error);
+        return
+    }
+
+    const expensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan');
+    if (expensePlan.status === "error") {
+        new Notice(expensePlan.error.message);
+        console.error(expensePlan.error);
+        return
+    }
+
+    const incomePlan = await getAdditionalData<PlanData>('categories', 'income_plan');
+    if (incomePlan.status === "error") {
+        new Notice(incomePlan.error.message);
+        console.error(incomePlan.error);
+        return
+    }
+
+    const history = await getMainData()
+    if (history.status === "error") {
+        new Notice(history.error.message);
+        console.error(history.error);
+        return
+    }
+
+    const mainContentHeader = mainContent.createEl("div", {
+        cls: "main-content-body",
+    });
+
+    const balanceContent = mainContentHeader.createEl("div", {
+        cls: "balance-content",
+    });
+
+    const balance = balanceContent.createEl("div", {
+        cls: "balance",
+    });
+
+    const balanceTop = balance.createEl("div", {
+        cls: "balance-top",
+    });
+
+    balanceTop.createEl("span", {
+        text: "Balance",
+    });
+
+    balanceTop.createEl("p", {
+        text: `${formatNumbers(SummarizingDataForTheTrueBills(bills.jsonData).toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+    });
+
+    balanceTop.createEl("span", {
+        text: `~${formatNumbers(divideByRemainingDays(SummarizingDataForTheTrueBills(bills.jsonData)).toString())} for a day`,
+    });
+
+    const balanceLine = balance.createEl("div", {
+        cls: "balance-line",
+    });
+    balanceLine.style.setProperty("--after-width", `${switchBalanceLine(bills.jsonData, expensePlan.jsonData)}%`);
+
+    const data = [
+		{
+			title: "Income",
+			value: `${formatNumbers(SummarizingData(incomePlan.jsonData).toString())}`,
+			icon: "arrow-up",
+			type: "income",
+		},
+		{
+			title: "Expenses",
+			value: `${formatNumbers(SummarizingData(expensePlan.jsonData).toString())}`,
+			icon: "arrow-down",
+			type: "expense",
+		},
+		{
+			title: "Balance",
+			value: `${formatNumbers(SummarizingDataForTheTrueBills(bills.jsonData).toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+			icon: "calendar-check",
+			type: "balance",
+		},
+		{
+			title: "Operations",
+			value: `${history.jsonData.length}`,
+			icon: "list",
+			type: "operations",
+		},
+	];
+
+    const gridContent = mainContent.createDiv({
+		cls: "stats-grid",
+	});
+
+	for (const item of data) {
+		const card = gridContent.createDiv({
+			cls: `stats-card stats-card-${item.type}`,
+		});
+
+		const iconContainer = card.createDiv({
+			cls: "stats-card-icon",
+		});
+
+		setIcon(iconContainer, item.icon);
+
+		const content = card.createDiv({
+			cls: "stats-card-content",
+		});
+
+		content.createDiv({
+			cls: "stats-card-title",
+			text: item.title,
+		});
+
+		content.createDiv({
+			cls: "stats-card-value",
+			text: item.value,
+		});
+	}
+
+    gridContent.addEventListener('click', () => {
+        console.log('switch data')
+    })
+}
+
+export const showHistory = async (mainContent: HTMLDivElement) => {
     stateManager({ openPageNow: "History" });
+
+    const mainContentBody = mainContent.createEl("div", {
+        cls: "main-content-body",
+    });
 
     const history = await getMainData();
     if(history.status === 'error') {
@@ -45,7 +176,7 @@ export const showHistory = async (mainContentBody: HTMLDivElement, mainContentBu
         cls: 'history-content'
     })
 
-    generationHistoryContent(historyContent, history, mainContentBody, mainContentButton).catch(err => { console.error('generationHistoryContent failed', err); });
+    generationHistoryContent(historyContent, history, mainContentBody).catch(err => { console.error('generationHistoryContent failed', err); });
 }
 
 async function handleSearchInput(e: Event, historyContent: HTMLDivElement, mainContentBody: HTMLDivElement) {
@@ -79,8 +210,7 @@ async function handleSearchInput(e: Event, historyContent: HTMLDivElement, mainC
     }
 }
 
-export async function generationHistoryContent(historyContent: HTMLDivElement,  historyData: DataFileResult<HistoryData>, mainContentBody?: HTMLDivElement, mainContentButton?: HTMLDivElement) {
-    mainContentBody?.removeClass('main-content-body--padding')
+export async function generationHistoryContent(historyContent: HTMLDivElement,  historyData: DataFileResult<HistoryData>, mainContentBody?: HTMLDivElement) {
     if(historyData.status === 'error') return historyData.error;
     if(historyData.jsonData.length) {
         const now = new Date().getTime();
@@ -200,19 +330,15 @@ export async function generationHistoryContent(historyContent: HTMLDivElement,  
             }
         }
     }
-
-    const addHistoryButton = mainContentButton?.createEl('button', {
-        text: 'Add an expense or income',
-        cls: 'add-button'
-    })
-    addHistoryButton?.addEventListener('click', () => {
-        void addHistory();
-    })
 }
 
-export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButton: HTMLDivElement) => {
-    mainContentBody.removeClass('main-content-body--padding')
+export const showPlans = async (mainContent: HTMLDivElement) => {
+    const mainContentBody = mainContent.createEl("div", {
+        cls: "main-content-body",
+    });
+
     stateManager({ openPageNow: "Plans" });
+
     const expensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan');
     if(expensePlan.status === 'error') {
         new Notice(expensePlan.error.message)
@@ -247,8 +373,23 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
             text: 'Enter any income and expenses to see how much money is actually left.'
         })
     } else {
+        mainContentBody.removeClass('main-content-body--undefined')
+
+        const headerPage = mainContentBody.createEl('div', {
+            cls: 'header-page'
+        })
+        headerPage.createEl('h2', {
+            text: 'Categories'
+        })
+        const creatButton = headerPage.createEl('a', {
+            cls: 'creat-button',
+        })
+        setIcon(creatButton, 'plus')
+        creatButton.addEventListener('click', (): void => {
+            addPlan();
+        })
+
         if(notArcivedExpensePlan.length) {
-            mainContentBody.removeClass('main-content-body--undefined')
             const resultExpense = notArcivedExpensePlan.slice().sort((a: PlanData, b: PlanData) => new Big(b.amount).cmp(new Big(a.amount)))
             const expensePlanBlock = mainContentBody.createEl('div', {
                 cls: 'plan-block'
@@ -266,7 +407,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingData(resultExpense)),
+                text: formatNumbers(String(SummarizingData(resultExpense))),
                 cls: 'expense-plan-amount'
             })
             const expenseDataList = expensePlanBlock.createEl('ul', {
@@ -299,7 +440,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                     text: `${e.name}`
                 })
                 dataItem.createEl('p', {
-                    text: String(e.amount),
+                    text: formatNumbers(String(e.amount)),
                     cls: 'expense-plan-amount'
                 })
             })
@@ -323,7 +464,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingData(resultExpense)),
+                text: formatNumbers(String(SummarizingData(resultExpense))),
                 cls: 'expense-plan-amount'
             })
             const expenseDataList = expensePlanBlock.createEl('ul', {
@@ -373,7 +514,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                         text: `${e.name}`
                     })
                     dataItem.createEl('p', {
-                        text: String(e.amount),
+                        text: formatNumbers(String(e.amount)),
                         cls: 'expense-plan-amount'
                     })
                 })
@@ -398,7 +539,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingData(resultIncome)),
+                text: formatNumbers(String(SummarizingData(resultIncome))),
                 cls: 'income-plan-amount'
             })
             const incomeDataList = incomePlanBlock.createEl('ul', {
@@ -431,7 +572,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                     text: `${e.name}`
                 })
                 dataItem.createEl('p', {
-                    text: String(e.amount),
+                    text: formatNumbers(String(e.amount)),
                     cls: 'income-plan-amount'
                 })
             })
@@ -455,7 +596,7 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingData(resultIncome)),
+                text: formatNumbers(String(SummarizingData(resultIncome))),
                 cls: 'income-plan-amount'
             })
             const incomeDataList = incomePlanBlock.createEl('ul', {
@@ -505,25 +646,20 @@ export const showPlans = async (mainContentBody: HTMLDivElement, mainContentButt
                         text: `${e.name}`
                     })
                     dataItem.createEl('p', {
-                        text: String(e.amount),
+                        text: formatNumbers(String(e.amount)),
                         cls: 'income-plan-amount'
                     })
                 })
             }
         }
     }
-
-    const addPlanButton = mainContentButton.createEl('button', {
-        text: 'Create a category',
-        cls: 'add-button'
-    })
-    addPlanButton.addEventListener('click', (): void => {
-        addPlan();
-    })
 }
 
-export const showBills = async (mainContentBody: HTMLDivElement, mainContentButton: HTMLDivElement) => {
-    mainContentBody.removeClass('main-content-body--padding')
+export const showBills = async (mainContent: HTMLDivElement) => {
+    const mainContentBody = mainContent.createEl("div", {
+        cls: "main-content-body",
+    });
+
     stateManager({ openPageNow: "Bills" });
     const bills = await getAdditionalData<BillData>('accounts');
     if(bills.status === 'error') {
@@ -551,8 +687,24 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
             text: 'Enter any income and expenses to see how much money is actually left.'
         })
     } else {
+        mainContentBody.removeClass('main-content-body--undefined')
+
+        const headerPage = mainContentBody.createEl('div', {
+            cls: 'header-page'
+        })
+        headerPage.createEl('h2', {
+            text: 'Accounts'
+        })
+        const creatButton = headerPage.createEl('a', {
+            cls: 'creat-button',
+        })
+        setIcon(creatButton, 'plus')
+        creatButton.addEventListener('click', (): void => {
+            addBills();
+        })
+
         if(notArcivedMainBills.length >= 1) {
-            mainContentBody.removeClass('main-content-body--undefined')
+
             const trueBillBlock = mainContentBody.createEl('div', {
                 cls: 'bill-block'
             })
@@ -569,7 +721,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingDataForTheTrueBills(notArcivedMainBills))
+                text: formatNumbers(String(SummarizingDataForTheTrueBills(notArcivedMainBills)))
             })
             const trueDataList = trueBillBlock.createEl('ul', {
                 cls: 'data-list'
@@ -601,7 +753,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                     text: `${e.name}`
                 })
                 dataItem.createEl('p', {
-                    text: `${String(e.balance)} ${getCurrencySymbol(e.currency)}`
+                    text: `${formatNumbers(String(e.balance))} ${getCurrencySymbol(e.currency)}`
                 })
             })
         }
@@ -624,7 +776,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingDataForTheTrueBills(arcivedMainBills))
+                text: formatNumbers(String(SummarizingDataForTheTrueBills(arcivedMainBills)))
             })
             const trueDataList = trueBillBlock.createEl('ul', {
                 cls: 'data-list'
@@ -674,7 +826,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                         text: `${e.name}`
                     })
                     dataItem.createEl('p', {
-                        text: `${String(e.balance)} ${getCurrencySymbol(e.currency)}`
+                        text: `${formatNumbers(String(e.balance))} ${getCurrencySymbol(e.currency)}`
                     })
                 })
             }
@@ -698,7 +850,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingDataForTheFalseBills(notArcivedAdditionalBills))
+                text: formatNumbers(String(SummarizingDataForTheFalseBills(notArcivedAdditionalBills)))
             })
             const falseDataList = falseBillBlock.createEl('ul', {
                 cls: 'data-list'
@@ -730,7 +882,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                     text: `${e.name}`
                 })
                 dataItem.createEl('p', {
-                    text: `${String(e.balance)} ${getCurrencySymbol(e.currency)}`
+                    text: `${formatNumbers(String(e.balance))} ${getCurrencySymbol(e.currency)}`
                 })
             })
         }
@@ -753,7 +905,7 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                 cls: 'header-amount-block'
             })
             amountBlock.createEl('span', {
-                text: String(SummarizingDataForTheTrueBills(arcivedAdditionalBills))
+                text: formatNumbers(String(SummarizingDataForTheTrueBills(arcivedAdditionalBills)))
             })
             const trueDataList = trueBillBlock.createEl('ul', {
                 cls: 'data-list'
@@ -803,18 +955,10 @@ export const showBills = async (mainContentBody: HTMLDivElement, mainContentButt
                         text: `${e.name}`
                     })
                     dataItem.createEl('p', {
-                        text: `${String(e.balance)} ${getCurrencySymbol(e.currency)}`
+                        text: `${formatNumbers(String(e.balance))} ${getCurrencySymbol(e.currency)}`
                     })
                 })
             }
         }
     }
-
-    const addBillButton = mainContentButton.createEl('button', {
-        text: 'Add a bill',
-        cls: 'add-button'
-    })
-    addBillButton.addEventListener('click', (): void => {
-        addBills();
-    })
 }

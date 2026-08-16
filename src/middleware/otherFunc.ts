@@ -271,8 +271,22 @@ export async function IncomeAndExpensesForTheMonth(month: string, year: string, 
         return
     }
 
-    const totalExpense = SummarizingData(allData.json.months[month].expenditure_plan);
-    const totalIncome = SummarizingData(allData.json.months[month].income_plan);
+    const history = allData.json.months[month].history;
+
+    let totalExpense = new Big(0);
+    let totalIncome = new Big(0);
+
+    history.forEach(transaction => {
+        const amount = new Big(transaction.amount);
+
+        if (transaction.type === "expense") {
+            totalExpense = totalExpense.plus(amount);
+        }
+
+        if (transaction.type === "income") {
+            totalIncome = totalIncome.plus(amount);
+        }
+    });
 
     if (totalIncome.gte(totalExpense)) {
         div.createEl("span", {
@@ -297,7 +311,7 @@ export async function IncomeAndExpensesForTheMonth(month: string, year: string, 
     }
 }
 
-export async function TheSumOfExpensesAndIncomeForTheYear(year: string): Promise<string | undefined> {
+export async function TheSumOfExpensesAndIncomeForTheYear(year: string, div: HTMLDivElement) {
     const allData = await getAllFile<YearData>(year);
     if (allData.status === "error") {
         new Notice(allData.error.message);
@@ -307,12 +321,24 @@ export async function TheSumOfExpensesAndIncomeForTheYear(year: string): Promise
 
     let totalExpense = new Big(0);
     let totalIncome = new Big(0);
-    for (const month in allData.json.months) {
-        totalExpense = totalExpense.plus(SummarizingData(allData.json.months[month].expenditure_plan));
-        totalIncome = totalIncome.plus(SummarizingData(allData.json.months[month].income_plan));
-    }
 
-    return `-${formatNumbers(totalExpense.toString())} +${formatNumbers(totalIncome.toString())}`;
+    Object.values(allData.json.months).forEach(month => {
+        month.history.forEach(transaction => {
+            const amount = new Big(transaction.amount);
+
+            if (transaction.type === 'expense') {
+                totalExpense = totalExpense.plus(amount);
+            }
+
+            if (transaction.type === 'income') {
+                totalIncome = totalIncome.plus(amount);
+            }
+        });
+    });
+    
+    div.createEl("span", {
+        text: `-${formatNumbers(totalExpense.toString())} +${formatNumbers(totalIncome.toString())}`,
+    });
 }
 
 export function getLocalTimeISO() {
