@@ -511,7 +511,7 @@ $intermediate-white-color: color-mix(in srgb, var(--background-modifier-active-h
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 12px;
 	width: 100%;
-    margin-top: 12px;
+    margin: 12px 0;
     cursor: pointer;
 }
 
@@ -521,7 +521,6 @@ $intermediate-white-color: color-mix(in srgb, var(--background-modifier-active-h
 	display: flex;
 	align-items: center;
 	gap: 12px;
-
 	height: 58px;
 	padding: 8px 14px 8px 18px;
 

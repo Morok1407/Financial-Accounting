@@ -4,727 +4,803 @@ import { FinancialAccountingView } from "../../main";
 import { addJsonToHistory, addJsonToPlan, addJsonToBills } from "../controllers/addData";
 import { getAdditionalData, getMainData, searchElementById } from "../controllers/searchData";
 import { stateManager } from "../../main";
-import { HistoryData, PlanData, BillData  } from "../../main";
-import { getCurrencySymbol, fillMonthDates, getLocalTimeISO, selectRelativeDate, getCurrencyGroups, generateUUID } from "../middleware/otherFunc";
+import { HistoryData, PlanData, BillData } from "../../main";
+import { getCurrencySymbol, fillMonthDates, getLocalTimeISO, selectRelativeDate, getCurrencyGroups, generateUUID, formatNumbers } from "../middleware/otherFunc";
 
 export const addHistory = async () => {
-    const bills = await getAdditionalData<BillData>('accounts');
-    if (bills.status === 'error') {
-        new Notice(bills.error.message)
-        console.error(bills.error)
-        return
-    }
-    if(bills.jsonData.length === 0) return new Notice('Add a bill')
+	const bills = await getAdditionalData<BillData>('accounts');
+	if (bills.status === 'error') {
+		new Notice(bills.error.message)
+		console.error(bills.error)
+		return
+	}
+	if (bills.jsonData.length === 0) return new Notice('Add a bill')
 
-    const expensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan')
-    if (expensePlan.status === 'error') {
-        new Notice(expensePlan.error.message)
-        console.error(expensePlan.error)
-        return
-    }
-    if(expensePlan.jsonData.length === 0) return new Notice('Add a expenditure plan')
+	const expensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan')
+	if (expensePlan.status === 'error') {
+		new Notice(expensePlan.error.message)
+		console.error(expensePlan.error)
+		return
+	}
+	if (expensePlan.jsonData.length === 0) return new Notice('Add a expenditure plan')
 
-    const incomePlan = await getAdditionalData<PlanData>('categories', 'income_plan')
-    if (incomePlan.status === 'error') {
-        new Notice(incomePlan.error.message)
-        console.error(incomePlan.error)
-        return
-    }
-    if(incomePlan.jsonData.length === 0) return new Notice('Add a income plan')
-    
-    const history = await getMainData()
-    if (history.status === 'error') {
-        new Notice(history.error.message)
-        console.error(history.error)
-        return
-    }
+	const incomePlan = await getAdditionalData<PlanData>('categories', 'income_plan')
+	if (incomePlan.status === 'error') {
+		new Notice(incomePlan.error.message)
+		console.error(incomePlan.error)
+		return
+	}
+	if (incomePlan.jsonData.length === 0) return new Notice('Add a income plan')
 
-    const { contentEl } = FinancialAccountingView.instance;
-    const { selectedYear, selectedMonth } = stateManager();
-    contentEl.empty()
+	const history = await getMainData()
+	if (history.status === 'error') {
+		new Notice(history.error.message)
+		console.error(history.error)
+		return
+	}
 
-    const header = contentEl.createEl('div', {
-        cls: 'main-header'
-    })
-    header.createEl('h1', {
-        text: 'Operation'
-    })
+	const { contentEl } = FinancialAccountingView.instance;
+	const { selectedYear, selectedMonth } = stateManager();
+	contentEl.empty()
 
-    const exitButton = contentEl.createEl('div', {
-        cls: 'exit-button',
-        attr: {
-            id: 'exit-button'
-        }
-    })
-    setIcon(exitButton, 'arrow-left')
-    exitButton.addEventListener('click', () => {
-        FinancialAccountingView.instance.onOpen().catch(console.error);
-    })
+	const header = contentEl.createEl('div', {
+		cls: 'main-header'
+	})
+	header.createEl('h1', {
+		text: 'Operation'
+	})
 
-    const mainAddForm = contentEl.createEl('form', {
-        cls: 'main-add-form',
-        attr: {
-            id: 'main-add-form'
-        }
-    })
+	const exitButton = contentEl.createEl('div', {
+		cls: 'exit-button',
+		attr: {
+			id: 'exit-button'
+		}
+	})
+	setIcon(exitButton, 'arrow-left')
+	exitButton.addEventListener('click', () => {
+		FinancialAccountingView.instance.onOpen().catch(console.error);
+	})
 
-    // Form radio
-    let resultRadio: 'expense' | 'income';
-    const expenseOrIncome = mainAddForm.createEl('div', {
-        cls: 'main-form_radio'
-    })
-    
-    const radioExpense = expenseOrIncome.createEl('button', {
-        text: "Expense",
-        cls: 'main-radio_exprense',
-        attr: {
-            'data-radio': 'expense',
-            type: 'button'
-        }
-    })
-    if(radioExpense.dataset.radio === 'expense') {
-        resultRadio = radioExpense.dataset.radio;
-        radioExpense.addClass('main-radion-button--active')
-    }
-    
-    const radioIncome = expenseOrIncome.createEl('button', {
-        text: 'Income',
-        cls: 'main-radio_income',
-        attr: {
-            'data-radio': 'income',
-            type: 'button'
-        }
-    })
-    
-    radioIncome.addEventListener('click', () => {
-        if(radioIncome.dataset.radio === 'income') {
-            radioExpense.removeClass('main-radion-button--active')
-            radioIncome.addClass('main-radion-button--active')
-            resultRadio = radioIncome.dataset.radio
-            createOptionCategory()
-            inputSum.focus()
-        }
-    })
-    radioExpense.addEventListener('click', () => {
-        if(radioExpense.dataset.radio === 'expense') {
-            radioIncome.removeClass('main-radion-button--active')
-            radioExpense.addClass('main-radion-button--active')
-            resultRadio = radioExpense.dataset.radio
-            createOptionCategory()
-            inputSum.focus()
-        }
-    })
-    
-    // Form input
-    const mainFormInput = mainAddForm.createEl('div', {
-        cls: 'main-form-input'
-    })
-    const inputSum = mainFormInput.createEl('input', {
-        cls: 'form-inputs',
-        attr: {
-            placeholder: 'Sum',
-            id: 'input-sum',
-            type: 'number',
-            inputmode: "decimal"
-        }
-    })
-    inputSum.focus()
-    
-    const selectBills = mainFormInput.createEl('select', {
-        cls: 'form-selects',
-        attr: {
-            name: 'select-bills',
-            id: 'select-bills'
-        }
-    })
-    const accounts = bills.jsonData.filter(bill => !bill.archived)
+	const mainAddForm = contentEl.createEl('form', {
+		cls: 'main-add-form',
+		attr: {
+			id: 'main-add-form'
+		}
+	})
 
-    // --- Main ---
-    if(accounts.some(i => i.generalBalance === true)) {
-        const mainGroup = document.createElement("optgroup");
-        mainGroup.label = "Main";
-        
-        (accounts).forEach(bill => {
-            if(bill.generalBalance) {
-                const option = document.createElement("option");
-                option.value = bill.id;
-                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(bill.currency)}`;
-                mainGroup.appendChild(option);
-            }
-        })
+	// Form radio
+	let resultRadio: 'expense' | 'income';
+	const expenseOrIncome = mainAddForm.createEl('div', {
+		cls: 'main-form_radio'
+	})
 
-        selectBills.appendChild(mainGroup);
-    }
+	const radioExpense = expenseOrIncome.createEl('button', {
+		text: "Expense",
+		cls: 'main-radio_exprense',
+		attr: {
+			'data-radio': 'expense',
+			type: 'button'
+		}
+	})
+	if (radioExpense.dataset.radio === 'expense') {
+		resultRadio = radioExpense.dataset.radio;
+		radioExpense.addClass('main-radion-button--active')
+	}
 
-    // --- Additional ---
-    if(accounts.some(i => i.generalBalance === false)) {
-        const additionalGroup = document.createElement("optgroup");
-        additionalGroup.label = "Additional";
-        
-        (accounts).forEach(bill => {
-            if(!bill.generalBalance) {
-                const option = document.createElement("option");
-                option.value = bill.id;
-                option.textContent = `${bill.emoji} ${bill.name} • ${bill.balance} ${getCurrencySymbol(bill.currency)}`;
-                additionalGroup.appendChild(option);
-            }
-        })
+	const radioIncome = expenseOrIncome.createEl('button', {
+		text: 'Income',
+		cls: 'main-radio_income',
+		attr: {
+			'data-radio': 'income',
+			type: 'button'
+		}
+	})
 
-        selectBills.appendChild(additionalGroup);
-    }
+	radioIncome.addEventListener('click', () => {
+		if (radioIncome.dataset.radio === 'income') {
+			radioExpense.removeClass('main-radion-button--active')
+			radioIncome.addClass('main-radion-button--active')
+			resultRadio = radioIncome.dataset.radio
+			createOptionCategory()
+			inputSum.focus()
+		}
+	})
+	radioExpense.addEventListener('click', () => {
+		if (radioExpense.dataset.radio === 'expense') {
+			radioIncome.removeClass('main-radion-button--active')
+			radioExpense.addClass('main-radion-button--active')
+			resultRadio = radioExpense.dataset.radio
+			createOptionCategory()
+			inputSum.focus()
+		}
+	})
 
-    if(history.jsonData.length === 0) {
-        accounts.sort((a, b) => Number(b.balance) - Number(a.balance))
-        selectBills.value = accounts[0].id;
-    } else {
-        const counts: Record<string, number> = {};
+	// Form input
+	const mainFormInput = mainAddForm.createEl('div', {
+		cls: 'main-form-input'
+	})
+	const inputSum = mainFormInput.createEl('input', {
+		cls: 'form-inputs',
+		attr: {
+			placeholder: 'Sum',
+			id: 'input-sum',
+			type: 'number',
+			inputmode: "decimal"
+		}
+	})
+	inputSum.focus()
 
-        history.jsonData.forEach(item => {
-            const billId = item.bill.id;
-            counts[billId] = (counts[billId] || 0) + 1;
-        });
+	const selectBills = mainFormInput.createEl('select', {
+		cls: 'form-selects',
+		attr: {
+			name: 'select-bills',
+			id: 'select-bills'
+		}
+	})
+	const accounts = bills.jsonData.filter(bill => !bill.archived)
 
-        let maxCount = 0;
-        let mostFrequentBillId: string | null = null;
+	// --- Main ---
+	if (accounts.some(i => i.generalBalance === true)) {
+		const mainGroup = document.createElement("optgroup");
+		mainGroup.label = "Main";
 
-        for (const billId in counts) {
-            if (counts[billId] > maxCount) {
-                maxCount = counts[billId];
-                mostFrequentBillId = billId;
-            } else if (counts[billId] === maxCount) {
-                accounts.sort((a, b) => Number(b.balance) - Number(a.balance));
-                selectBills.value = accounts[0].id;
-            }
-        }
+		(accounts).forEach(bill => {
+			if (bill.generalBalance) {
+				const option = document.createElement("option");
+				option.value = bill.id;
+				option.textContent = `${bill.emoji} ${bill.name} • ${formatNumbers(bill.balance)} ${getCurrencySymbol(bill.currency)}`;
+				mainGroup.appendChild(option);
+			}
+		})
 
-        const sorted = accounts.sort((a, b) => {
-            if (a.id === mostFrequentBillId) return -1;
-            if (b.id === mostFrequentBillId) return 1;
-            return 0;
-        });
-        selectBills.value = sorted[0].id;
-    }
-    
-    const selectCategory = mainFormInput.createEl('select', {
-        cls: 'form-selects',
-        attr: {
-            name: 'select-category',
-            id: 'select-category'
-        }
-    })
-    createOptionCategory()
+		selectBills.appendChild(mainGroup);
+	}
 
-    function createOptionCategory() {
-        if(resultRadio === 'expense'){
-            selectCategory.empty()
-            if(expensePlan && expensePlan.status === 'success') {
-                expensePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
-                const categories = expensePlan.jsonData.filter(plan => !plan.archived)
-                categories.forEach(plan => {
-                    selectCategory.createEl('option', {
-                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
-                        attr: { 
-                            value: plan.id
-                        }
-                    })
-                })
-            }
-        } else {
-            selectCategory.empty()
-            if(incomePlan && incomePlan.status === 'success') {
-                incomePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
-                const categories = incomePlan.jsonData.filter(plan => !plan.archived)
-                categories.forEach(plan => {
-                    selectCategory.createEl('option', {
-                        text: `${plan.emoji} ${plan.name} • ${plan.amount} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
-                        attr: { 
-                            value: plan.id
-                        }
-                    })
-                })
-            }
-        }
-    }
+	// --- Additional ---
+	if (accounts.some(i => i.generalBalance === false)) {
+		const additionalGroup = document.createElement("optgroup");
+		additionalGroup.label = "Additional";
 
-    const commentInput = mainFormInput.createEl('input', {
-        cls: 'form-inputs',
-        attr: {
-            placeholder: 'Note',
-            id: 'input-comment',
-            type: 'text'
-        }
-    })
+		(accounts).forEach(bill => {
+			if (!bill.generalBalance) {
+				const option = document.createElement("option");
+				option.value = bill.id;
+				option.textContent = `${bill.emoji} ${bill.name} • ${formatNumbers(bill.balance)} ${getCurrencySymbol(bill.currency)}`;
+				additionalGroup.appendChild(option);
+			}
+		})
 
-    const selectDate = mainFormInput.createEl('select', {
-        cls: 'form-selects',
-        attr: {
-            name: 'select-date',
-            id: 'select-date'
-        }
-    })
-    fillMonthDates(selectDate)
+		selectBills.appendChild(additionalGroup);
+	}
 
-    const beginningMonth_3day = Date.now() - new Date(new Date().getFullYear(), new Date().getMonth(), 0).getTime() > 3 * 24 * 60 * 60 * 1000;
-    const beginningMonth_2day = Date.now() - new Date(new Date().getFullYear(), new Date().getMonth(), 0).getTime() > 2 * 24 * 60 * 60 * 1000;
+	if (history.jsonData.length === 0) {
+		accounts.sort((a, b) => Number(b.balance) - Number(a.balance))
+		selectBills.value = accounts[0].id;
+	} else {
+		const counts: Record<string, number> = {};
 
-    const selectDateButtonDiv = mainFormInput.createEl('div', {
-        cls: 'form-selects-date-buttons'
-    })
+		history.jsonData.forEach(item => {
+			const billId = item.bill.id;
+			counts[billId] = (counts[billId] || 0) + 1;
+		});
 
-    if((selectedYear === null && selectedMonth === null) && beginningMonth_2day) {
-        const selectDateToday = selectDateButtonDiv.createEl('button', {
-            text: 'Today',
-            attr: {
-                type: 'button'
-            }
-        })
-        // selectDateToday.addClass('button-selects-date--active')
-        selectDateToday.addEventListener('click', () => {
-            selectRelativeDate(selectDate, 0)
-        })
+		let maxCount = 0;
+		let mostFrequentBillId: string | null = null;
 
-        const selectDateYesterday = selectDateButtonDiv.createEl('button', {
-            text: 'Yesterday',
-            attr: {
-                type: 'button'
-            }
-        })
-        selectDateYesterday.addEventListener('click', () => {
-            selectRelativeDate(selectDate, -1)
-        })
-    }
-    if((selectedYear === null && selectedMonth === null) && beginningMonth_3day) {
-        const selectDateTheDayBefotreYesterday = selectDateButtonDiv.createEl('button', {
-            text: 'The day before yesterday',
-            attr: {
-                type: 'button'
-            }
-        })
-        selectDateTheDayBefotreYesterday.addEventListener('click', () => {
-            selectRelativeDate(selectDate, -2)
-        })
-    }
+		for (const billId in counts) {
+			if (counts[billId] > maxCount) {
+				maxCount = counts[billId];
+				mostFrequentBillId = billId;
+			} else if (counts[billId] === maxCount) {
+				accounts.sort((a, b) => Number(b.balance) - Number(a.balance));
+				selectBills.value = accounts[0].id;
+			}
+		}
 
-    const addButton = mainFormInput.createEl('button', {
-        text: 'Add',
-        cls: 'add-button',
-        attr: {
-            type: 'submit'
-        }
-    })
+		const sorted = accounts.sort((a, b) => {
+			if (a.id === mostFrequentBillId) return -1;
+			if (b.id === mostFrequentBillId) return 1;
+			return 0;
+		});
+		selectBills.value = sorted[0].id;
+	}
 
-    addButton.addEventListener('click', (e) => {
-        e.preventDefault();
-        
-        if(!(Number(inputSum.value) >= 1)) {
-            inputSum.focus()
-            new Notice('Enter the amount')
-            return
-        }
+	const selectCategory = mainFormInput.createEl('select', {
+		cls: 'form-selects',
+		attr: {
+			name: 'select-category',
+			id: 'select-category'
+		}
+	})
+	createOptionCategory()
 
-        if (!selectDate.value) {
-            new Notice('Select a date');
-            return
-        }
+	function createOptionCategory() {
+		if (resultRadio === 'expense') {
+			selectCategory.empty()
+			if (expensePlan && expensePlan.status === 'success') {
+				expensePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
+				const categories = expensePlan.jsonData.filter(plan => !plan.archived)
+				categories.forEach(plan => {
+					selectCategory.createEl('option', {
+						text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+						attr: {
+							value: plan.id
+						}
+					})
+				})
+			}
+		} else {
+			selectCategory.empty()
+			if (incomePlan && incomePlan.status === 'success') {
+				incomePlan.jsonData.sort((a, b) => Number(b.amount) - Number(a.amount))
+				const categories = incomePlan.jsonData.filter(plan => !plan.archived)
+				categories.forEach(plan => {
+					selectCategory.createEl('option', {
+						text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount)} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+						attr: {
+							value: plan.id
+						}
+					})
+				})
+			}
+		}
+	}
 
-        const data: HistoryData = {
-            id: String(generateUUID()),
-            amount: String(inputSum.value),
-            bill: {
-                id: selectBills.value
-            },
-            category: {
-                id: selectCategory.value
-            }, 
-            comment: commentInput.value.trim(),
-            date: `${selectDate.value}T${getLocalTimeISO()}`,
-            type: resultRadio,
-        }
+	const commentInput = mainFormInput.createEl('input', {
+		cls: 'form-inputs',
+		attr: {
+			placeholder: 'Note',
+			id: 'input-comment',
+			type: 'text'
+		}
+	})
 
-        void addHistoryButton(data, selectBills)
-    })
+	const selectDate = mainFormInput.createEl('select', {
+		cls: 'form-selects',
+		attr: {
+			name: 'select-date',
+			id: 'select-date'
+		}
+	})
+	fillMonthDates(selectDate)
+
+	const beginningMonth_3day = Date.now() - new Date(new Date().getFullYear(), new Date().getMonth(), 0).getTime() > 3 * 24 * 60 * 60 * 1000;
+	const beginningMonth_2day = Date.now() - new Date(new Date().getFullYear(), new Date().getMonth(), 0).getTime() > 2 * 24 * 60 * 60 * 1000;
+
+	const selectDateButtonDiv = mainFormInput.createEl('div', {
+		cls: 'form-selects-date-buttons'
+	})
+
+	if ((selectedYear === null && selectedMonth === null) && beginningMonth_2day) {
+		const selectDateToday = selectDateButtonDiv.createEl('button', {
+			text: 'Today',
+			attr: {
+				type: 'button'
+			}
+		})
+		// selectDateToday.addClass('button-selects-date--active')
+		selectDateToday.addEventListener('click', () => {
+			selectRelativeDate(selectDate, 0)
+		})
+
+		const selectDateYesterday = selectDateButtonDiv.createEl('button', {
+			text: 'Yesterday',
+			attr: {
+				type: 'button'
+			}
+		})
+		selectDateYesterday.addEventListener('click', () => {
+			selectRelativeDate(selectDate, -1)
+		})
+	}
+	if ((selectedYear === null && selectedMonth === null) && beginningMonth_3day) {
+		const selectDateTheDayBefotreYesterday = selectDateButtonDiv.createEl('button', {
+			text: 'The day before yesterday',
+			attr: {
+				type: 'button'
+			}
+		})
+		selectDateTheDayBefotreYesterday.addEventListener('click', () => {
+			selectRelativeDate(selectDate, -2)
+		})
+	}
+
+	const addButton = mainFormInput.createEl('button', {
+		text: 'Add',
+		cls: 'add-button',
+		attr: {
+			type: 'submit'
+		}
+	})
+
+	addButton.addEventListener('click', (e) => {
+		e.preventDefault();
+
+		if (!(Number(inputSum.value) >= 1)) {
+			inputSum.focus()
+			new Notice('Enter the amount')
+			return
+		}
+
+		if (!selectDate.value) {
+			new Notice('Select a date');
+			return
+		}
+
+		const data: HistoryData = {
+			id: String(generateUUID()),
+			amount: String(inputSum.value),
+			bill: {
+				id: selectBills.value
+			},
+			category: {
+				id: selectCategory.value
+			},
+			comment: commentInput.value.trim(),
+			date: `${selectDate.value}T${getLocalTimeISO()}`,
+			type: resultRadio,
+		}
+
+		void addHistoryButton(data, selectBills)
+	})
 }
 
 async function addHistoryButton(data: HistoryData, selectBills: HTMLSelectElement): Promise<void> {
-    const billOption = await searchElementById<BillData>(selectBills.value, 'accounts')
-    if(billOption.status === 'error') {
-        new Notice(billOption.error.message)
-        console.error(billOption.error)
-        return
-    }
-    if(billOption.item.currency !== MainPlugin.instance.settings.baseCurrency) {
-        new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
-        return
-    }
-    
-    const resultOfadd = await addJsonToHistory(data)
-    if(resultOfadd.status === "success") {
-        setTimeout(() => {
-            FinancialAccountingView.instance.onOpen().catch(console.error)
-            new Notice('Operation added')
-        }, 100)
-    } else {
-        new Notice(resultOfadd.error.message)
-        console.error(resultOfadd.error)
-    }
+	const billOption = await searchElementById<BillData>(selectBills.value, 'accounts')
+	if (billOption.status === 'error') {
+		new Notice(billOption.error.message)
+		console.error(billOption.error)
+		return
+	}
+	if (billOption.item.currency !== MainPlugin.instance.settings.baseCurrency) {
+		new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
+		return
+	}
+
+	const resultOfadd = await addJsonToHistory(data)
+	if (resultOfadd.status === "success") {
+		setTimeout(() => {
+			FinancialAccountingView.instance.onOpen().catch(console.error)
+			new Notice('Operation added')
+		}, 100)
+	} else {
+		new Notice(resultOfadd.error.message)
+		console.error(resultOfadd.error)
+	}
 }
 
-export const addPlan = () => {
-    const { contentEl } = FinancialAccountingView.instance;
-    contentEl.empty()
+export const addPlan = async () => {
+	const { contentEl } = FinancialAccountingView.instance;
+	contentEl.empty()
 
-    const exitButton = contentEl.createEl('div', {
-        cls: 'exit-button',
-        attr: {
-            id: 'exit-button'
-        }
-    })
-    setIcon(exitButton, 'arrow-left')
-    exitButton.addEventListener('click', () => {
-        FinancialAccountingView.instance.onOpen().catch(console.error)
-    })
+	const expensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan')
+	if (expensePlan.status === 'error') {
+		new Notice(expensePlan.error.message)
+		console.error(expensePlan.error)
+		return
+	}
+	if (expensePlan.jsonData.length === 0) return new Notice('Add a expenditure plan')
 
-    const header = contentEl.createEl('div', {
-        cls: 'main-header'
-    })
-    header.createEl('h1', {
-        text: 'Categories'
-    })
+	const incomePlan = await getAdditionalData<PlanData>('categories', 'income_plan')
+	if (incomePlan.status === 'error') {
+		new Notice(incomePlan.error.message)
+		console.error(incomePlan.error)
+		return
+	}
+	if (incomePlan.jsonData.length === 0) return new Notice('Add a income plan')
 
-    const mainAddForm = contentEl.createEl('form', {
-        cls: 'main-add-form',
-        attr: {
-            id: 'main-add-form'
-        }
-    })
+	const exitButton = contentEl.createEl('div', {
+		cls: 'exit-button',
+		attr: {
+			id: 'exit-button'
+		}
+	})
+	setIcon(exitButton, 'arrow-left')
+	exitButton.addEventListener('click', () => {
+		FinancialAccountingView.instance.onOpen().catch(console.error)
+	})
 
-    // Form radio
-    let resultRadio: 'expense' | 'income';
-    const expenseOrIncome = mainAddForm.createEl('div', {
-        cls: 'main-form_radio'
-    })
-    
-    const radioExpense = expenseOrIncome.createEl('button', {
-        text: "Expense",
-        cls: 'main-radio_exprense',
-        attr: {
-            'data-radio': 'expense',
-            type: 'button'
-        }
-    })
+	const header = contentEl.createEl('div', {
+		cls: 'main-header'
+	})
+	header.createEl('h1', {
+		text: 'Categories'
+	})
 
-    if(radioExpense.dataset.radio === 'expense') {
-        resultRadio = radioExpense.dataset.radio
-        radioExpense.addClass('main-radion-button--active')
-    }
-    
-    const radioIncome = expenseOrIncome.createEl('button', {
-        text: 'Income',
-        cls: 'main-radio_income',
-        attr: {
-            'data-radio': 'income',
-            type: 'button'
-        }
-    })
-    
-    radioIncome.addEventListener('click', () => {
-        if(radioIncome.dataset.radio === 'income') {
-            radioExpense.removeClass('main-radion-button--active')
-            radioIncome.addClass('main-radion-button--active')
-            resultRadio = radioIncome.dataset.radio
-            inputName.focus()
-        }
-    })
-    radioExpense.addEventListener('click', () => {
-        if(radioExpense.dataset.radio === 'expense') {
-            radioIncome.removeClass('main-radion-button--active')
-            radioExpense.addClass('main-radion-button--active')
-            resultRadio = radioExpense.dataset.radio
-            inputName.focus()
-        }
-    })
-    
-    // Form input
-    const mainFormInput = mainAddForm.createEl('div', {
-        cls: 'main-form-input'
-    })
-    const inputName = mainFormInput.createEl('input', {
-        cls: 'form-inputs',
-        attr: {
-            placeholder: 'Name',
-            id: 'input-name',
-            type: 'text'
-        }
-    })
-    inputName.focus()
+	const mainAddForm = contentEl.createEl('form', {
+		cls: 'main-add-form',
+		attr: {
+			id: 'main-add-form'
+		}
+	})
 
-    const inputEmoji = mainFormInput.createEl('input', {
-        cls: 'form-inputs',
-        attr: {
-            placeholder: 'Emoji',
-            id: 'input-emoji',
-            type: 'text'
-        }
-    })
-    inputEmoji.addEventListener('input', () => {
-        const value = inputEmoji.value;
-        const chars = Array.from(value);
-        const emojiOnly = chars.filter(ch =>
-            /\p{Extended_Pictographic}/u.test(ch)
-        );
-        inputEmoji.value = emojiOnly.slice(0, 1).join('');
-    });
+	// Form radio
+	let resultRadio: 'expense' | 'income';
+	const expenseOrIncome = mainAddForm.createEl('div', {
+		cls: 'main-form_radio'
+	})
 
-    const commentInput = mainFormInput.createEl('input', {
-        cls: 'form-inputs',
-        attr: {
-            placeholder: 'Note',
-            id: 'input-comment',
-            type: 'text'
-        }
-    })
+	const radioExpense = expenseOrIncome.createEl('button', {
+		text: "Expense",
+		cls: 'main-radio_exprense',
+		attr: {
+			'data-radio': 'expense',
+			type: 'button'
+		}
+	})
 
-    const addButton = mainFormInput.createEl('button', {
-        text: 'Add',
-        cls: 'add-button',
-        attr: {
-            type: 'submit'
-        }
-    })
+	if (radioExpense.dataset.radio === 'expense') {
+		resultRadio = radioExpense.dataset.radio
+		radioExpense.addClass('main-radion-button--active')
+	}
 
-    addButton.addEventListener('click', (e) => {
-        e.preventDefault();
+	const radioIncome = expenseOrIncome.createEl('button', {
+		text: 'Income',
+		cls: 'main-radio_income',
+		attr: {
+			'data-radio': 'income',
+			type: 'button'
+		}
+	})
 
-        if(!inputName.value) {
-            inputName.focus()
-            new Notice('Enter the name')
-            return
-        }
+	radioIncome.addEventListener('click', () => {
+		if (radioIncome.dataset.radio === 'income') {
+			radioExpense.removeClass('main-radion-button--active')
+			radioIncome.addClass('main-radion-button--active')
+			resultRadio = radioIncome.dataset.radio
+			inputName.focus()
+			selectParent()
+		}
+	})
+	radioExpense.addEventListener('click', () => {
+		if (radioExpense.dataset.radio === 'expense') {
+			radioIncome.removeClass('main-radion-button--active')
+			radioExpense.addClass('main-radion-button--active')
+			resultRadio = radioExpense.dataset.radio
+			inputName.focus()
+			selectParent()
+		}
+	})
 
-        if(!inputEmoji.value) {
-            inputEmoji.focus()
-            new Notice('Enter the emoji')
-            return
-        }
+	// Form input
+	const mainFormInput = mainAddForm.createEl('div', {
+		cls: 'main-form-input'
+	})
+	const inputName = mainFormInput.createEl('input', {
+		cls: 'form-inputs',
+		attr: {
+			placeholder: 'Name',
+			id: 'input-name',
+			type: 'text'
+		}
+	})
+	inputName.focus()
 
-        const data: PlanData = {
-            id: String(generateUUID()),
-            name: inputName.value.trim(),
-            emoji: inputEmoji.value,
-            amount: '0',
-            comment: commentInput.value.trim(),
-            type: resultRadio,
-            archived: false,
-        }
+	const inputEmoji = mainFormInput.createEl('input', {
+		cls: 'form-inputs',
+		attr: {
+			placeholder: 'Emoji',
+			id: 'input-emoji',
+			type: 'text'
+		}
+	})
+	inputEmoji.addEventListener('input', () => {
+		const value = inputEmoji.value;
+		const chars = Array.from(value);
+		const emojiOnly = chars.filter(ch =>
+			/\p{Extended_Pictographic}/u.test(ch)
+		);
+		inputEmoji.value = emojiOnly.slice(0, 1).join('');
+	});
 
-        void addPlanButton(data)
-    })
+	const parentSelect = mainFormInput.createEl('select', {
+		cls: 'form-selects',
+		attr: {
+			name: 'select-parent',
+			id: 'select-parent'
+		}
+	})
+	selectParent();
+
+	function selectParent() {
+		if (resultRadio === 'expense') {
+			parentSelect.empty()
+
+			parentSelect.createEl('option', {
+				text: 'Do not specify a parent',
+				attr: {
+					value: null,
+					selected: '',
+				},
+			})
+
+			if (expensePlan && expensePlan.status === 'success') {
+				const categories = expensePlan.jsonData.filter(plan => !plan.archived)
+				categories.forEach(plan => {
+					parentSelect.createEl('option', {
+						text: `${plan.emoji} ${plan.name}`,
+						attr: {
+							value: plan.id
+						}
+					})
+				})
+			}
+		} else {
+			parentSelect.empty()
+
+			parentSelect.createEl('option', {
+				text: 'Do not specify a parent',
+				attr: {
+					value: null,
+					selected: '',
+				},
+			})
+
+			if (incomePlan && incomePlan.status === 'success') {
+				const categories = incomePlan.jsonData.filter(plan => !plan.archived)
+				categories.forEach(plan => {
+					parentSelect.createEl('option', {
+						text: `${plan.emoji} ${plan.name}`,
+						attr: {
+							value: plan.id
+						}
+					})
+				})
+			}
+		}
+	}
+
+	const commentInput = mainFormInput.createEl('input', {
+		cls: 'form-inputs',
+		attr: {
+			placeholder: 'Note',
+			id: 'input-comment',
+			type: 'text'
+		}
+	})
+
+	const addButton = mainFormInput.createEl('button', {
+		text: 'Add',
+		cls: 'add-button',
+		attr: {
+			type: 'submit'
+		}
+	})
+
+	addButton.addEventListener('click', (e) => {
+		e.preventDefault();
+
+		if (!inputName.value) {
+			inputName.focus()
+			new Notice('Enter the name')
+			return
+		}
+
+		if (!inputEmoji.value) {
+			inputEmoji.focus()
+			new Notice('Enter the emoji')
+			return
+		}
+
+		const data: PlanData = {
+			id: String(generateUUID()),
+			name: inputName.value.trim(),
+			emoji: inputEmoji.value,
+			amount: '0',
+			parentId: parentSelect.value,
+			comment: commentInput.value.trim(),
+			type: resultRadio,
+			archived: false,
+		}
+
+		void addPlanButton(data)
+	})
 }
 
 async function addPlanButton(data: PlanData): Promise<void> {
-    const resultOfadd = await addJsonToPlan(data)
-    if(resultOfadd.status === "success") {
-        setTimeout(() => {
-            FinancialAccountingView.instance.onOpen().catch(console.error)
-            new Notice('The plan has been added.')
-        }, 100)
-    } else {
-        new Notice(resultOfadd.error.message)
-        console.error(resultOfadd.error)
-    }
+	const resultOfadd = await addJsonToPlan(data)
+	if (resultOfadd.status === "success") {
+		setTimeout(() => {
+			FinancialAccountingView.instance.onOpen().catch(console.error)
+			new Notice('The plan has been added.')
+		}, 100)
+	} else {
+		new Notice(resultOfadd.error.message)
+		console.error(resultOfadd.error)
+	}
 }
 
 export const addBills = () => {
-    const { contentEl } = FinancialAccountingView.instance;
-    contentEl.empty()
+	const { contentEl } = FinancialAccountingView.instance;
+	contentEl.empty()
 
-    const exitButton = contentEl.createEl('div', {
-        cls: 'exit-button',
-        attr: {
-            id: 'exit-button'
-        }
-    })
-    setIcon(exitButton, 'arrow-left')
-    exitButton.addEventListener('click', () => {
-        FinancialAccountingView.instance.onOpen().catch(console.error)
-    })
+	const exitButton = contentEl.createEl('div', {
+		cls: 'exit-button',
+		attr: {
+			id: 'exit-button'
+		}
+	})
+	setIcon(exitButton, 'arrow-left')
+	exitButton.addEventListener('click', () => {
+		FinancialAccountingView.instance.onOpen().catch(console.error)
+	})
 
-    const header = contentEl.createEl('div', {
-        cls: 'main-header'
-    })
-    header.createEl('h1', {
-        text: 'Accounts'
-    })
+	const header = contentEl.createEl('div', {
+		cls: 'main-header'
+	})
+	header.createEl('h1', {
+		text: 'Accounts'
+	})
 
-    const mainAddForm = contentEl.createEl('form', {
-        cls: 'main-add-form',
-        attr: {
-            id: 'main-add-form'
-        }
-    })
+	const mainAddForm = contentEl.createEl('form', {
+		cls: 'main-add-form',
+		attr: {
+			id: 'main-add-form'
+		}
+	})
 
-    // Form input
-    const mainFormInput = mainAddForm.createEl('div', {
-        cls: 'main-form-input'
-    })
-    const inputName = mainFormInput.createEl('input', {
-        cls: 'form-inputs',
-        attr: {
-            placeholder: 'Name',
-            id: 'input-name',
-            type: 'text'
-        }
-    })
-    inputName.focus()
+	// Form input
+	const mainFormInput = mainAddForm.createEl('div', {
+		cls: 'main-form-input'
+	})
+	const inputName = mainFormInput.createEl('input', {
+		cls: 'form-inputs',
+		attr: {
+			placeholder: 'Name',
+			id: 'input-name',
+			type: 'text'
+		}
+	})
+	inputName.focus()
 
-    const inputEmoji = mainFormInput.createEl('input', {
-        cls: 'form-inputs',
-        attr: {
-            placeholder: 'Emoji',
-            id: 'input-emoji',
-            type: 'text'
-        }
-    })
-    inputEmoji.addEventListener('input', () => {
-        const value = inputEmoji.value;
-        const chars = Array.from(value);
-        const emojiOnly = chars.filter(ch =>
-            /\p{Extended_Pictographic}/u.test(ch)
-        );
-        inputEmoji.value = emojiOnly.slice(0, 1).join('');
-    });
+	const inputEmoji = mainFormInput.createEl('input', {
+		cls: 'form-inputs',
+		attr: {
+			placeholder: 'Emoji',
+			id: 'input-emoji',
+			type: 'text'
+		}
+	})
+	inputEmoji.addEventListener('input', () => {
+		const value = inputEmoji.value;
+		const chars = Array.from(value);
+		const emojiOnly = chars.filter(ch =>
+			/\p{Extended_Pictographic}/u.test(ch)
+		);
+		inputEmoji.value = emojiOnly.slice(0, 1).join('');
+	});
 
-    const currencySelect = mainFormInput.createEl('select', {
-        cls: 'form-selects',
-        attr: {
-            name: 'select-currency',
-            id: 'select-currency'
-        }
-    })
+	const currencySelect = mainFormInput.createEl('select', {
+		cls: 'form-selects',
+		attr: {
+			name: 'select-currency',
+			id: 'select-currency'
+		}
+	})
 
-    const { popularCurrencies, otherCurrencies } = getCurrencyGroups();
+	const { popularCurrencies, otherCurrencies } = getCurrencyGroups();
 
-    // --- Popular ---
-    const popularGroup = document.createElement("optgroup");
-    popularGroup.label = "Popular";
+	// --- Popular ---
+	const popularGroup = document.createElement("optgroup");
+	popularGroup.label = "Popular";
 
-    popularCurrencies.forEach(cur => {
-        const option = document.createElement("option");
-        option.value = cur.code;
-        option.textContent = `${cur.code} • ${cur.name} • ${cur.symbol}`;
-        popularGroup.appendChild(option);
-    });
+	popularCurrencies.forEach(cur => {
+		const option = document.createElement("option");
+		option.value = cur.code;
+		option.textContent = `${cur.code} • ${cur.name} • ${cur.symbol}`;
+		popularGroup.appendChild(option);
+	});
 
-    // --- Other ---
-    const otherGroup = document.createElement("optgroup");
-    otherGroup.label = "All currencies";
+	// --- Other ---
+	const otherGroup = document.createElement("optgroup");
+	otherGroup.label = "All currencies";
 
-    otherCurrencies.forEach(cur => {
-        const option = document.createElement("option");
-        option.value = cur.code;
-        option.textContent = `${cur.code} ${cur.name} • ${cur.symbol}`;
-        otherGroup.appendChild(option);
-    });
+	otherCurrencies.forEach(cur => {
+		const option = document.createElement("option");
+		option.value = cur.code;
+		option.textContent = `${cur.code} ${cur.name} • ${cur.symbol}`;
+		otherGroup.appendChild(option);
+	});
 
-    currencySelect.appendChild(popularGroup);
-    currencySelect.appendChild(otherGroup);
+	currencySelect.appendChild(popularGroup);
+	currencySelect.appendChild(otherGroup);
 
-    currencySelect.value = MainPlugin.instance.settings.baseCurrency;
+	currencySelect.value = MainPlugin.instance.settings.baseCurrency;
 
-    const currentBalance = mainFormInput.createEl('input', {
-        cls: 'form-inputs',
-        attr: {
-            placeholder: 'Current balance',
-            id: 'input-current-balance',
-            type: 'number',
-            inputmode: "decimal"
-        }
-    })
+	const currentBalance = mainFormInput.createEl('input', {
+		cls: 'form-inputs',
+		attr: {
+			placeholder: 'Current balance',
+			id: 'input-current-balance',
+			type: 'number',
+			inputmode: "decimal"
+		}
+	})
 
-    const commentInput = mainFormInput.createEl('input', {
-        cls: 'form-inputs',
-        attr: {
-            placeholder: 'Note',
-            id: 'input-comment',
-            type: 'text'
-        }
-    })
+	const commentInput = mainFormInput.createEl('input', {
+		cls: 'form-inputs',
+		attr: {
+			placeholder: 'Note',
+			id: 'input-comment',
+			type: 'text'
+		}
+	})
 
-    const checboxDiv = mainFormInput.createEl('div', {
-        cls: 'form-checkbox-div'
-    })
+	const checboxDiv = mainFormInput.createEl('div', {
+		cls: 'form-checkbox-div'
+	})
 
-    const checkboxInput = checboxDiv.createEl('input', {
-        cls: 'form-checkbox',
-        attr: {
-            id: 'input-checkbox',
-            type: 'checkbox',
-            checked: true
-        }
-    })
+	const checkboxInput = checboxDiv.createEl('input', {
+		cls: 'form-checkbox',
+		attr: {
+			id: 'input-checkbox',
+			type: 'checkbox',
+			checked: true
+		}
+	})
 
-    checboxDiv.createEl('span', {
-        text: 'Take into account in the general balance',
-        cls: 'form-text',
-    })
+	checboxDiv.createEl('span', {
+		text: 'Take into account in the general balance',
+		cls: 'form-text',
+	})
 
-    currencySelect.addEventListener('change', () => {
-        if(currencySelect.value !== MainPlugin.instance.settings.baseCurrency) {
-            checkboxInput.checked = false
-            checboxDiv.classList.add('disable-element')
-        } else {
-            checboxDiv.classList.remove('disable-element')
-            checkboxInput.checked = true
-        }
-    })
+	currencySelect.addEventListener('change', () => {
+		if (currencySelect.value !== MainPlugin.instance.settings.baseCurrency) {
+			checkboxInput.checked = false
+			checboxDiv.classList.add('disable-element')
+		} else {
+			checboxDiv.classList.remove('disable-element')
+			checkboxInput.checked = true
+		}
+	})
 
-    const addButton = mainFormInput.createEl('button', {
-        text: 'Add',
-        cls: 'add-button',
-        attr: {
-            type: 'submit'
-        }
-    })
+	const addButton = mainFormInput.createEl('button', {
+		text: 'Add',
+		cls: 'add-button',
+		attr: {
+			type: 'submit'
+		}
+	})
 
-    addButton.addEventListener('click',  (e) => {
-        e.preventDefault();
-        
-        if(!inputName.value) {
-            inputName.focus()
-            new Notice('Enter the name')
-            return
-        }
+	addButton.addEventListener('click', (e) => {
+		e.preventDefault();
 
-        if(!inputEmoji.value) {
-            inputEmoji.focus()
-            new Notice('Enter the emoji')
-            return
-        }
-        
-        const data: BillData = {
-            id: String(generateUUID()),
-            name: inputName.value.trim(),
-            emoji: inputEmoji.value,
-            balance: String(currentBalance.value).trim(),
-            currency: currencySelect.value,
-            generalBalance: checkboxInput.checked,
-            comment: commentInput.value.trim(),
-            archived: false,
-        }
-        
-        void addBillsButton(data)
-    })
+		if (!inputName.value) {
+			inputName.focus()
+			new Notice('Enter the name')
+			return
+		}
+
+		if (!inputEmoji.value) {
+			inputEmoji.focus()
+			new Notice('Enter the emoji')
+			return
+		}
+
+		const data: BillData = {
+			id: String(generateUUID()),
+			name: inputName.value.trim(),
+			emoji: inputEmoji.value,
+			balance: String(currentBalance.value).trim(),
+			currency: currencySelect.value,
+			generalBalance: checkboxInput.checked,
+			comment: commentInput.value.trim(),
+			archived: false,
+		}
+
+		void addBillsButton(data)
+	})
 }
 
 async function addBillsButton(data: BillData): Promise<void> {
-    const resultOfadd = await addJsonToBills(data)
-    if(resultOfadd.status === "success") {
-        setTimeout(() => {
-            FinancialAccountingView.instance.onOpen().catch(console.error)
-            new Notice('The bill has been added.')
-        }, 100)
-    } else {
-        new Notice(resultOfadd.error.message)
-        console.error(resultOfadd.error)
-    }
+	const resultOfadd = await addJsonToBills(data)
+	if (resultOfadd.status === "success") {
+		setTimeout(() => {
+			FinancialAccountingView.instance.onOpen().catch(console.error)
+			new Notice('The bill has been added.')
+		}, 100)
+	} else {
+		new Notice(resultOfadd.error.message)
+		console.error(resultOfadd.error)
+	}
 }
