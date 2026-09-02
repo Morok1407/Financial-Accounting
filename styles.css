@@ -19,6 +19,7 @@
   flex-direction: column;
   align-items: center;
   scrollbar-gutter: stable;
+  container-type: inline-size;
 }
 
 .finance-header {
@@ -48,46 +49,36 @@
 .home-nav {
   position: fixed;
   z-index: 100;
-  bottom: 18px;
+  bottom: 24px;
   display: flex;
-  gap: 12px;
+  gap: clamp(12px, 4cqw, 18px);
+  width: max-content;
+  max-width: 95cqw;
+  justify-content: center;
 }
 
-.main-nav {
+.main-nav, .add-nav {
   display: flex;
   background-color: var(--background-primary);
   border-radius: 50px;
   border: 1px var(--background-modifier-border) solid;
-  padding: 3px;
+  padding: 4px;
 }
-.main-nav a {
+.main-nav a, .add-nav a {
   all: unset;
   cursor: pointer;
   border-radius: 50px;
-  padding: 16px 14px 13px;
-  border-radius: 50px;
-}
-.main-nav a svg {
-  width: 28px;
-  height: 24px;
-}
-
-.add-nav {
   display: flex;
-  background-color: var(--background-primary);
-  border-radius: 50px;
-  border: 1px var(--background-modifier-border) solid;
-  padding: 3px;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(14px, 5cqw, 18px) clamp(14px, 4.5cqw, 16px) clamp(12px, 4.5cqw, 14px);
 }
-.add-nav a {
-  all: unset;
-  cursor: pointer;
-  padding: 16px 14px 13px;
-  border-radius: 50px;
+.main-nav a svg, .add-nav a svg {
+  width: clamp(26px, 8cqw, 36px);
+  height: clamp(26px, 7cqw, 36px);
 }
-.add-nav a svg {
-  width: 28px;
-  height: 24px;
+.main-nav a:hover, .add-nav a:hover {
+  opacity: 0.8;
 }
 
 .home_button--active {
@@ -476,7 +467,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 58px;
+  height: 70px;
   padding: 8px 14px 8px 18px;
   overflow: hidden;
   background-color: var(--background-modifier-active-hover);
@@ -540,9 +531,17 @@
 .stats-card-balance .stats-card-icon {
   color: #465bd5;
 }
+.stats-card-balance .stats-card-icon svg {
+  width: 25px;
+  height: 25px;
+}
 
 .stats-card-operations .stats-card-icon {
   color: #bfc2cc;
+}
+.stats-card-operations .stats-card-icon svg {
+  width: 25px;
+  height: 25px;
 }
 
 .stats-card-content {
@@ -562,6 +561,16 @@
   font-size: 16px;
   line-height: 1.1;
   font-weight: 500;
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.stats-card-period {
+  font-size: 13px;
+  font-weight: 300;
   color: var(--text-normal);
 }
 

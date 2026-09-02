@@ -1,11 +1,11 @@
 import Big from "big.js";
 import MainPlugin from "../../main";
 import { Notice, setIcon } from "obsidian";
-import { stateManager, HistoryData, PlanData, BillData, DataFileResult } from "../../main";
-import { getMainData, getAdditionalData, searchElementById, searchHistory } from "../controllers/searchData";
+import { stateManager, HistoryData, PlanData, BillData, DataFileResult, YearData } from "../../main";
+import { getMainData, getAdditionalData, searchElementById, searchHistory, getAllFile } from "../controllers/searchData";
 import { addPlan, addBills } from '../view/addView';
 import { editingHistory, editingPlan, editingBill } from '../view/editingView';
-import { humanizeDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingData, getCurrencySymbol, formatNumbers, divideByRemainingDays, switchBalanceLine } from "../middleware/otherFunc";
+import { humanizeDate, getDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingData, getCurrencySymbol, formatNumbers, divideByRemainingDays, switchBalanceLine } from "../middleware/otherFunc";
 
 export const showHome = async (mainContent: HTMLDivElement) => {
 	stateManager({ openPageNow: "Home" });
@@ -21,20 +21,6 @@ export const showHome = async (mainContent: HTMLDivElement) => {
 	if (expensePlan.status === "error") {
 		new Notice(expensePlan.error.message);
 		console.error(expensePlan.error);
-		return
-	}
-
-	const incomePlan = await getAdditionalData<PlanData>('categories', 'income_plan');
-	if (incomePlan.status === "error") {
-		new Notice(incomePlan.error.message);
-		console.error(incomePlan.error);
-		return
-	}
-
-	const history = await getMainData()
-	if (history.status === "error") {
-		new Notice(history.error.message);
-		console.error(history.error);
 		return
 	}
 
@@ -71,16 +57,109 @@ export const showHome = async (mainContent: HTMLDivElement) => {
 	});
 	balanceLine.style.setProperty("--after-width", `${switchBalanceLine(bills.jsonData, expensePlan.jsonData)}%`);
 
-	const data = [
+	void gridContent(mainContent)
+}
+
+const gridContent = async (mainContent: HTMLDivElement) => {
+	const bills = await getAdditionalData<BillData>('accounts');
+	if (bills.status === "error") {
+		new Notice(bills.error.message);
+		console.error(bills.error);
+		return
+	}
+
+	const expensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan');
+	if (expensePlan.status === "error") {
+		new Notice(expensePlan.error.message);
+		console.error(expensePlan.error);
+		return
+	}
+
+	const incomePlan = await getAdditionalData<PlanData>('categories', 'income_plan')
+	if (incomePlan.status === "error") {
+		new Notice(incomePlan.error.message)
+		console.log(incomePlan.error)
+		return
+	}
+
+	const history = await getMainData()
+	if (history.status === 'error') {
+		new Notice(history.error.message)
+		console.log(history.error)
+		return
+	}
+
+	const { year } = getDate()
+
+	const yearFile = await getAllFile<YearData>(year);
+	if (yearFile.status === "error") {
+		new Notice(yearFile.error.message);
+		console.error(yearFile.error);
+		return
+	}
+
+	let totalYearExpense = new Big(0);
+	let totalYearIncome = new Big(0);
+	let totalYearLength = new Big(0)
+
+	Object.values(yearFile.json.months).forEach(month => {
+		totalYearLength = totalYearLength.plus(month.history.length)
+
+		month.history.forEach(transaction => {
+			const amount = new Big(transaction.amount);
+
+			if (transaction.type === 'expense') {
+				totalYearExpense = totalYearExpense.plus(amount);
+			}
+
+			if (transaction.type === 'income') {
+				totalYearIncome = totalYearIncome.plus(amount);
+			}
+		});
+	});
+	let totalYearBalance = totalYearIncome.minus(totalYearExpense)
+
+
+	let totalAllExpense = new Big(0);
+	let totalAllIncome = new Big(0);
+	let totalAllLength = new Big(0)
+	const { startYear } = await MainPlugin.instance.loadData();
+	for (let year = startYear; year <= new Date().getFullYear(); year++) {
+		const yearFile = await getAllFile<YearData>(year);
+		if (yearFile.status === "error") {
+			new Notice(yearFile.error.message);
+			console.error(yearFile.error);
+			return
+		}
+
+		Object.values(yearFile.json.months).forEach(month => {
+			totalAllLength = totalAllLength.plus(month.history.length)
+
+			month.history.forEach(transaction => {
+				const amount = new Big(transaction.amount);
+
+				if (transaction.type === 'expense') {
+					totalAllExpense = totalAllExpense.plus(amount);
+				}
+
+				if (transaction.type === 'income') {
+					totalAllIncome = totalAllIncome.plus(amount);
+				}
+			});
+		});
+	}
+	let totalAllBalance = totalAllIncome.minus(totalAllExpense)
+
+	const monthData = [
 		{
 			title: "Income",
-			value: `${formatNumbers(SummarizingData(incomePlan.jsonData).toString())}`,
+			value: `${formatNumbers(SummarizingData(incomePlan.jsonData).toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
 			icon: "arrow-up",
 			type: "income",
 		},
 		{
 			title: "Expenses",
-			value: `${formatNumbers(SummarizingData(expensePlan.jsonData).toString())}`,
+			value: `${formatNumbers(SummarizingData(expensePlan.jsonData).toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
 			icon: "arrow-down",
 			type: "expense",
 		},
@@ -98,11 +177,75 @@ export const showHome = async (mainContent: HTMLDivElement) => {
 		},
 	];
 
+	const yearData = [
+		{
+			title: "Income",
+			value: `${formatNumbers(totalYearIncome.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+			icon: "arrow-up",
+			type: "income",
+			period: `for ${year}`,
+		},
+		{
+			title: "Expenses",
+			value: `${formatNumbers(totalYearExpense.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+			icon: "arrow-down",
+			type: "expense",
+			period: `for ${year}`,
+		},
+		{
+			title: "Balance",
+			value: `${formatNumbers(totalYearBalance.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+			icon: "calendar-check",
+			type: "balance",
+			period: `for ${year}`,
+		},
+		{
+			title: "Operations",
+			value: `${totalYearLength}`,
+			icon: "list",
+			type: "operations",
+			period: `for ${year}`,
+		},
+	];
+
+	const allData = [
+		{
+			title: "Income",
+			value: `${formatNumbers(totalAllIncome.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+			icon: "arrow-up",
+			type: "income",
+			period: "for all time",
+		},
+		{
+			title: "Expenses",
+			value: `${formatNumbers(totalAllExpense.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+			icon: "arrow-down",
+			type: "expense",
+			period: "for all time",
+		},
+		{
+			title: "Balance",
+			value: `${formatNumbers(totalAllBalance.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+			icon: "calendar-check",
+			type: "balance",
+			period: "for all time",
+		},
+		{
+			title: "Operations",
+			value: `${totalAllLength}`,
+			icon: "list",
+			type: "operations",
+			period: "for all time",
+		},
+	];
+
 	const gridContent = mainContent.createDiv({
 		cls: "stats-grid",
 	});
 
-	for (const item of data) {
+	for (const item of monthData) {
+		gridContent.dataset.data = 'month'
+
 		const card = gridContent.createDiv({
 			cls: `stats-card stats-card-${item.type}`,
 		});
@@ -129,7 +272,108 @@ export const showHome = async (mainContent: HTMLDivElement) => {
 	}
 
 	gridContent.addEventListener('click', () => {
-		console.log('switch data')
+		if (gridContent.dataset.data === 'month') {
+			gridContent.empty()
+			gridContent.dataset.data = 'year'
+
+			for (const item of yearData) {
+				const card = gridContent.createDiv({
+					cls: `stats-card stats-card-${item.type}`,
+				});
+
+				const iconContainer = card.createDiv({
+					cls: "stats-card-icon",
+				});
+
+				setIcon(iconContainer, item.icon);
+
+				const content = card.createDiv({
+					cls: "stats-card-content",
+				});
+
+				content.createDiv({
+					cls: "stats-card-title",
+					text: item.title,
+				});
+
+				content.createDiv({
+					cls: "stats-card-value",
+					text: item.value,
+				});
+
+				content.createDiv({
+					cls: "stats-card-period",
+					text: item.period,
+				})
+			}
+		} else if (gridContent.dataset.data === 'year') {
+			gridContent.empty()
+			gridContent.dataset.data = 'all'
+
+			for (const item of allData) {
+				const card = gridContent.createDiv({
+					cls: `stats-card stats-card-${item.type}`,
+				});
+
+				const iconContainer = card.createDiv({
+					cls: "stats-card-icon",
+				});
+
+				setIcon(iconContainer, item.icon);
+
+				const content = card.createDiv({
+					cls: "stats-card-content",
+				});
+
+				content.createDiv({
+					cls: "stats-card-title",
+					text: item.title,
+				});
+
+				content.createDiv({
+					cls: "stats-card-value",
+					text: item.value,
+				});
+
+				content.createDiv({
+					cls: "stats-card-period",
+					text: item.period,
+				})
+			}
+		} else if (gridContent.dataset.data === 'all') {
+			gridContent.empty()
+			gridContent.dataset.data = 'month'
+
+			for (const item of monthData) {
+				const card = gridContent.createDiv({
+					cls: `stats-card stats-card-${item.type}`,
+				});
+
+				const iconContainer = card.createDiv({
+					cls: "stats-card-icon",
+				});
+
+				setIcon(iconContainer, item.icon);
+
+				const content = card.createDiv({
+					cls: "stats-card-content",
+				});
+
+				content.createDiv({
+					cls: "stats-card-title",
+					text: item.title,
+				});
+
+				content.createDiv({
+					cls: "stats-card-value",
+					text: item.value,
+				});
+			}
+		} else {
+			new Notice("Error switching grid element")
+			return console.error("Error switching grid element")
+		}
+
 	})
 }
 
