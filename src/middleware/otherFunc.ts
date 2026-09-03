@@ -1,7 +1,7 @@
 import Big from 'big.js';
 import moment from "moment";
 import currencies from '../../currencies.json'
-import { stateManager, PlanData, BillData, HistoryData, YearData } from "../../main";
+import { stateManager, PlanData, BillData, HistoryData, YearData, Result, SuccessResult } from "../../main";
 import { Notice } from "obsidian";
 import { getAllFile } from '../controllers/searchData'
 
@@ -358,4 +358,13 @@ export function formatNumbers(input: string): string {
 
 		return decimalPart ? `${formattedInt}.${decimalPart}` : formattedInt;
 	});
+}
+
+export function isSuccess<T>(res: Result<T>): res is SuccessResult<T> {
+	if (res.status === "error") {
+		new Notice(res.error.message);
+		console.error(res.error);
+		return false;
+	}
+	return true;
 }

@@ -1,11 +1,11 @@
 import Big from "big.js";
 import MainPlugin from "../../main";
 import { Notice, setIcon } from "obsidian";
-import { stateManager, HistoryData, PlanData, BillData, DataFileResult, YearData } from "../../main";
+import { stateManager, CardItem, HistoryData, PlanData, BillData, DataFileResult, YearData } from "../../main";
 import { getMainData, getAdditionalData, searchElementById, searchHistory, getAllFile } from "../controllers/searchData";
 import { addPlan, addBills } from '../view/addView';
 import { editingHistory, editingPlan, editingBill } from '../view/editingView';
-import { humanizeDate, getDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingData, getCurrencySymbol, formatNumbers, divideByRemainingDays, switchBalanceLine } from "../middleware/otherFunc";
+import { humanizeDate, isSuccess, getDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingData, getCurrencySymbol, formatNumbers, divideByRemainingDays, switchBalanceLine } from "../middleware/otherFunc";
 
 export const showHome = async (mainContent: HTMLDivElement) => {
 	stateManager({ openPageNow: "Home" });
@@ -61,321 +61,139 @@ export const showHome = async (mainContent: HTMLDivElement) => {
 }
 
 const gridContent = async (mainContent: HTMLDivElement) => {
-	const bills = await getAdditionalData<BillData>('accounts');
-	if (bills.status === "error") {
-		new Notice(bills.error.message);
-		console.error(bills.error);
-		return
+	const [bills, expensePlan, incomePlan, history, pluginData] = await Promise.all([
+		getAdditionalData<BillData>('accounts'),
+		getAdditionalData<PlanData>('categories', 'expenditure_plan'),
+		getAdditionalData<PlanData>('categories', 'income_plan'),
+		getMainData(),
+		MainPlugin.instance.loadData()
+	]);
+
+	if (
+		!isSuccess(bills) ||
+		!isSuccess(expensePlan) ||
+		!isSuccess(incomePlan) ||
+		!isSuccess(history)
+	) {
+		return;
 	}
 
-	const expensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan');
-	if (expensePlan.status === "error") {
-		new Notice(expensePlan.error.message);
-		console.error(expensePlan.error);
-		return
+	const { selectedYear } = stateManager();
+	const currentYear = selectedYear ?? getDate().year;
+	const nowYear = new Date().getFullYear();
+	const startYear = pluginData.startYear ?? nowYear;
+
+	const yearsToFetch = Array.from(
+		new Set([...Array.from({ length: nowYear - startYear + 1 }, (_, i) => startYear + i), currentYear])
+	);
+
+	const yearFilesResults = await Promise.all(yearsToFetch.map(y => getAllFile<YearData>(y)));
+	const yearFilesMap = new Map<number, YearData>();
+
+	for (let i = 0; i < yearsToFetch.length; i++) {
+		const res = yearFilesResults[i];
+		if (res.status === "error") {
+			new Notice(res.error.message);
+			console.error(res.error);
+			return;
+		}
+		yearFilesMap.set(yearsToFetch[i], res.json);
 	}
 
-	const incomePlan = await getAdditionalData<PlanData>('categories', 'income_plan')
-	if (incomePlan.status === "error") {
-		new Notice(incomePlan.error.message)
-		console.log(incomePlan.error)
-		return
-	}
+	const calculateYearStats = (yearDataJson?: YearData) => {
+		let expense = new Big(0);
+		let income = new Big(0);
+		let length = new Big(0);
 
-	const history = await getMainData()
-	if (history.status === 'error') {
-		new Notice(history.error.message)
-		console.log(history.error)
-		return
-	}
+		if (yearDataJson?.months) {
+			Object.values(yearDataJson.months).forEach(month => {
+				length = length.plus(month.history.length);
+				month.history.forEach(tx => {
+					const amount = new Big(tx.amount);
+					if (tx.type === 'expense') expense = expense.plus(amount);
+					if (tx.type === 'income') income = income.plus(amount);
+				});
+			});
+		}
+		return { expense, income, length, balance: income.minus(expense) };
+	};
 
-	const { year } = getDate()
-
-	const yearFile = await getAllFile<YearData>(year);
-	if (yearFile.status === "error") {
-		new Notice(yearFile.error.message);
-		console.error(yearFile.error);
-		return
-	}
-
-	let totalYearExpense = new Big(0);
-	let totalYearIncome = new Big(0);
-	let totalYearLength = new Big(0)
-
-	Object.values(yearFile.json.months).forEach(month => {
-		totalYearLength = totalYearLength.plus(month.history.length)
-
-		month.history.forEach(transaction => {
-			const amount = new Big(transaction.amount);
-
-			if (transaction.type === 'expense') {
-				totalYearExpense = totalYearExpense.plus(amount);
-			}
-
-			if (transaction.type === 'income') {
-				totalYearIncome = totalYearIncome.plus(amount);
-			}
-		});
-	});
-	let totalYearBalance = totalYearIncome.minus(totalYearExpense)
-
+	const selectedYearStats = calculateYearStats(yearFilesMap.get(Number(currentYear)));
 
 	let totalAllExpense = new Big(0);
 	let totalAllIncome = new Big(0);
-	let totalAllLength = new Big(0)
-	const { startYear } = await MainPlugin.instance.loadData();
-	for (let year = startYear; year <= new Date().getFullYear(); year++) {
-		const yearFile = await getAllFile<YearData>(year);
-		if (yearFile.status === "error") {
-			new Notice(yearFile.error.message);
-			console.error(yearFile.error);
-			return
-		}
+	let totalAllLength = new Big(0);
 
-		Object.values(yearFile.json.months).forEach(month => {
-			totalAllLength = totalAllLength.plus(month.history.length)
-
-			month.history.forEach(transaction => {
-				const amount = new Big(transaction.amount);
-
-				if (transaction.type === 'expense') {
-					totalAllExpense = totalAllExpense.plus(amount);
-				}
-
-				if (transaction.type === 'income') {
-					totalAllIncome = totalAllIncome.plus(amount);
-				}
-			});
-		});
+	for (let year = startYear; year <= nowYear; year++) {
+		const stats = calculateYearStats(yearFilesMap.get(year));
+		totalAllExpense = totalAllExpense.plus(stats.expense);
+		totalAllIncome = totalAllIncome.plus(stats.income);
+		totalAllLength = totalAllLength.plus(stats.length);
 	}
-	let totalAllBalance = totalAllIncome.minus(totalAllExpense)
+	const totalAllBalance = totalAllIncome.minus(totalAllExpense);
 
-	const monthData = [
-		{
-			title: "Income",
-			value: `${formatNumbers(SummarizingData(incomePlan.jsonData).toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
-			icon: "arrow-up",
-			type: "income",
-		},
-		{
-			title: "Expenses",
-			value: `${formatNumbers(SummarizingData(expensePlan.jsonData).toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
-			icon: "arrow-down",
-			type: "expense",
-		},
-		{
-			title: "Balance",
-			value: `${formatNumbers(SummarizingDataForTheTrueBills(bills.jsonData).toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
-			icon: "calendar-check",
-			type: "balance",
-		},
-		{
-			title: "Operations",
-			value: `${history.jsonData.length}`,
-			icon: "list",
-			type: "operations",
-		},
+	const currency = getCurrencySymbol(MainPlugin.instance.settings.baseCurrency);
+
+	const monthData: CardItem[] = [
+		{ title: "Income", value: `${formatNumbers(SummarizingData(incomePlan.jsonData).toString())} ${currency}`, icon: "arrow-up", type: "income" },
+		{ title: "Expenses", value: `${formatNumbers(SummarizingData(expensePlan.jsonData).toString())} ${currency}`, icon: "arrow-down", type: "expense" },
+		{ title: "Balance", value: `${formatNumbers(SummarizingDataForTheTrueBills(bills.jsonData).toString())} ${currency}`, icon: "calendar-check", type: "balance" },
+		{ title: "Operations", value: `${history.jsonData.length}`, icon: "list", type: "operations" },
 	];
 
-	const yearData = [
-		{
-			title: "Income",
-			value: `${formatNumbers(totalYearIncome.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
-			icon: "arrow-up",
-			type: "income",
-			period: `for ${year}`,
-		},
-		{
-			title: "Expenses",
-			value: `${formatNumbers(totalYearExpense.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
-			icon: "arrow-down",
-			type: "expense",
-			period: `for ${year}`,
-		},
-		{
-			title: "Balance",
-			value: `${formatNumbers(totalYearBalance.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
-			icon: "calendar-check",
-			type: "balance",
-			period: `for ${year}`,
-		},
-		{
-			title: "Operations",
-			value: `${totalYearLength}`,
-			icon: "list",
-			type: "operations",
-			period: `for ${year}`,
-		},
+	const yearData: CardItem[] = [
+		{ title: "Income", value: `${formatNumbers(selectedYearStats.income.toString())} ${currency}`, icon: "arrow-up", type: "income", period: `for ${currentYear}` },
+		{ title: "Expenses", value: `${formatNumbers(selectedYearStats.expense.toString())} ${currency}`, icon: "arrow-down", type: "expense", period: `for ${currentYear}` },
+		{ title: "Balance", value: `${formatNumbers(selectedYearStats.balance.toString())} ${currency}`, icon: "calendar-check", type: "balance", period: `for ${currentYear}` },
+		{ title: "Operations", value: `${selectedYearStats.length}`, icon: "list", type: "operations", period: `for ${currentYear}` },
 	];
 
-	const allData = [
-		{
-			title: "Income",
-			value: `${formatNumbers(totalAllIncome.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
-			icon: "arrow-up",
-			type: "income",
-			period: "for all time",
-		},
-		{
-			title: "Expenses",
-			value: `${formatNumbers(totalAllExpense.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
-			icon: "arrow-down",
-			type: "expense",
-			period: "for all time",
-		},
-		{
-			title: "Balance",
-			value: `${formatNumbers(totalAllBalance.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
-			icon: "calendar-check",
-			type: "balance",
-			period: "for all time",
-		},
-		{
-			title: "Operations",
-			value: `${totalAllLength}`,
-			icon: "list",
-			type: "operations",
-			period: "for all time",
-		},
+	const allData: CardItem[] = [
+		{ title: "Income", value: `${formatNumbers(totalAllIncome.toString())} ${currency}`, icon: "arrow-up", type: "income", period: "for all time" },
+		{ title: "Expenses", value: `${formatNumbers(totalAllExpense.toString())} ${currency}`, icon: "arrow-down", type: "expense", period: "for all time" },
+		{ title: "Balance", value: `${formatNumbers(totalAllBalance.toString())} ${currency}`, icon: "calendar-check", type: "balance", period: "for all time" },
+		{ title: "Operations", value: `${totalAllLength}`, icon: "list", type: "operations", period: "for all time" },
 	];
 
-	const gridContent = mainContent.createDiv({
-		cls: "stats-grid",
+	const gridContainer = mainContent.createDiv({ cls: "stats-grid" });
+
+	const renderCards = (items: CardItem[]) => {
+		gridContainer.empty();
+		for (const item of items) {
+			const card = gridContainer.createDiv({ cls: `stats-card stats-card-${item.type}` });
+			const iconContainer = card.createDiv({ cls: "stats-card-icon" });
+			setIcon(iconContainer, item.icon);
+
+			const content = card.createDiv({ cls: "stats-card-content" });
+			content.createDiv({ cls: "stats-card-title", text: item.title });
+			content.createDiv({ cls: "stats-card-value", text: item.value });
+			if (item.period) {
+				content.createDiv({ cls: "stats-card-period", text: item.period });
+			}
+		}
+	};
+
+	const views = [
+		{ mode: "month", data: monthData },
+		{ mode: "year", data: yearData },
+		{ mode: "all", data: allData },
+	] as const;
+
+	let currentViewIndex = 0;
+
+	const updateView = () => {
+		const currentView = views[currentViewIndex];
+		gridContainer.dataset.data = currentView.mode;
+		renderCards(currentView.data);
+	};
+
+	updateView();
+
+	gridContainer.addEventListener("click", () => {
+		currentViewIndex = (currentViewIndex + 1) % views.length;
+		updateView();
 	});
-
-	for (const item of monthData) {
-		gridContent.dataset.data = 'month'
-
-		const card = gridContent.createDiv({
-			cls: `stats-card stats-card-${item.type}`,
-		});
-
-		const iconContainer = card.createDiv({
-			cls: "stats-card-icon",
-		});
-
-		setIcon(iconContainer, item.icon);
-
-		const content = card.createDiv({
-			cls: "stats-card-content",
-		});
-
-		content.createDiv({
-			cls: "stats-card-title",
-			text: item.title,
-		});
-
-		content.createDiv({
-			cls: "stats-card-value",
-			text: item.value,
-		});
-	}
-
-	gridContent.addEventListener('click', () => {
-		if (gridContent.dataset.data === 'month') {
-			gridContent.empty()
-			gridContent.dataset.data = 'year'
-
-			for (const item of yearData) {
-				const card = gridContent.createDiv({
-					cls: `stats-card stats-card-${item.type}`,
-				});
-
-				const iconContainer = card.createDiv({
-					cls: "stats-card-icon",
-				});
-
-				setIcon(iconContainer, item.icon);
-
-				const content = card.createDiv({
-					cls: "stats-card-content",
-				});
-
-				content.createDiv({
-					cls: "stats-card-title",
-					text: item.title,
-				});
-
-				content.createDiv({
-					cls: "stats-card-value",
-					text: item.value,
-				});
-
-				content.createDiv({
-					cls: "stats-card-period",
-					text: item.period,
-				})
-			}
-		} else if (gridContent.dataset.data === 'year') {
-			gridContent.empty()
-			gridContent.dataset.data = 'all'
-
-			for (const item of allData) {
-				const card = gridContent.createDiv({
-					cls: `stats-card stats-card-${item.type}`,
-				});
-
-				const iconContainer = card.createDiv({
-					cls: "stats-card-icon",
-				});
-
-				setIcon(iconContainer, item.icon);
-
-				const content = card.createDiv({
-					cls: "stats-card-content",
-				});
-
-				content.createDiv({
-					cls: "stats-card-title",
-					text: item.title,
-				});
-
-				content.createDiv({
-					cls: "stats-card-value",
-					text: item.value,
-				});
-
-				content.createDiv({
-					cls: "stats-card-period",
-					text: item.period,
-				})
-			}
-		} else if (gridContent.dataset.data === 'all') {
-			gridContent.empty()
-			gridContent.dataset.data = 'month'
-
-			for (const item of monthData) {
-				const card = gridContent.createDiv({
-					cls: `stats-card stats-card-${item.type}`,
-				});
-
-				const iconContainer = card.createDiv({
-					cls: "stats-card-icon",
-				});
-
-				setIcon(iconContainer, item.icon);
-
-				const content = card.createDiv({
-					cls: "stats-card-content",
-				});
-
-				content.createDiv({
-					cls: "stats-card-title",
-					text: item.title,
-				});
-
-				content.createDiv({
-					cls: "stats-card-value",
-					text: item.value,
-				});
-			}
-		} else {
-			new Notice("Error switching grid element")
-			return console.error("Error switching grid element")
-		}
-
-	})
-}
+};
 
 export const showHistory = async (mainContent: HTMLDivElement) => {
 	stateManager({ openPageNow: "History" });

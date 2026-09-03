@@ -97,6 +97,18 @@ export type ResultOfExecution =
 		error: Error;
 	};
 
+export interface ErrorResult {
+	status: "error";
+	error: { message: string };
+}
+
+export interface SuccessResult<T> {
+	status: "success";
+	jsonData: T;
+}
+
+export type Result<T> = SuccessResult<T> | ErrorResult;
+
 export type TransferData =
 	| {
 		readonly type: 'same-currency';
@@ -131,6 +143,14 @@ export type DataItemResult<T> =
 		status: 'error';
 		error: Error;
 	};
+
+export interface CardItem {
+	title: string;
+	value: string;
+	icon: string;
+	type: "income" | "expense" | "balance" | "operations";
+	period?: string;
+}
 
 export default class MainPlugin extends Plugin {
 	static instance: MainPlugin;
