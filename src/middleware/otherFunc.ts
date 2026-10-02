@@ -360,6 +360,42 @@ export function formatNumbers(input: string): string {
 	});
 }
 
+export function getAmountPercentage(amount: Big, total: Big): number {
+	return total.gt(0) ? amount.div(total).times(100).toNumber() : 0;
+}
+
+export interface CategorySummary {
+	id: string;
+	name: string;
+	emoji: string;
+	amount: Big;
+	categoryIds: string[];
+}
+
+export function summarizeCategories(history: HistoryData[], categories: PlanData[], type: HistoryData['type']): CategorySummary[] {
+	const categoryMap = new Map(categories.map(category => [category.id, category]));
+	const totals = new Map<string, CategorySummary>();
+	for (const transaction of history) {
+		if (transaction.type !== type) continue;
+		const id = transaction.category.id;
+		const existing = totals.get(id);
+		if (existing) {
+			existing.amount = existing.amount.plus(transaction.amount);
+		} else {
+			const category = categoryMap.get(id);
+			totals.set(id, {
+				id,
+				name: category?.name ?? 'Uncategorized',
+				emoji: category?.emoji || '📦',
+				amount: new Big(transaction.amount),
+				categoryIds: [id],
+			});
+		}
+	}
+	return [...totals.values()].filter(category => category.amount.gt(0))
+		.sort((a, b) => b.amount.cmp(a.amount));
+}
+
 export function isSuccess<T>(res: Result<T>): res is SuccessResult<T> {
 	if (res.status === "error") {
 		new Notice(res.error.message);

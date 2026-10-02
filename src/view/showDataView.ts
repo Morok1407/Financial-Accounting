@@ -5,7 +5,8 @@ import { stateManager, CardItem, HistoryData, PlanData, BillData, DataFileResult
 import { getMainData, getAdditionalData, searchElementById, searchHistory, getAllFile } from "../controllers/searchData";
 import { addPlan, addBills } from '../view/addView';
 import { editingHistory, editingPlan, editingBill } from '../view/editingView';
-import { humanizeDate, isSuccess, getDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingData, getCurrencySymbol, formatNumbers, divideByRemainingDays, switchBalanceLine } from "../middleware/otherFunc";
+import { getEmojiColor } from '../middleware/emojiColor';
+import { humanizeDate, isSuccess, getDate, SummarizingDataForTheDay, checkExpenceOrIncome, SummarizingDataForTheFalseBills, SummarizingDataForTheTrueBills, SummarizingData, getCurrencySymbol, formatNumbers, divideByRemainingDays, switchBalanceLine, summarizeCategories, getAmountPercentage, CategorySummary } from "../middleware/otherFunc";
 
 export const showHome = async (mainContent: HTMLDivElement) => {
 	stateManager({ openPageNow: "Home" });
@@ -57,7 +58,273 @@ export const showHome = async (mainContent: HTMLDivElement) => {
 	});
 	balanceLine.style.setProperty("--after-width", `${switchBalanceLine(bills.jsonData, expensePlan.jsonData)}%`);
 
-	void gridContent(mainContent)
+	const statsContent = mainContent.createDiv();
+	const categoriesContent = mainContent.createDiv({ cls: 'home-categories' });
+	await Promise.all([gridContent(statsContent), showHomeCategories(categoriesContent)]);
+}
+
+interface ChartCategory extends CategorySummary {
+	color: string;
+	children?: ChartCategory[];
+}
+
+const DONUT_INNER_RADIUS = 86;
+const DONUT_OUTER_RADIUS = 148;
+const DONUT_EMOJI_RADIUS = (DONUT_INNER_RADIUS + DONUT_OUTER_RADIUS) / 2;
+const DONUT_EMOJI_PADDING = 3;
+
+const showHomeCategories = async (container: HTMLDivElement) => {
+	const [expenses, income, history] = await Promise.all([
+		getAdditionalData<PlanData>('categories', 'expenditure_plan'),
+		getAdditionalData<PlanData>('categories', 'income_plan'),
+		getMainData(),
+	]);
+	if (!isSuccess(expenses) || !isSuccess(income) || !isSuccess(history)) return;
+
+	const currency = getCurrencySymbol(MainPlugin.instance.settings.baseCurrency);
+	const { selectedYear, selectedMonth } = stateManager();
+	const now = getDate();
+	const period = new Date(Number(selectedYear ?? now.year), Number(selectedMonth ?? now.month) - 1, 1)
+		.toLocaleDateString('en', { month: 'long', year: 'numeric' });
+	const money = (amount: Big) => `${formatNumbers(amount.toString())} ${currency}`;
+	const prepareCategories = (plans: PlanData[], type: HistoryData['type']): ChartCategory[] => {
+		return summarizeCategories(history.jsonData, plans, type).map(category => ({
+			...category,
+			color: getEmojiColor(category.emoji),
+		}));
+	};
+	const expenseCategories = prepareCategories(expenses.jsonData, 'expense');
+	const incomeCategories = prepareCategories(income.jsonData, 'income');
+	const totalExpense = expenseCategories.reduce((sum, category) => sum.plus(category.amount), new Big(0));
+	const totalIncome = incomeCategories.reduce((sum, category) => sum.plus(category.amount), new Big(0));
+	const selected = new Set<string>();
+	const categoryButtons = new Map<string, HTMLButtonElement>();
+	const segments = new Map<string, SVGGElement>();
+
+	const chartCard = container.createDiv({ cls: 'home-chart-card' });
+	chartCard.createEl('h3', { text: 'Expenses by category', cls: 'home-section-title' });
+	const chart = chartCard.createDiv({ cls: 'home-donut' });
+	const svg = createChartSvg(chart, 'svg', { viewBox: '0 0 320 320', class: 'home-donut-svg', role: 'group', 'aria-label': 'Expenses by category' });
+	const chartCategories = groupDonutCategories(expenseCategories, totalExpense, svg);
+	createChartSvg(svg, 'circle', { cx: 160, cy: 160, r: DONUT_EMOJI_RADIUS, fill: 'none', 'stroke-width': DONUT_OUTER_RADIUS - DONUT_INNER_RADIUS, class: 'home-donut-track' });
+	const center = chart.createDiv({ cls: 'home-donut-center', attr: { 'aria-live': 'polite', 'aria-atomic': 'true' } });
+	const centerTitle = center.createDiv({ cls: 'home-donut-label' });
+	const centerAmount = center.createDiv({ cls: 'home-donut-amount' });
+	const centerDetail = center.createDiv({ cls: 'home-donut-detail' });
+	const clearSelection = center.createEl('button', { cls: 'home-chart-clear', text: 'Clear selection', attr: { type: 'button' } });
+	const filter = chartCard.createDiv({ cls: 'home-chart-filter' });
+	const showOperations = filter.createEl('button', { cls: 'home-chart-operations', text: 'Show filtered operations →', attr: { type: 'button' } });
+	const chips = filter.createDiv({ cls: 'home-chart-chips' });
+	const operations = container.createDiv({ cls: 'home-category-operations' });
+	operations.hidden = true;
+	let operationsVersion = 0;
+
+	const updateSelection = () => {
+		operationsVersion++;
+		operations.hidden = true;
+		operations.empty();
+		const active = chartCategories.filter(category => selected.has(category.id));
+		const amount = active.reduce((sum, category) => sum.plus(category.amount), new Big(0));
+		const accent = active.length === 1 ? active[0].color : 'var(--interactive-accent)';
+		center.style.setProperty('--category-color', active.length ? accent : 'var(--text-muted)');
+		center.classList.toggle('is-selected', active.length > 0);
+		centerTitle.textContent = active.length === 1 ? active[0].name : active.length ? `${active.length} categories` : '';
+		centerTitle.hidden = !active.length;
+		centerAmount.textContent = money(active.length ? amount : totalExpense);
+		centerDetail.textContent = active.length ? `${Math.round(getAmountPercentage(amount, totalExpense))}%` : `Total for ${period}`;
+		clearSelection.hidden = !active.length;
+		filter.hidden = !active.length;
+		for (const category of chartCategories) {
+			const isSelected = selected.has(category.id);
+			const segment = segments.get(category.id);
+			segment?.classList.toggle('is-selected', isSelected);
+			segment?.classList.toggle('is-muted', active.length > 0 && !isSelected);
+			segment?.setAttribute('aria-pressed', String(isSelected));
+			const button = categoryButtons.get(category.id);
+			button?.classList.toggle('is-selected', isSelected);
+			button?.setAttribute('aria-pressed', String(isSelected));
+		}
+		chips.empty();
+		for (const category of active) {
+			const chip = chips.createEl('button', { text: `${category.emoji} ${category.name} ×`, cls: 'home-chart-chip', attr: { type: 'button', 'aria-label': `Remove ${category.name} filter` } });
+			chip.style.setProperty('--category-color', category.color);
+			chip.addEventListener('click', () => toggleCategory(category.id));
+		}
+	};
+	const toggleCategory = (id: string) => {
+		if (selected.has(id)) selected.delete(id);
+		else selected.add(id);
+		updateSelection();
+	};
+	clearSelection.addEventListener('click', () => { selected.clear(); updateSelection(); });
+	showOperations.addEventListener('click', () => {
+		const categoryIds = new Set(chartCategories.filter(category => selected.has(category.id)).flatMap(category => category.categoryIds));
+		const filtered = history.jsonData.filter(transaction => transaction.type === 'expense' && categoryIds.has(transaction.category.id));
+		operations.empty();
+		operations.hidden = false;
+		operations.createEl('h3', { cls: 'home-section-title', text: `Selected operations · ${filtered.length}` });
+		const list = operations.createDiv({ cls: 'history-content' });
+		const version = ++operationsVersion;
+		void generationHistoryContent(list, { status: 'success', jsonData: filtered }).then(() => {
+			if (version === operationsVersion) operations.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		}).catch(error => { console.error('Failed to show category operations', error); });
+	});
+
+	let startAngle = -Math.PI / 2;
+	for (const category of chartCategories) {
+		const sweep = getAmountPercentage(category.amount, totalExpense) / 100 * Math.PI * 2;
+		const middle = startAngle + sweep / 2;
+		const group = createChartSvg(svg, 'g', {
+			class: 'home-donut-segment', role: 'button', tabindex: 0, 'aria-pressed': 'false',
+			'aria-label': `${category.name}: ${money(category.amount)}, ${Math.round(getAmountPercentage(category.amount, totalExpense))}%`,
+		});
+		group.style.setProperty('--segment-x', `${Math.cos(middle) * 6}px`);
+		group.style.setProperty('--segment-y', `${Math.sin(middle) * 6}px`);
+		createChartSvg(group, 'path', { d: donutSegmentPath(startAngle, sweep), fill: category.color });
+		createChartSvg(group, 'title', {}).textContent = `${category.name}: ${money(category.amount)}`;
+		createChartSvg(group, 'text', { x: 160 + Math.cos(middle) * DONUT_EMOJI_RADIUS, y: 160 + Math.sin(middle) * DONUT_EMOJI_RADIUS, class: 'home-donut-emoji', 'aria-hidden': 'true' }).textContent = category.emoji;
+		group.addEventListener('click', () => toggleCategory(category.id));
+		group.addEventListener('keydown', event => {
+			if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleCategory(category.id); }
+		});
+		segments.set(category.id, group);
+		startAngle += sweep;
+	}
+	if (!expenseCategories.length) {
+		chartCard.createEl('p', { cls: 'home-category-empty', text: 'No expenses for this month yet.' });
+	}
+
+	const renderCategoryBlock = (categories: ChartCategory[], total: Big, type: HistoryData['type']) => {
+		const block = container.createDiv({ cls: `home-category-card home-category-card--${type}` });
+		const header = block.createDiv({ cls: 'home-category-header' });
+		header.createEl('h3', { cls: 'home-section-title', text: type === 'expense' ? 'Expense categories' : 'Income categories' });
+		header.createEl('span', { cls: 'home-category-count', text: String(categories.length) });
+		if (!categories.length) {
+			block.createEl('p', { cls: 'home-category-empty', text: type === 'expense' ? 'No expenses for this month yet.' : 'No income for this month yet.' });
+			return;
+		}
+		for (const category of categories) {
+			const row = block.createDiv({ cls: 'home-category-row' });
+			row.style.setProperty('--category-color', category.color);
+			const details = row.createDiv({ cls: 'home-category-details' });
+			const label = `${category.emoji} ${category.name}`;
+			if (type === 'expense') {
+				const button = details.createEl('button', { cls: 'home-category-name', text: label, attr: { type: 'button', 'aria-pressed': 'false' } });
+				button.addEventListener('click', () => toggleCategory(category.id));
+				categoryButtons.set(category.id, button);
+			} else {
+				details.createEl('span', { cls: 'home-category-name', text: label });
+			}
+			details.createEl('span', { cls: 'home-category-amount', text: money(category.amount) });
+			const percentage = getAmountPercentage(category.amount, total);
+			const progress = row.createDiv({ cls: 'home-category-progress', attr: { 'aria-hidden': 'true' } });
+			progress.createDiv().style.width = `${percentage}%`;
+			row.createEl('span', { cls: 'home-category-percent', text: `${Math.round(percentage)}%` });
+			if (category.children) {
+				const breakdown = row.createEl('details', { cls: 'home-category-breakdown' });
+				breakdown.createEl('summary', { text: `Show ${category.children.length} categories` });
+				for (const child of category.children) {
+					const item = breakdown.createDiv({ cls: 'home-category-details' });
+					item.createEl('span', { cls: 'home-category-name', text: `${child.emoji} ${child.name}` });
+					item.createEl('span', { cls: 'home-category-amount', text: money(child.amount) });
+				}
+			}
+		}
+	};
+	renderCategoryBlock(chartCategories, totalExpense, 'expense');
+	renderCategoryBlock(incomeCategories, totalIncome, 'income');
+	updateSelection();
+};
+
+function createChartSvg<K extends keyof SVGElementTagNameMap>(parent: Element, tag: K, attributes: Record<string, string | number>): SVGElementTagNameMap[K] {
+	const element = parent.ownerDocument.createElementNS('http://www.w3.org/2000/svg', tag);
+	for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, String(value));
+	parent.appendChild(element);
+	return element;
+}
+
+function groupDonutCategories(categories: ChartCategory[], total: Big, svg: SVGSVGElement): ChartCategory[] {
+	const visible = [...categories];
+	const other: ChartCategory = { id: '__other__', name: 'Other', emoji: '📦', color: '#81818b', amount: new Big(0), categoryIds: [], children: [] };
+	const boundsByEmoji = new Map<string, DOMRect>();
+	const fits = (category: ChartCategory, start: number) => {
+		let bounds = boundsByEmoji.get(category.emoji);
+		if (!bounds) {
+			const label = createChartSvg(svg, 'text', { x: 0, y: 0, class: 'home-donut-emoji', visibility: 'hidden', 'aria-hidden': 'true' });
+			label.textContent = category.emoji;
+			bounds = label.getBBox();
+			label.remove();
+			// A hidden Obsidian pane may not provide text metrics until it is shown.
+			if (!bounds.width || !bounds.height) bounds = new DOMRect(-11, -13, 22, 26);
+			boundsByEmoji.set(category.emoji, bounds);
+		}
+		const sweep = getAmountPercentage(category.amount, total) / 100 * Math.PI * 2;
+		return donutEmojiFits(bounds, start, sweep);
+	};
+	const moveToOther = (index: number) => {
+		const [category] = visible.splice(index, 1);
+		other.amount = other.amount.plus(category.amount);
+		other.categoryIds.push(...category.categoryIds);
+		other.children?.push(category);
+	};
+	while (visible.length) {
+		let start = -Math.PI / 2;
+		const tooSmall = visible.findIndex(category => {
+			if (!fits(category, start)) return true;
+			start += getAmountPercentage(category.amount, total) / 100 * Math.PI * 2;
+			return false;
+		});
+		if (tooSmall !== -1) {
+			moveToOther(tooSmall);
+			// Removing a slice moves the following horizontal emoji to new angles.
+			continue;
+		}
+		if (other.categoryIds.length && !fits(other, start)) {
+			// Other must also have enough space for its icon; keep exact proportions.
+			moveToOther(visible.length - 1);
+			continue;
+		}
+		break;
+	}
+	if (other.categoryIds.length) {
+		other.children?.sort((a, b) => b.amount.cmp(a.amount));
+		visible.push(other);
+	}
+	return visible;
+}
+
+function donutEmojiFits(bounds: DOMRect, start: number, sweep: number): boolean {
+	const middle = start + sweep / 2;
+	const x = Math.cos(middle) * DONUT_EMOJI_RADIUS;
+	const y = Math.sin(middle) * DONUT_EMOJI_RADIUS;
+	const left = x + bounds.x - DONUT_EMOJI_PADDING;
+	const right = x + bounds.x + bounds.width + DONUT_EMOJI_PADDING;
+	const top = y + bounds.y - DONUT_EMOJI_PADDING;
+	const bottom = y + bounds.y + bounds.height + DONUT_EMOJI_PADDING;
+	const nearestRadius = Math.hypot(Math.max(left, 0, -right), Math.max(top, 0, -bottom));
+	if (nearestRadius < DONUT_INNER_RADIUS) return false;
+	const halfAngle = sweep / 2 - donutSegmentGap(sweep);
+	return [[left, top], [right, top], [left, bottom], [right, bottom]].every(([px, py]) => {
+		const angle = Math.atan2(py, px) - middle;
+		const difference = Math.atan2(Math.sin(angle), Math.cos(angle));
+		return Math.hypot(px, py) <= DONUT_OUTER_RADIUS && Math.abs(difference) <= halfAngle;
+	});
+}
+
+function donutSegmentGap(sweep: number): number {
+	return sweep < Math.PI * 2 - 0.001 ? Math.min(0.016, sweep / 4) : 0;
+}
+
+function donutSegmentPath(start: number, sweep: number): string {
+	// Two arcs also cover a full ring when the month has just one category.
+	const gap = donutSegmentGap(sweep);
+	const from = start + gap;
+	const to = start + sweep - gap;
+	const middle = (from + to) / 2;
+	const point = (radius: number, angle: number) => `${160 + Math.cos(angle) * radius} ${160 + Math.sin(angle) * radius}`;
+	const outer = DONUT_OUTER_RADIUS;
+	const inner = DONUT_INNER_RADIUS;
+	return `M ${point(outer, from)} A ${outer} ${outer} 0 0 1 ${point(outer, middle)} A ${outer} ${outer} 0 0 1 ${point(outer, to)} L ${point(inner, to)} A ${inner} ${inner} 0 0 0 ${point(inner, middle)} A ${inner} ${inner} 0 0 0 ${point(inner, from)} Z`;
 }
 
 const gridContent = async (mainContent: HTMLDivElement) => {

@@ -462,8 +462,9 @@ export const showAnotherInitialView = async (): Promise<void> => {
 	});
 
 	const financeHeader = contentEl.createEl("div", {
-		cls: "finance-header",
+		cls: "finance-header finance-header--with-back",
 	});
+	financeHeader.appendChild(exitButton);
 
 	const allMonths = [
 		"☃️ January",
@@ -549,8 +550,9 @@ export const showAnotherInitialViewOld = async (): Promise<void> => {
 	});
 
 	const financeHeader = contentEl.createEl("div", {
-		cls: "finance-header",
+		cls: "finance-header finance-header--with-back",
 	});
+	financeHeader.appendChild(exitButton);
 
 	const allMonths = [
 		"☃️ January",
