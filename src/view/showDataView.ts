@@ -2,7 +2,7 @@ import Big from "big.js";
 import MainPlugin from "../../main";
 import { Notice, setIcon } from "obsidian";
 import { stateManager, CardItem, HistoryData, PlanData, BillData, DataFileResult, YearData } from "../../main";
-import { getMainData, getAdditionalData, searchElementById, searchHistory, getAllFile } from "../controllers/searchData";
+import { getMainData, getAdditionalData, getAllFile, getHistoryMetadata, filterHistory, HistoryMetadata } from "../controllers/searchData";
 import { addPlan, addBills } from '../view/addView';
 import { editingHistory, editingPlan, editingBill } from '../view/editingView';
 import { getEmojiColor } from '../middleware/emojiColor';
@@ -216,17 +216,17 @@ const showHomeCategories = async (container: HTMLDivElement) => {
 				details.createEl('span', { cls: 'home-category-name', text: label });
 			}
 			details.createEl('span', { cls: 'home-category-amount', text: money(category.amount) });
-			const percentage = getAmountPercentage(category.amount, total);
-			const progress = row.createDiv({ cls: 'home-category-progress', attr: { 'aria-hidden': 'true' } });
-			progress.createDiv().style.width = `${percentage}%`;
-			row.createEl('span', { cls: 'home-category-percent', text: `${Math.round(percentage)}%` });
+			renderCategoryPercentage(row, category.amount, total);
 			if (category.children) {
 				const breakdown = row.createEl('details', { cls: 'home-category-breakdown' });
 				breakdown.createEl('summary', { text: `Show ${category.children.length} categories` });
 				for (const child of category.children) {
-					const item = breakdown.createDiv({ cls: 'home-category-details' });
-					item.createEl('span', { cls: 'home-category-name', text: `${child.emoji} ${child.name}` });
-					item.createEl('span', { cls: 'home-category-amount', text: money(child.amount) });
+					const item = breakdown.createDiv({ cls: 'home-category-breakdown-item' });
+					item.style.setProperty('--category-color', child.color);
+					const details = item.createDiv({ cls: 'home-category-details' });
+					details.createEl('span', { cls: 'home-category-name', text: `${child.emoji} ${child.name}` });
+					details.createEl('span', { cls: 'home-category-amount', text: money(child.amount) });
+					renderCategoryPercentage(item, child.amount, total);
 				}
 			}
 		}
@@ -235,6 +235,13 @@ const showHomeCategories = async (container: HTMLDivElement) => {
 	renderCategoryBlock(incomeCategories, totalIncome, 'income');
 	updateSelection();
 };
+
+function renderCategoryPercentage(container: HTMLDivElement, amount: Big, total: Big): void {
+	const percentage = getAmountPercentage(amount, total);
+	const progress = container.createDiv({ cls: 'home-category-progress', attr: { 'aria-hidden': 'true' } });
+	progress.createDiv().style.width = `${percentage}%`;
+	container.createEl('span', { cls: 'home-category-percent', text: `${Math.round(percentage)}%` });
+}
 
 function createChartSvg<K extends keyof SVGElementTagNameMap>(parent: Element, tag: K, attributes: Record<string, string | number>): SVGElementTagNameMap[K] {
 	const element = parent.ownerDocument.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -469,11 +476,16 @@ export const showHistory = async (mainContent: HTMLDivElement) => {
 		cls: "main-content-body",
 	});
 
-	const history = await getMainData();
+	const [history, metadata] = await Promise.all([getMainData(), getHistoryMetadata()]);
 	if (history.status === 'error') {
 		new Notice(history.error.message)
 		console.error(history.error)
 		return
+	}
+	if (metadata.status === 'error') {
+		new Notice(metadata.error.message);
+		console.error(metadata.error);
+		return;
 	}
 
 	if (!history.jsonData.length) {
@@ -499,49 +511,69 @@ export const showHistory = async (mainContent: HTMLDivElement) => {
 				placeholder: "Search by operations"
 			}
 		})
-		searchInput.addEventListener('input', (e: Event) => { void handleSearchInput(e, historyContent, mainContentBody); });
+		searchInput.addEventListener('input', () => {
+			const query = searchInput.value;
+			void renderHistoryResults(historyContent, () => Promise.resolve({
+				status: 'success', jsonData: filterHistory(history.jsonData, query, metadata.json),
+			}), metadata.json);
+		});
 	}
 	const historyContent = mainContentBody.createEl('div', {
 		cls: 'history-content'
 	})
 
-	generationHistoryContent(historyContent, history, mainContentBody).catch(err => { console.error('generationHistoryContent failed', err); });
+	if (history.jsonData.length) {
+		await renderHistoryResults(historyContent, () => Promise.resolve(history), metadata.json);
+	}
 }
 
-async function handleSearchInput(e: Event, historyContent: HTMLDivElement, mainContentBody: HTMLDivElement) {
-	const target = e.target as HTMLInputElement;
-	const searchValue = target.value;
+const historyRenderVersions = new WeakMap<HTMLDivElement, number>();
 
-	const result = await searchHistory(searchValue);
-
-	if (result.status === 'error') {
-		new Notice(result.error.message);
-		console.error(result.error);
-		return;
-	}
-
+async function renderHistoryResults(historyContent: HTMLDivElement, loadHistory: () => Promise<DataFileResult<HistoryData>>, metadata: HistoryMetadata) {
+	const version = (historyRenderVersions.get(historyContent) ?? 0) + 1;
+	historyRenderVersions.set(historyContent, version);
+	const isCurrent = () => historyRenderVersions.get(historyContent) === version;
 	historyContent.empty();
+	historyContent.removeClass('main-content-body--undefined');
+	historyContent.setAttribute('aria-busy', 'true');
+	try {
+		const result = await loadHistory();
+		if (!isCurrent()) return;
+		if (result.status === 'error') {
+			new Notice(result.error.message);
+			console.error(result.error);
+			return;
+		}
 
-	if (!result.jsonData.length) {
-		const undefinedContent = historyContent.createEl('div', {
-			cls: 'undefined-content'
-		});
-		historyContent.addClass('main-content-body--undefined');
-
-		undefinedContent.createEl('span', { text: '🍕 🎮 👕' });
-		undefinedContent.createEl('p', { text: 'No matching operations found.' });
-	} else if (result.jsonData.length >= 1) {
-		historyContent.removeClass('main-content-body--undefined');
-		void generationHistoryContent(historyContent, result, mainContentBody);
-	} else {
-		historyContent.removeClass('main-content-body--undefined');
-		void generationHistoryContent(historyContent, result, mainContentBody);
+		const content = historyContent.ownerDocument.createElement('div');
+		if (!result.jsonData.length) {
+			const empty = content.createDiv({ cls: 'undefined-content' });
+			empty.createEl('span', { text: '🍕 🎮 👕' });
+			empty.createEl('p', { text: 'No matching operations found.' });
+		} else {
+			await generationHistoryContent(content, result, metadata);
+		}
+		if (!isCurrent()) return;
+		historyContent.replaceChildren(...Array.from(content.childNodes));
+		historyContent.classList.toggle('main-content-body--undefined', !result.jsonData.length);
+	} catch (error) {
+		if (isCurrent()) {
+			console.error('Failed to render history', error);
+			new Notice('Failed to load operations.');
+		}
+	} finally {
+		if (isCurrent()) historyContent.setAttribute('aria-busy', 'false');
 	}
 }
 
-export async function generationHistoryContent(historyContent: HTMLDivElement, historyData: DataFileResult<HistoryData>, mainContentBody?: HTMLDivElement) {
+export async function generationHistoryContent(historyContent: HTMLDivElement, historyData: DataFileResult<HistoryData>, metadata?: HistoryMetadata) {
 	if (historyData.status === 'error') return historyData.error;
 	if (historyData.jsonData.length) {
+		if (!metadata) {
+			const result = await getHistoryMetadata();
+			if (result.status === 'error') return new Notice(result.error.message);
+			metadata = result.json;
+		}
 		const now = new Date().getTime();
 
 		const groupedByDay = Object.values(
@@ -608,10 +640,8 @@ export async function generationHistoryContent(historyContent: HTMLDivElement, h
 					void editingHistory(e);
 				};
 
-				const searchCategory = await searchElementById<PlanData>(element.category.id, element.type)
-				if (searchCategory.status === 'error') return new Notice(searchCategory.error.message)
-				const searchBill = await searchElementById<BillData>(element.bill.id, 'accounts')
-				if (searchBill.status === 'error') return new Notice(searchBill.error.message)
+				const category = metadata.categories.get(`${element.type}:${element.category.id}`);
+				const bill = metadata.bills.get(element.bill.id);
 
 				const dataText = dataItem.createEl('div', {
 					cls: 'data-link'
@@ -625,25 +655,25 @@ export async function generationHistoryContent(historyContent: HTMLDivElement, h
 				})
 
 				divEmoji.createEl('p', {
-					text: `${searchCategory.item.emoji}`
+					text: category?.emoji ?? '📦'
 				})
 				divEmoji.createEl('span', {
-					text: `${searchBill.item.emoji}`
+					text: bill?.emoji ?? '💳'
 				})
 
-				if (element.comment === '') {
+				if (!element.comment) {
 					divText.createEl('p', {
-						text: `${searchCategory.item.name}`
+						text: category?.name ?? 'Uncategorized'
 					})
 					divText.createEl('span', {
-						text: `${searchBill.item.name}`
+						text: bill?.name ?? 'Unknown account'
 					})
 				} else {
 					divText.createEl('p', {
 						text: `${element.comment}`
 					})
 					divText.createEl('span', {
-						text: `${searchBill.item.name} • ${searchCategory.item.name}`
+						text: `${bill?.name ?? 'Unknown account'} • ${category?.name ?? 'Uncategorized'}`
 					})
 				}
 
@@ -651,7 +681,7 @@ export async function generationHistoryContent(historyContent: HTMLDivElement, h
 					cls: 'data-link-amount'
 				})
 				dataAmount.createEl('p', {
-					text: `${checkExpenceOrIncome(element.amount, element.type)} ${getCurrencySymbol(searchBill.item.currency)}`
+					text: `${checkExpenceOrIncome(element.amount, element.type)} ${bill ? getCurrencySymbol(bill.currency) : ''}`.trim()
 				})
 				if (element.type === 'income') {
 					dataAmount.addClass('data-link-amount-income')

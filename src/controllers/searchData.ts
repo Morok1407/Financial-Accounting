@@ -1,6 +1,6 @@
 import { Notice } from "obsidian";
 import Big from "big.js";
-import { stateManager, DataFileResult, HistoryData, PlanData, BillData, DataItemResult, ResultOfAllData } from "../../main";
+import { stateManager, DataFileResult, HistoryData, PlanData, BillData, DataItemResult, ResultOfAllData, categoriesData, accountsData, PlanDataWithoutAmount } from "../../main";
 import { getDate } from "../middleware/otherFunc";
 import MainPlugin from "../../main";
 
@@ -131,58 +131,48 @@ export const searchElementById = async <T extends HistoryData | PlanData | BillD
 	}
 };
 
+export interface HistoryMetadata {
+	categories: Map<string, PlanDataWithoutAmount>;
+	bills: Map<string, BillData>;
+}
+
+export async function getHistoryMetadata(): Promise<ResultOfAllData<HistoryMetadata>> {
+	const [categories, bills] = await Promise.all([
+		getAllFile<categoriesData>('categories'),
+		getAllFile<accountsData>('accounts'),
+	]);
+	if (categories.status === 'error') return categories;
+	if (bills.status === 'error') return bills;
+	return { status: 'success', json: {
+		categories: new Map([...categories.json.categories.expenditure_plan, ...categories.json.categories.income_plan]
+			.map(category => [`${category.type}:${category.id}`, category])),
+		bills: new Map(bills.json.accounts.map(bill => [bill.id, bill])),
+	} };
+}
+
+export function filterHistory(history: HistoryData[], inputValue: string, metadata: HistoryMetadata): HistoryData[] {
+	const search = inputValue.trim().toLowerCase();
+	if (!search) return history;
+	return history.filter(item =>
+		item.type.toLowerCase().includes(search) ||
+		item.amount.toString().includes(search) ||
+		item.comment?.toLowerCase().includes(search) ||
+		metadata.bills.get(item.bill.id)?.name.toLowerCase().includes(search) ||
+		metadata.categories.get(`${item.type}:${item.category.id}`)?.name.toLowerCase().includes(search)
+	);
+}
+
 export const searchHistory = async (
 	inputValue: string
 ): Promise<DataFileResult<HistoryData>> => {
 	try {
-		const search = inputValue.toLowerCase();
-
-		const [
-			history,
-			expenditure,
-			income,
-			bills
-		] = await Promise.all([
-			getMainData(),
-			getAdditionalData<PlanData>('categories', 'expenditure_plan'),
-			getAdditionalData<PlanData>('categories', 'income_plan'),
-			getAdditionalData<BillData>('accounts')
-		]);
-
-		if (expenditure.status === 'error' || income.status === 'error' || bills.status === 'error' || history.status === 'error') {
-			return { status: 'error', error: new Error('Failed to load data for search') };
-		}
-
-		const additionalData = [
-			...expenditure.jsonData,
-			...income.jsonData,
-			...bills.jsonData
-		];
-
-		const matchedAdditionalIds = additionalData
-			.filter(item => 'name' in item && item.name.toLowerCase().includes(search))
-			.map(item => item.id);
-
-		const filteredHistory = history.jsonData.filter(item => {
-			const baseMatch =
-				item.type?.toLowerCase().includes(search) ||
-				item.amount.toString().includes(inputValue) ||
-				item.comment?.toLowerCase().includes(search);
-
-			if (matchedAdditionalIds.length === 0) {
-				return baseMatch;
-			}
-
-			return (
-				baseMatch ||
-				item.bill?.id && matchedAdditionalIds.includes(item.bill.id) ||
-				item.category?.id && matchedAdditionalIds.includes(item.category.id)
-			);
-		});
+		const [history, metadata] = await Promise.all([getMainData(), getHistoryMetadata()]);
+		if (history.status === 'error') return history;
+		if (metadata.status === 'error') return metadata;
 
 		return {
 			status: 'success',
-			jsonData: filteredHistory.length ? filteredHistory : []
+			jsonData: filterHistory(history.jsonData, inputValue, metadata.json)
 		};
 
 	} catch (err) {
