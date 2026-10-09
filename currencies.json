@@ -11,7 +11,8 @@
 		"minorPlural": "Fils",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇦🇪"
 	},
 	"AFN": {
 		"name": "Afghan Afghani",
@@ -25,7 +26,8 @@
 		"minorPlural": "Pul",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇦🇫"
 	},
 	"ALL": {
 		"name": "Albanian Lek",
@@ -39,7 +41,8 @@
 		"minorPlural": "Qindarka",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇦🇱"
 	},
 	"AMD": {
 		"name": "Armenian Dram",
@@ -53,7 +56,8 @@
 		"minorPlural": "Luma",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇦🇲"
 	},
 	"ANG": {
 		"name": "Netherlands Antillean Guilder",
@@ -67,7 +71,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🌐"
 	},
 	"AOA": {
 		"name": "Angolan Kwanza",
@@ -81,7 +86,8 @@
 		"minorPlural": "Centimos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇦🇴"
 	},
 	"ARS": {
 		"name": "Argentine Peso",
@@ -95,7 +101,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇦🇷"
 	},
 	"AUD": {
 		"name": "Australian Dollar",
@@ -109,7 +116,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇦🇺"
 	},
 	"AWG": {
 		"name": "Aruban Florin",
@@ -123,7 +131,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇦🇼"
 	},
 	"AZN": {
 		"name": "Azerbaijani Manat",
@@ -137,7 +146,8 @@
 		"minorPlural": "Qapik",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇦🇿"
 	},
 	"BAM": {
 		"name": "Bosnia and Herzegovina Convertible Mark",
@@ -151,7 +161,8 @@
 		"minorPlural": "Fening",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇦"
 	},
 	"BBD": {
 		"name": "Barbadian Dollar",
@@ -165,7 +176,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇧"
 	},
 	"BDT": {
 		"name": "Bangladeshi Taka",
@@ -179,7 +191,8 @@
 		"minorPlural": "Poisha",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇩"
 	},
 	"BGN": {
 		"name": "Bulgarian Lev",
@@ -193,7 +206,8 @@
 		"minorPlural": "Stotinki",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇬"
 	},
 	"BHD": {
 		"name": "Bahraini Dinar",
@@ -207,7 +221,8 @@
 		"minorPlural": "Fils",
 		"ISOdigits": 3,
 		"decimals": 3,
-		"numToBasic": 1000
+		"numToBasic": 1000,
+		"flagEmoji": "🇧🇭"
 	},
 	"BIF": {
 		"name": "Burundian Franc",
@@ -221,7 +236,8 @@
 		"minorPlural": "Centimes",
 		"ISOdigits": 0,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇮"
 	},
 	"BMD": {
 		"name": "Bermudian Dollar",
@@ -235,7 +251,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇲"
 	},
 	"BND": {
 		"name": "Brunei Dollar",
@@ -249,7 +266,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇳"
 	},
 	"BOB": {
 		"name": "Bolivian Boliviano",
@@ -263,7 +281,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇴"
 	},
 	"BRL": {
 		"name": "Brazilian Real",
@@ -277,7 +296,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇷"
 	},
 	"BSD": {
 		"name": "Bahamian Dollar",
@@ -291,7 +311,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇸"
 	},
 	"BTN": {
 		"name": "Bhutanese Ngultrum",
@@ -305,7 +326,8 @@
 		"minorPlural": "Chetrums",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇹"
 	},
 	"BWP": {
 		"name": "Botswana Pula",
@@ -319,7 +341,8 @@
 		"minorPlural": "Thebe",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇼"
 	},
 	"BYN": {
 		"name": "Belarusian Ruble",
@@ -333,7 +356,8 @@
 		"minorPlural": "Kapiejka",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇾"
 	},
 	"BZD": {
 		"name": "Belize Dollar",
@@ -347,7 +371,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇧🇿"
 	},
 	"CAD": {
 		"name": "Canadian Dollar",
@@ -361,7 +386,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇨🇦"
 	},
 	"CDF": {
 		"name": "Congolese Franc",
@@ -375,7 +401,8 @@
 		"minorPlural": "Centimes",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇨🇩"
 	},
 	"CHF": {
 		"name": "Swiss Franc",
@@ -389,7 +416,8 @@
 		"minorPlural": "Centimes",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇨🇭"
 	},
 	"CKD": {
 		"name": "Cook Islands Dollar",
@@ -403,7 +431,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇨🇰"
 	},
 	"CLP": {
 		"name": "Chilean Peso",
@@ -417,7 +446,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 0,
 		"decimals": 0,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇨🇱"
 	},
 	"CNY": {
 		"name": "Chinese Yuan",
@@ -431,7 +461,8 @@
 		"minorPlural": "Fen",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇨🇳"
 	},
 	"COP": {
 		"name": "Colombian Peso",
@@ -445,7 +476,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇨🇴"
 	},
 	"CRC": {
 		"name": "Costa Rican Colon",
@@ -459,7 +491,8 @@
 		"minorPlural": "Centimos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇨🇷"
 	},
 	"CUC": {
 		"name": "Cuban convertible Peso",
@@ -473,7 +506,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇨🇺"
 	},
 	"CUP": {
 		"name": "Cuban Peso",
@@ -487,7 +521,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇨🇺"
 	},
 	"CVE": {
 		"name": "Cabo Verdean Escudo",
@@ -501,7 +536,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇨🇻"
 	},
 	"CZK": {
 		"name": "Czech Koruna",
@@ -515,7 +551,8 @@
 		"minorPlural": "Haléř",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇨🇿"
 	},
 	"DJF": {
 		"name": "Djiboutian Franc",
@@ -529,7 +566,8 @@
 		"minorPlural": "Centimes",
 		"ISOdigits": 0,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇩🇯"
 	},
 	"DKK": {
 		"name": "Danish Krone",
@@ -543,7 +581,8 @@
 		"minorPlural": "Øre",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇩🇰"
 	},
 	"DOP": {
 		"name": "Dominican Peso",
@@ -557,7 +596,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇩🇴"
 	},
 	"DZD": {
 		"name": "Algerian Dinar",
@@ -571,7 +611,8 @@
 		"minorPlural": "Santeems",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇩🇿"
 	},
 	"EGP": {
 		"name": "Egyptian Pound",
@@ -585,7 +626,8 @@
 		"minorPlural": "Qirsh",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇪🇬"
 	},
 	"EHP": {
 		"name": "Sahrawi Peseta",
@@ -599,7 +641,8 @@
 		"minorPlural": "Céntimos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇪🇭"
 	},
 	"ERN": {
 		"name": "Eritrean Nakfa",
@@ -613,7 +656,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇪🇷"
 	},
 	"ETB": {
 		"name": "Ethiopian Birr",
@@ -627,7 +671,8 @@
 		"minorPlural": "Santim",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇪🇹"
 	},
 	"EUR": {
 		"name": "Euro",
@@ -641,7 +686,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇪🇺"
 	},
 	"FJD": {
 		"name": "Fijian Dollar",
@@ -655,7 +701,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇫🇯"
 	},
 	"FKP": {
 		"name": "Falkland Islands Pound",
@@ -669,7 +716,8 @@
 		"minorPlural": "Pence",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇫🇰"
 	},
 	"FOK": {
 		"name": "Faroese Króna",
@@ -683,7 +731,8 @@
 		"minorPlural": "Oyra",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇫🇴"
 	},
 	"GBP": {
 		"name": "Pound Sterling",
@@ -697,7 +746,8 @@
 		"minorPlural": "Pence",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇬🇧"
 	},
 	"GEL": {
 		"name": "Georgian Lari",
@@ -711,7 +761,8 @@
 		"minorPlural": "Tetri",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇬🇪"
 	},
 	"GGP": {
 		"name": "Guernsey Pound",
@@ -725,7 +776,8 @@
 		"minorPlural": "Pence",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇬🇬"
 	},
 	"GHS": {
 		"name": "Ghanaian Cedi",
@@ -739,7 +791,8 @@
 		"minorPlural": "Pesewas",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇬🇭"
 	},
 	"GIP": {
 		"name": "Gibraltar Pound",
@@ -753,7 +806,8 @@
 		"minorPlural": "Pence",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇬🇮"
 	},
 	"GMD": {
 		"name": "Gambian Dalasi",
@@ -767,7 +821,8 @@
 		"minorPlural": "Bututs",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇬🇲"
 	},
 	"GNF": {
 		"name": "Guinean Franc",
@@ -781,7 +836,8 @@
 		"minorPlural": "Centimes",
 		"ISOdigits": 0,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇬🇳"
 	},
 	"GTQ": {
 		"name": "Guatemalan Quetzal",
@@ -795,7 +851,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇬🇹"
 	},
 	"GYD": {
 		"name": "Guyanese Dollar",
@@ -809,7 +866,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇬🇾"
 	},
 	"HKD": {
 		"name": "Hong Kong Dollar",
@@ -823,7 +881,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇭🇰"
 	},
 	"HNL": {
 		"name": "Honduran Lempira",
@@ -837,7 +896,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇭🇳"
 	},
 	"HRK": {
 		"name": "Croatian Kuna",
@@ -851,7 +911,8 @@
 		"minorPlural": "Lipa",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇭🇷"
 	},
 	"HTG": {
 		"name": "Haitian Gourde",
@@ -865,7 +926,8 @@
 		"minorPlural": "Centimes",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇭🇹"
 	},
 	"HUF": {
 		"name": "Hungarian Forint",
@@ -879,7 +941,8 @@
 		"minorPlural": "fillér",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇭🇺"
 	},
 	"IDR": {
 		"name": "Indonesian Rupiah",
@@ -893,7 +956,8 @@
 		"minorPlural": "Sen",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇮🇩"
 	},
 	"ILS": {
 		"name": "Israeli new Shekel",
@@ -907,7 +971,8 @@
 		"minorPlural": "Agoras",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇮🇱"
 	},
 	"IMP": {
 		"name": "Manx Pound",
@@ -921,7 +986,8 @@
 		"minorPlural": "Pence",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇮🇲"
 	},
 	"INR": {
 		"name": "Indian Rupee",
@@ -935,7 +1001,8 @@
 		"minorPlural": "Paise",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇮🇳"
 	},
 	"IQD": {
 		"name": "Iraqi Dinar",
@@ -949,7 +1016,8 @@
 		"minorPlural": "Fils",
 		"ISOdigits": 3,
 		"decimals": 3,
-		"numToBasic": 1000
+		"numToBasic": 1000,
+		"flagEmoji": "🇮🇶"
 	},
 	"IRR": {
 		"name": "Iranian Rial",
@@ -963,7 +1031,8 @@
 		"minorPlural": "Dinars",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇮🇷"
 	},
 	"ISK": {
 		"name": "Icelandic Krona",
@@ -977,7 +1046,8 @@
 		"minorPlural": "Aurar",
 		"ISOdigits": 0,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇮🇸"
 	},
 	"JEP": {
 		"name": "Jersey Pound",
@@ -991,7 +1061,8 @@
 		"minorPlural": "Pence",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇯🇪"
 	},
 	"JMD": {
 		"name": "Jamaican Dollar",
@@ -1005,7 +1076,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇯🇲"
 	},
 	"JOD": {
 		"name": "Jordanian Dinar",
@@ -1019,7 +1091,8 @@
 		"minorPlural": "Fils",
 		"ISOdigits": 3,
 		"decimals": 3,
-		"numToBasic": 1000
+		"numToBasic": 1000,
+		"flagEmoji": "🇯🇴"
 	},
 	"JPY": {
 		"name": "Japanese Yen",
@@ -1033,7 +1106,8 @@
 		"minorPlural": "Sen",
 		"ISOdigits": 0,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇯🇵"
 	},
 	"KES": {
 		"name": "Kenyan Shilling",
@@ -1047,7 +1121,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇰🇪"
 	},
 	"KGS": {
 		"name": "Kyrgyzstani Som",
@@ -1061,7 +1136,8 @@
 		"minorPlural": "Tyiyn",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇰🇬"
 	},
 	"KHR": {
 		"name": "Cambodian Riel",
@@ -1075,7 +1151,8 @@
 		"minorPlural": "Sen",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇰🇭"
 	},
 	"KID": {
 		"name": "Kiribati Dollar",
@@ -1089,7 +1166,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇰🇮"
 	},
 	"KMF": {
 		"name": "Comorian Franc",
@@ -1103,7 +1181,8 @@
 		"minorPlural": "Centimes",
 		"ISOdigits": 0,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇰🇲"
 	},
 	"KPW": {
 		"name": "North Korean Won",
@@ -1117,7 +1196,8 @@
 		"minorPlural": "Chon",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇰🇵"
 	},
 	"KRW": {
 		"name": "South Korean Won",
@@ -1131,7 +1211,8 @@
 		"minorPlural": "Jeon",
 		"ISOdigits": 0,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇰🇷"
 	},
 	"KWD": {
 		"name": "Kuwaiti Dinar",
@@ -1145,7 +1226,8 @@
 		"minorPlural": "Fils",
 		"ISOdigits": 3,
 		"decimals": 3,
-		"numToBasic": 1000
+		"numToBasic": 1000,
+		"flagEmoji": "🇰🇼"
 	},
 	"KYD": {
 		"name": "Cayman Islands Dollar",
@@ -1159,7 +1241,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇰🇾"
 	},
 	"KZT": {
 		"name": "Kazakhstani Tenge",
@@ -1173,7 +1256,8 @@
 		"minorPlural": "Tıyn",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇰🇿"
 	},
 	"LAK": {
 		"name": "Lao Kip",
@@ -1187,7 +1271,8 @@
 		"minorPlural": "Att",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇱🇦"
 	},
 	"LBP": {
 		"name": "Lebanese Pound",
@@ -1201,7 +1286,8 @@
 		"minorPlural": "Qirsh",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇱🇧"
 	},
 	"LKR": {
 		"name": "Sri Lankan Rupee",
@@ -1215,7 +1301,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇱🇰"
 	},
 	"LRD": {
 		"name": "Liberian Dollar",
@@ -1229,7 +1316,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇱🇷"
 	},
 	"LSL": {
 		"name": "Lesotho Loti",
@@ -1243,7 +1331,8 @@
 		"minorPlural": "Lisente",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇱🇸"
 	},
 	"LYD": {
 		"name": "Libyan Dinar",
@@ -1257,7 +1346,8 @@
 		"minorPlural": "Dirhams",
 		"ISOdigits": 3,
 		"decimals": 3,
-		"numToBasic": 1000
+		"numToBasic": 1000,
+		"flagEmoji": "🇱🇾"
 	},
 	"MAD": {
 		"name": "Moroccan Dirham",
@@ -1271,7 +1361,8 @@
 		"minorPlural": "Centimes",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇲🇦"
 	},
 	"MDL": {
 		"name": "Moldovan Leu",
@@ -1285,7 +1376,8 @@
 		"minorPlural": "Bani",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇲🇩"
 	},
 	"MGA": {
 		"name": "Malagasy Ariary",
@@ -1299,7 +1391,8 @@
 		"minorPlural": "Iraimbilanja",
 		"ISOdigits": 2,
 		"decimals": 0,
-		"numToBasic": 5
+		"numToBasic": 5,
+		"flagEmoji": "🇲🇬"
 	},
 	"MKD": {
 		"name": "Macedonian Denar",
@@ -1313,7 +1406,8 @@
 		"minorPlural": "Deni",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇲🇰"
 	},
 	"MMK": {
 		"name": "Myanmar Kyat",
@@ -1327,7 +1421,8 @@
 		"minorPlural": "Pya",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇲🇲"
 	},
 	"MNT": {
 		"name": "Mongolian Tögrög",
@@ -1341,7 +1436,8 @@
 		"minorPlural": "möngö",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇲🇳"
 	},
 	"MOP": {
 		"name": "Macanese Pataca",
@@ -1355,7 +1451,8 @@
 		"minorPlural": "Avos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇲🇴"
 	},
 	"MRU": {
 		"name": "Mauritanian Ouguiya",
@@ -1369,7 +1466,8 @@
 		"minorPlural": "Khoums",
 		"ISOdigits": 2,
 		"decimals": 0,
-		"numToBasic": 5
+		"numToBasic": 5,
+		"flagEmoji": "🇲🇷"
 	},
 	"MUR": {
 		"name": "Mauritian Rupee",
@@ -1383,7 +1481,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇲🇺"
 	},
 	"MVR": {
 		"name": "Maldivian Rufiyaa",
@@ -1397,7 +1496,8 @@
 		"minorPlural": "laari",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇲🇻"
 	},
 	"MWK": {
 		"name": "Malawian Kwacha",
@@ -1411,7 +1511,8 @@
 		"minorPlural": "Tambala",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇲🇼"
 	},
 	"MXN": {
 		"name": "Mexican Peso",
@@ -1425,7 +1526,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇲🇽"
 	},
 	"MYR": {
 		"name": "Malaysian Ringgit",
@@ -1439,7 +1541,8 @@
 		"minorPlural": "Sen",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇲🇾"
 	},
 	"MZN": {
 		"name": "Mozambican Metical",
@@ -1453,7 +1556,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇲🇿"
 	},
 	"NAD": {
 		"name": "Namibian Dollar",
@@ -1467,7 +1571,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇳🇦"
 	},
 	"NGN": {
 		"name": "Nigerian Naira",
@@ -1481,7 +1586,8 @@
 		"minorPlural": "Kobo",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇳🇬"
 	},
 	"NIO": {
 		"name": "Nicaraguan Córdoba",
@@ -1495,7 +1601,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇳🇮"
 	},
 	"NOK": {
 		"name": "Norwegian Krone",
@@ -1509,7 +1616,8 @@
 		"minorPlural": "øre",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇳🇴"
 	},
 	"NPR": {
 		"name": "Nepalese Rupee",
@@ -1523,7 +1631,8 @@
 		"minorPlural": "Paise",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇳🇵"
 	},
 	"NZD": {
 		"name": "New Zealand Dollar",
@@ -1537,7 +1646,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇳🇿"
 	},
 	"OMR": {
 		"name": "Omani Rial",
@@ -1551,7 +1661,8 @@
 		"minorPlural": "Baisa",
 		"ISOdigits": 3,
 		"decimals": 3,
-		"numToBasic": 1000
+		"numToBasic": 1000,
+		"flagEmoji": "🇴🇲"
 	},
 	"PAB": {
 		"name": "Panamanian Balboa",
@@ -1565,7 +1676,8 @@
 		"minorPlural": "Centésimos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇵🇦"
 	},
 	"PEN": {
 		"name": "Peruvian Sol",
@@ -1579,7 +1691,8 @@
 		"minorPlural": "Céntimos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇵🇪"
 	},
 	"PGK": {
 		"name": "Papua New Guinean Kina",
@@ -1593,7 +1706,8 @@
 		"minorPlural": "Toea",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇵🇬"
 	},
 	"PHP": {
 		"name": "Philippine Peso",
@@ -1607,7 +1721,8 @@
 		"minorPlural": "Sentimo",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇵🇭"
 	},
 	"PKR": {
 		"name": "Pakistani Rupee",
@@ -1621,7 +1736,8 @@
 		"minorPlural": "Paise",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇵🇰"
 	},
 	"PLN": {
 		"name": "Polish Zloty",
@@ -1635,7 +1751,8 @@
 		"minorPlural": "Groszy",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇵🇱"
 	},
 	"PND": {
 		"name": "Pitcairn Islands Dollar",
@@ -1649,7 +1766,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇵🇳"
 	},
 	"PRB": {
 		"name": "Transnistrian Ruble",
@@ -1663,7 +1781,8 @@
 		"minorPlural": "Kopeks",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🏳️"
 	},
 	"PYG": {
 		"name": "Paraguayan Guaraní",
@@ -1677,7 +1796,8 @@
 		"minorPlural": "Centimos",
 		"ISOdigits": 0,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇵🇾"
 	},
 	"QAR": {
 		"name": "Qatari Riyal",
@@ -1691,7 +1811,8 @@
 		"minorPlural": "Dirhams",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇶🇦"
 	},
 	"RON": {
 		"name": "Romanian Leu",
@@ -1705,7 +1826,8 @@
 		"minorPlural": "Bani",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇷🇴"
 	},
 	"RSD": {
 		"name": "Serbian Dinar",
@@ -1719,7 +1841,8 @@
 		"minorPlural": "Para",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇷🇸"
 	},
 	"RUB": {
 		"name": "Russian Ruble",
@@ -1733,7 +1856,8 @@
 		"minorPlural": "Kopeks",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇷🇺"
 	},
 	"RWF": {
 		"name": "Rwandan Franc",
@@ -1747,7 +1871,8 @@
 		"minorPlural": "Centimes",
 		"ISOdigits": 0,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇷🇼"
 	},
 	"SAR": {
 		"name": "Saudi Riyal",
@@ -1761,7 +1886,8 @@
 		"minorPlural": "Halalahs",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇦"
 	},
 	"SBD": {
 		"name": "Solomon Islands Dollar",
@@ -1775,7 +1901,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇧"
 	},
 	"SCR": {
 		"name": "Seychellois Rupee",
@@ -1789,7 +1916,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇨"
 	},
 	"SDG": {
 		"name": "Sudanese Pound",
@@ -1803,7 +1931,8 @@
 		"minorPlural": "Qirsh",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇩"
 	},
 	"SEK": {
 		"name": "Swedish Krona",
@@ -1817,7 +1946,8 @@
 		"minorPlural": "Öre",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇪"
 	},
 	"SGD": {
 		"name": "Singapore Dollar",
@@ -1831,7 +1961,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇬"
 	},
 	"SHP": {
 		"name": "Saint Helena Pound",
@@ -1845,7 +1976,8 @@
 		"minorPlural": "Pence",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇭"
 	},
 	"SLL": {
 		"name": "Sierra Leonean Leone",
@@ -1859,7 +1991,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇱"
 	},
 	"SLS": {
 		"name": "Somaliland Shilling",
@@ -1873,7 +2006,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🏳️"
 	},
 	"SOS": {
 		"name": "Somali Shilling",
@@ -1887,7 +2021,8 @@
 		"minorPlural": "Senti",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇴"
 	},
 	"SRD": {
 		"name": "Surinamese Dollar",
@@ -1901,7 +2036,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇷"
 	},
 	"SSP": {
 		"name": "South Sudanese Pound",
@@ -1915,7 +2051,8 @@
 		"minorPlural": "Qirsh",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇸"
 	},
 	"STN": {
 		"name": "Sao Tome and Príncipe Dobra",
@@ -1929,7 +2066,8 @@
 		"minorPlural": "Centimos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇹"
 	},
 	"SVC": {
 		"name": "Salvadoran Colón",
@@ -1943,7 +2081,8 @@
 		"minorPlural": "Centavos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇻"
 	},
 	"SYP": {
 		"name": "Syrian Pound",
@@ -1957,7 +2096,8 @@
 		"minorPlural": "Qirsh",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇾"
 	},
 	"SZL": {
 		"name": "Swazi Lilangeni",
@@ -1971,7 +2111,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇸🇿"
 	},
 	"THB": {
 		"name": "Thai Baht",
@@ -1985,7 +2126,8 @@
 		"minorPlural": "Satang",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇹🇭"
 	},
 	"TJS": {
 		"name": "Tajikistani Somoni",
@@ -1999,7 +2141,8 @@
 		"minorPlural": "Diram",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇹🇯"
 	},
 	"TMT": {
 		"name": "Turkmenistan Manat",
@@ -2013,7 +2156,8 @@
 		"minorPlural": "Tenge",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇹🇲"
 	},
 	"TND": {
 		"name": "Tunisian Dinar",
@@ -2027,7 +2171,8 @@
 		"minorPlural": "Millime",
 		"ISOdigits": 3,
 		"decimals": 3,
-		"numToBasic": 1000
+		"numToBasic": 1000,
+		"flagEmoji": "🇹🇳"
 	},
 	"TOP": {
 		"name": "Tongan Paʻanga",
@@ -2041,7 +2186,8 @@
 		"minorPlural": "Seniti",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇹🇴"
 	},
 	"TRY": {
 		"name": "Turkish Lira",
@@ -2055,7 +2201,8 @@
 		"minorPlural": "Kuruş",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇹🇷"
 	},
 	"TTD": {
 		"name": "Trinidad and Tobago Dollar",
@@ -2069,7 +2216,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇹🇹"
 	},
 	"TVD": {
 		"name": "Tuvaluan Dollar",
@@ -2083,7 +2231,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇹🇻"
 	},
 	"TWD": {
 		"name": "New Taiwan Dollar",
@@ -2097,7 +2246,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇹🇼"
 	},
 	"TZS": {
 		"name": "Tanzanian Shilling",
@@ -2111,7 +2261,8 @@
 		"minorPlural": "Senti",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇹🇿"
 	},
 	"UAH": {
 		"name": "Ukrainian Hryvnia",
@@ -2125,7 +2276,8 @@
 		"minorPlural": "kopiyky",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇺🇦"
 	},
 	"UGX": {
 		"name": "Ugandan Shilling",
@@ -2139,7 +2291,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 0,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇺🇬"
 	},
 	"USD": {
 		"name": "United States Dollar",
@@ -2153,7 +2306,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇺🇸"
 	},
 	"UYU": {
 		"name": "Uruguayan Peso",
@@ -2167,7 +2321,8 @@
 		"minorPlural": "Centésimos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇺🇾"
 	},
 	"UZS": {
 		"name": "Uzbekistani Som",
@@ -2181,7 +2336,8 @@
 		"minorPlural": "Tiyin",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇺🇿"
 	},
 	"VED": {
 		"name": "Venezuelan bolívar digital",
@@ -2195,7 +2351,8 @@
 		"minorPlural": "Céntimos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇻🇪"
 	},
 	"VES": {
 		"name": "Venezuelan Bolívar Soberano",
@@ -2209,7 +2366,8 @@
 		"minorPlural": "Centimos",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇻🇪"
 	},
 	"VND": {
 		"name": "Vietnamese Dong",
@@ -2223,7 +2381,8 @@
 		"minorPlural": "Hào",
 		"ISOdigits": 0,
 		"decimals": 2,
-		"numToBasic": 10
+		"numToBasic": 10,
+		"flagEmoji": "🇻🇳"
 	},
 	"VUV": {
 		"name": "Vanuatu Vatu",
@@ -2237,7 +2396,8 @@
 		"minorPlural": "",
 		"ISOdigits": 0,
 		"decimals": 0,
-		"numToBasic": null
+		"numToBasic": null,
+		"flagEmoji": "🇻🇺"
 	},
 	"WST": {
 		"name": "Samoan Tala",
@@ -2251,7 +2411,8 @@
 		"minorPlural": "Sene",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇼🇸"
 	},
 	"XAF": {
 		"name": "Central African CFA Franc BEAC",
@@ -2265,7 +2426,8 @@
 		"minorPlural": "Centimes",
 		"ISOdigits": 0,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🌐"
 	},
 	"XCD": {
 		"name": "East Caribbean Dollar",
@@ -2279,7 +2441,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🌐"
 	},
 	"XOF": {
 		"name": "West African CFA Franc BCEAO",
@@ -2293,7 +2456,8 @@
 		"minorPlural": "Centimes",
 		"ISOdigits": 0,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🌐"
 	},
 	"XPF": {
 		"name": "CFP Franc (Franc Pacifique)",
@@ -2307,7 +2471,8 @@
 		"minorPlural": "Centimes",
 		"ISOdigits": 0,
 		"decimals": 0,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🌐"
 	},
 	"YER": {
 		"name": "Yemeni Rial",
@@ -2321,7 +2486,8 @@
 		"minorPlural": "Fils",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇾🇪"
 	},
 	"ZAR": {
 		"name": "South African Rand",
@@ -2335,7 +2501,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇿🇦"
 	},
 	"ZMW": {
 		"name": "Zambian Kwacha",
@@ -2349,7 +2516,8 @@
 		"minorPlural": "Ngwee",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇿🇲"
 	},
 	"ZWB": {
 		"name": "RTGS Dollar",
@@ -2363,7 +2531,8 @@
 		"minorPlural": "",
 		"ISOdigits": 0,
 		"decimals": 0,
-		"numToBasic": null
+		"numToBasic": null,
+		"flagEmoji": "🇿🇼"
 	},
 	"ZWL": {
 		"name": "Zimbabwean Dollar",
@@ -2377,7 +2546,8 @@
 		"minorPlural": "Cents",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🇿🇼"
 	},
 	"Abkhazia": {
 		"name": "Abkhazian Apsar",
@@ -2391,7 +2561,8 @@
 		"minorPlural": "",
 		"ISOdigits": 0,
 		"decimals": 0,
-		"numToBasic": null
+		"numToBasic": null,
+		"flagEmoji": "🏳️"
 	},
 	"Artsakh": {
 		"name": "Artsakh Dram",
@@ -2405,6 +2576,7 @@
 		"minorPlural": "Luma",
 		"ISOdigits": 2,
 		"decimals": 2,
-		"numToBasic": 100
+		"numToBasic": 100,
+		"flagEmoji": "🏳️"
 	}
 }

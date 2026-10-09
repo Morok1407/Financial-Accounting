@@ -1,3 +1,4 @@
+import { activeCurrency, inActiveCurrency } from '../middleware/otherFunc';
 import { Notice, setIcon } from "obsidian";
 import MainPlugin from "../../main";
 import { FinancialAccountingView } from "../../main";
@@ -222,7 +223,7 @@ export const addHistory = async () => {
 				const categories = expensePlan.jsonData.filter(plan => !plan.archived)
 				categories.forEach(plan => {
 					selectCategory.createEl('option', {
-						text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+						text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount.toString())} ${getCurrencySymbol(activeCurrency())}`,
 						attr: {
 							value: plan.id
 						}
@@ -236,7 +237,7 @@ export const addHistory = async () => {
 				const categories = incomePlan.jsonData.filter(plan => !plan.archived)
 				categories.forEach(plan => {
 					selectCategory.createEl('option', {
-						text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount)} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+						text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount)} ${getCurrencySymbol(activeCurrency())}`,
 						attr: {
 							value: plan.id
 						}
@@ -352,10 +353,7 @@ async function addHistoryButton(data: HistoryData, selectBills: HTMLSelectElemen
 		console.error(billOption.error)
 		return
 	}
-	if (billOption.item.currency !== MainPlugin.instance.settings.baseCurrency) {
-		new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
-		return
-	}
+	data.currency = billOption.item.currency;
 
 	const resultOfadd = await addJsonToHistory(data)
 	if (resultOfadd.status === "success") {
@@ -687,7 +685,7 @@ export const addBills = () => {
 	popularCurrencies.forEach(cur => {
 		const option = document.createElement("option");
 		option.value = cur.code;
-		option.textContent = `${cur.code} • ${cur.name} • ${cur.symbol}`;
+		option.textContent = `${cur.flagEmoji} ${cur.code} • ${cur.name} • ${cur.symbol}`;
 		popularGroup.appendChild(option);
 	});
 
@@ -698,14 +696,14 @@ export const addBills = () => {
 	otherCurrencies.forEach(cur => {
 		const option = document.createElement("option");
 		option.value = cur.code;
-		option.textContent = `${cur.code} ${cur.name} • ${cur.symbol}`;
+		option.textContent = `${cur.flagEmoji} ${cur.code} ${cur.name} • ${cur.symbol}`;
 		otherGroup.appendChild(option);
 	});
 
 	currencySelect.appendChild(popularGroup);
 	currencySelect.appendChild(otherGroup);
 
-	currencySelect.value = MainPlugin.instance.settings.baseCurrency;
+	currencySelect.value = activeCurrency();
 
 	const currentBalance = mainFormInput.createEl('input', {
 		cls: 'form-inputs',
@@ -744,15 +742,7 @@ export const addBills = () => {
 		cls: 'form-text',
 	})
 
-	currencySelect.addEventListener('change', () => {
-		if (currencySelect.value !== MainPlugin.instance.settings.baseCurrency) {
-			checkboxInput.checked = false
-			checboxDiv.classList.add('disable-element')
-		} else {
-			checboxDiv.classList.remove('disable-element')
-			checkboxInput.checked = true
-		}
-	})
+
 
 	const addButton = mainFormInput.createEl('button', {
 		text: 'Add',

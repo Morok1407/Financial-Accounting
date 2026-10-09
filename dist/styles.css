@@ -1162,3 +1162,79 @@
 }
 
 /*# sourceMappingURL=styles.css.map */
+
+/* One active currency: keep navigation compact without adding totals. */
+.finance-header.finance-header--currency {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 8px 12px;
+}
+.finance-header--currency .finance-back,
+.finance-header--currency .finance-month,
+.finance-header--currency .finance-currency {
+    height: 32px;
+    min-width: 0;
+    margin: 0;
+    border-radius: 24px;
+}
+.finance-header--currency .finance-back {
+    padding: 0;
+    justify-content: center;
+    background: transparent;
+    box-shadow: none;
+}
+.finance-header--currency .finance-back:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+.finance-header--currency .finance-month {
+    justify-self: start;
+    max-width: 100%;
+    padding: 0 10px;
+}
+.finance-header--currency .finance-month > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.finance-header--currency .finance-header-chevron {
+    display: flex;
+    flex-shrink: 0;
+}
+.finance-header--currency .finance-header-chevron svg {
+    width: 14px;
+    height: 14px;
+}
+.finance-header--currency .finance-currency {
+    padding: 0 12px;
+    font-size: 16px;
+    white-space: nowrap;
+    cursor: pointer;
+    background-color: var(--background-modifier-active-hover);
+    color: var(--text-normal);
+}
+
+.calendar-header h1 {
+    margin-top: 0;
+}
+.finance-currency-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.finance-currency-flag {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    max-width: none;
+    flex-shrink: 0;
+    vertical-align: middle;
+    object-fit: contain;
+}
+.menu-item-title .finance-currency-flag {
+    margin-right: 6px;
+}

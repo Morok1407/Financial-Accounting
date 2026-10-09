@@ -49,6 +49,8 @@ const context = await esbuild.context({
 });
 
 function copyStaticFiles() {
+    fs.copyFileSync("src/assets/LICENSE-TWEMOJI.txt", path.join(outDir, "LICENSE-TWEMOJI.txt"));
+    fs.copyFileSync("src/assets/README.md", path.join(outDir, "TWEMOJI-NOTICE.md"));
     console.log("Copying manifest.json to dist...");
     fs.copyFileSync("manifest.json", path.join(outDir, "manifest.json"));
     if (fs.existsSync("styles.css")) fs.copyFileSync("styles.css", path.join(outDir, "styles.css"));

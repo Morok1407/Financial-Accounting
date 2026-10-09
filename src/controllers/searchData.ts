@@ -1,7 +1,7 @@
 import { Notice } from "obsidian";
 import Big from "big.js";
 import { stateManager, DataFileResult, HistoryData, PlanData, BillData, DataItemResult, ResultOfAllData, categoriesData, accountsData, PlanDataWithoutAmount } from "../../main";
-import { getDate } from "../middleware/otherFunc";
+import { getDate, inActiveCurrency } from "../middleware/otherFunc";
 import MainPlugin from "../../main";
 
 export const getMainData = async (): Promise<DataFileResult<HistoryData>> => {
@@ -14,8 +14,9 @@ export const getMainData = async (): Promise<DataFileResult<HistoryData>> => {
 	const filePath = `${MainPlugin.instance.dbPath}/${year}.json`;
 
 	try {
-		const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
-		const jsonData: HistoryData[] = JSON.parse(file).months[month].history;
+		const result = await getAllFile<import('../../main').YearData>(year);
+        if (result.status === 'error') return result;
+        const jsonData = result.json.months[month].history.filter(inActiveCurrency);
 		const data: DataFileResult<HistoryData> = {
 			jsonData, status: 'success'
 		}
@@ -25,10 +26,15 @@ export const getMainData = async (): Promise<DataFileResult<HistoryData>> => {
 	}
 }
 
-export const getAdditionalData = async <T extends { id: string }>(option: 'accounts' | 'categories', categoriName?: 'income_plan' | 'expenditure_plan'): Promise<DataFileResult<T>> => {
+export const getAdditionalData = async <T extends { id: string }>(option: 'accounts' | 'categories', categoriName?: 'income_plan' | 'expenditure_plan', allCurrencies = false): Promise<DataFileResult<T>> => {
 	const filePath = `${MainPlugin.instance.dbPath}/${option}.json`;
 
 	try {
+        if (option === 'accounts') {
+            const result = await getAllFile<accountsData>('accounts');
+            if (result.status === 'error') return result;
+            return { status: 'success', jsonData: (allCurrencies ? result.json.accounts : result.json.accounts.filter(inActiveCurrency)) as unknown as T[] };
+        }
 		const mainData = await getMainData();
 		if (mainData.status === "error") {
 			new Notice(mainData.error.message);
@@ -71,12 +77,6 @@ export const getAdditionalData = async <T extends { id: string }>(option: 'accou
 				jsonData, status: 'success'
 			}
 			return data;
-		} else if (option === 'accounts') {
-			const jsonData: T[] = JSON.parse(file)[option];
-			const data: DataFileResult<T> = {
-				jsonData, status: 'success'
-			}
-			return data;
 		} else {
 			return { status: 'error', error: new Error('Invalid option provided') };
 		}
@@ -91,6 +91,14 @@ export const getAllFile = async <T>(option: string): Promise<ResultOfAllData<T>>
 	try {
 		const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
 		const jsonData = JSON.parse(file);
+        if (jsonData.months) {
+            const accounts = await getAllFile<accountsData>('accounts');
+            if (accounts.status === 'error') return accounts;
+            const currencies = new Map(accounts.json.accounts.map(b => [b.id, b.currency]));
+            for (const month of Object.values(jsonData.months) as { history: HistoryData[] }[]) {
+                for (const tx of month.history) tx.currency ||= currencies.get(tx.bill.id) || MainPlugin.instance.settings.baseCurrency;
+            }
+        }
 		return { status: 'success', json: jsonData };
 	} catch (error) {
 		return { status: 'error', error: error instanceof Error ? error : new Error(String(error)) };
@@ -103,7 +111,7 @@ export const searchElementById = async <T extends HistoryData | PlanData | BillD
 ): Promise<DataItemResult<T | BillData>> => {
 	const sourceMap = {
 		history: () => getMainData(),
-		accounts: () => getAdditionalData<T>('accounts'),
+		accounts: () => getAdditionalData<T>('accounts', undefined, true),
 		expense: () => getAdditionalData<T>('categories', 'expenditure_plan'),
 		income: () => getAdditionalData<T>('categories', 'income_plan'),
 	} as const;

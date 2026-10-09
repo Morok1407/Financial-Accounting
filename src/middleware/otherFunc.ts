@@ -1,3 +1,4 @@
+import MainPlugin from '../../main';
 import Big from 'big.js';
 import moment from "moment";
 import currencies from '../../currencies.json'
@@ -6,6 +7,14 @@ import { Notice } from "obsidian";
 import { getAllFile } from '../controllers/searchData'
 
 type Moment = moment.Moment;
+
+export function activeCurrency(): string {
+ return stateManager().selectedCurrency ?? MainPlugin.instance.settings.baseCurrency;
+}
+export function inActiveCurrency(item: { currency?: string }): boolean {
+ return item.currency === activeCurrency();
+}
+
 
 export const popularCodes: string[] = ["USD", "EUR", "RUB", "KZT", "UZS"];
 
@@ -28,10 +37,15 @@ export const getDate = (): {
 	};
 };
 
+export function getCurrencyFlag(code: string): string {
+ return currencies[code as keyof typeof currencies]?.flagEmoji ?? '🌐';
+}
+
 export const getCurrencyGroups = () => {
 	const all = Object.entries(currencies).map(([code, info]) => ({
 		code,
 		name: info.name || code,
+		flagEmoji: info.flagEmoji,
 		symbol: info.symbol || info.symbolNative
 	}));
 
@@ -271,7 +285,7 @@ export async function IncomeAndExpensesForTheMonth(month: string, year: string, 
 		return
 	}
 
-	const history = allData.json.months[month].history;
+	const history = allData.json.months[month].history.filter(inActiveCurrency);
 
 	let totalExpense = new Big(0);
 	let totalIncome = new Big(0);
@@ -323,7 +337,7 @@ export async function TheSumOfExpensesAndIncomeForTheYear(year: string, div: HTM
 	let totalIncome = new Big(0);
 
 	Object.values(allData.json.months).forEach(month => {
-		month.history.forEach(transaction => {
+		month.history.filter(inActiveCurrency).forEach(transaction => {
 			const amount = new Big(transaction.amount);
 
 			if (transaction.type === 'expense') {

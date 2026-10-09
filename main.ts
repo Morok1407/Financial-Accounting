@@ -35,6 +35,7 @@ export interface PlanData {
 export type PlanDataWithoutAmount = Omit<PlanData, 'amount'>;
 
 export interface HistoryData {
+	currency?: string;
 	readonly id: string;
 	amount: string;
 	bill: { id: string };
@@ -45,6 +46,7 @@ export interface HistoryData {
 }
 
 export interface CurrencyType {
+	readonly flagEmoji: string;
 	readonly code: string;
 	readonly name: string;
 	readonly symbol: string;
@@ -343,7 +345,7 @@ class SettingsTab extends PluginSettingTab {
 		popularCurrencies.forEach((cur: CurrencyType) => {
 			const option = document.createElement("option");
 			option.value = cur.code;
-			option.textContent = `${cur.code} • ${cur.name} • ${cur.symbol}`;
+			option.textContent = `${cur.flagEmoji} ${cur.code} • ${cur.name} • ${cur.symbol}`;
 			popularGroup.appendChild(option);
 		});
 
@@ -354,7 +356,7 @@ class SettingsTab extends PluginSettingTab {
 		otherCurrencies.forEach((cur: CurrencyType) => {
 			const option = document.createElement("option");
 			option.value = cur.code;
-			option.textContent = `${cur.code} ${cur.name} • ${cur.symbol}`;
+			option.textContent = `${cur.flagEmoji} ${cur.code} ${cur.name} • ${cur.symbol}`;
 			otherGroup.appendChild(option);
 		});
 
@@ -410,6 +412,7 @@ async function SelectingTheBaseCurrency({ event, selectEl, plugin }: { event: Ev
 }
 
 type State = {
+	selectedCurrency: string | null;
 	openPageNow: string | null;
 	selectedYear: string | null;
 	selectedMonth: string | null;
@@ -417,6 +420,7 @@ type State = {
 
 const createStateManager = () => {
 	let state: State = {
+		selectedCurrency: null,
 		openPageNow: null,
 		selectedYear: null,
 		selectedMonth: null,

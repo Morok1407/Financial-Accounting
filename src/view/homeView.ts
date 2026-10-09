@@ -1,4 +1,6 @@
-import { setIcon, Notice } from "obsidian";
+import { activeCurrency, inActiveCurrency } from '../middleware/otherFunc';
+import { currencyLabel } from './currencyLabel';
+import { setIcon, Notice, Menu } from "obsidian";
 import MainPlugin from "../../main";
 import { FinancialAccountingView } from '../../main'
 import { stateManager, BillData, PlanData } from "../../main";
@@ -8,6 +10,44 @@ import { showHistory, showPlans, showBills, showHome } from "./showDataView";
 import { getAdditionalData } from "../controllers/searchData";
 import { SummarizingDataForTheTrueBills, divideByRemainingDays, switchBalanceLine, SummarizingData, getCurrencySymbol, TheSumOfExpensesAndIncomeForTheYear, IncomeAndExpensesForTheMonth } from "../middleware/otherFunc";
 import { addHistory } from "../view/addView";
+
+async function renderFinanceHeader(calendar = false): Promise<void> {
+ const { contentEl } = FinancialAccountingView.instance;
+ const { selectedMonth, selectedYear } = stateManager();
+ const now = getDate();
+ const header = contentEl.createDiv({ cls: 'finance-header finance-header--currency' });
+ const back = header.createEl('button', { cls: 'finance-back', attr: { type: 'button', 'aria-label': 'Back', title: 'Back' } });
+ setIcon(back, 'chevron-left');
+ back.disabled = !calendar && !selectedMonth;
+ back.addEventListener('click', () => {
+  if (!calendar) stateManager({ selectedMonth: null, selectedYear: null });
+  void FinancialAccountingView.instance.onOpen();
+ });
+ const month = header.createEl('button', { cls: 'finance-month', attr: { type: 'button', 'aria-label': 'Select month' } });
+ const monthLabels = ['☃️ January', '🌨️ February', '🌷 March', '🌱 April', '☀️ May', '🌳 June', '🏖️ July', '🌾 August', '🍁 September', '🍂 October', '☔ November', '❄️ December'];
+ const yearLabel = selectedYear && selectedYear !== now.year ? ' ' + selectedYear : '';
+ month.createSpan({ text: monthLabels[Number(selectedMonth ?? now.month) - 1] + yearLabel });
+ month.addEventListener('click', () => { void showAllMonths(); });
+ const currency = header.createEl('button', { cls: 'finance-currency', attr: { type: 'button', 'aria-label': 'Select currency', 'aria-haspopup': 'menu', title: 'Currency' } });
+ currency.createSpan({ cls: 'finance-currency-label' }).appendChild(currencyLabel(activeCurrency()));
+ setIcon(currency.createSpan({ cls: 'finance-header-chevron' }), 'chevron-down');
+ const accounts = await getAdditionalData<BillData>('accounts', undefined, true);
+ const codes = new Set([MainPlugin.instance.settings.baseCurrency, activeCurrency()]);
+ if (accounts.status === 'success') for (const account of accounts.jsonData) codes.add(account.currency);
+ else new Notice(accounts.error.message);
+ currency.addEventListener('click', event => {
+  const menu = new Menu();
+  for (const code of [...codes].sort()) menu.addItem(item => item
+   .setTitle(currencyLabel(code))
+   .setChecked(code === activeCurrency())
+   .onClick(() => {
+    stateManager({ selectedCurrency: code });
+    if (calendar) void showAllMonths();
+    else void FinancialAccountingView.instance.onOpen();
+   }));
+  menu.showAtMouseEvent(event);
+ });
+}
 
 export const showInitialView = async (): Promise<void> => {
 	const initDBResult = await initDB();
@@ -34,39 +74,7 @@ export const showInitialView = async (): Promise<void> => {
 	contentEl.empty();
 	contentEl.addClass("finance-content");
 
-	const financeHeader = contentEl.createEl("div", {
-		cls: "finance-header",
-	});
-
-	const allMonths = [
-		"☃️ January",
-		"🌨️ February",
-		"🌷 March",
-		"🌱 April",
-		"☀️ May",
-		"🌳 June",
-		"🏖️ July",
-		"🌾 August",
-		"🍁 September",
-		"🍂 October",
-		"☔ November",
-		"❄️ December",
-	];
-	const showAllMonthsButton = financeHeader.createEl("button", {
-		attr: {
-			id: "showAllMonths",
-		},
-	});
-	showAllMonthsButton.createEl("span", {
-		text: allMonths[Number(month) - 1],
-	});
-
-	showAllMonthsButton.addEventListener("click", () => {
-		if (contentEl.dataset.page === "home") {
-			contentEl.setAttribute("data-page", "months");
-			void showAllMonths();
-		}
-	});
+	await renderFinanceHeader();
 
 	contentEl.setAttribute("data-page", "home");
 
@@ -168,7 +176,7 @@ export const showInitialViewOld = async (): Promise<void> => {
 	});
 
 	balanceTop.createEl("p", {
-		text: `${formatNumbers(SummarizingDataForTheTrueBills(bills.jsonData).toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+		text: `${formatNumbers(SummarizingDataForTheTrueBills(bills.jsonData).toString())} ${getCurrencySymbol(activeCurrency())}`,
 	});
 
 	balanceTop.createEl("span", {
@@ -352,16 +360,7 @@ const showAllMonths = async (): Promise<void> => {
 
 	const { year } = getDate();
 
-	const exitButton = contentEl.createEl("div", {
-		cls: "exit-button",
-		attr: {
-			id: "exit-button",
-		},
-	});
-	setIcon(exitButton, "arrow-left");
-	exitButton.addEventListener("click", () => {
-		FinancialAccountingView.instance?.onOpen().catch(console.error);
-	});
+	await renderFinanceHeader(true);
 
 	const calendarHead = contentEl.createEl("div", {
 		cls: "calendar-header",
@@ -449,64 +448,7 @@ export const showAnotherInitialView = async (): Promise<void> => {
 	const { contentEl } = FinancialAccountingView.instance;
 	contentEl.empty();
 
-	const exitButton = contentEl.createEl("div", {
-		cls: "exit-button",
-		attr: {
-			id: "exit-button",
-		},
-	});
-	setIcon(exitButton, "arrow-left");
-	exitButton.addEventListener("click", () => {
-		stateManager({ selectedMonth: null, selectedYear: null });
-		FinancialAccountingView.instance?.onOpen().catch(console.error);
-	});
-
-	const financeHeader = contentEl.createEl("div", {
-		cls: "finance-header finance-header--with-back",
-	});
-	financeHeader.appendChild(exitButton);
-
-	const allMonths = [
-		"☃️ January",
-		"🌨️ February",
-		"🌷 March",
-		"🌱 April",
-		"☀️ May",
-		"🌳 June",
-		"🏖️ July",
-		"🌾 August",
-		"🍁 September",
-		"🍂 October",
-		"☔ November",
-		"❄️ December",
-	];
-	const showAllMonthsButton = financeHeader.createEl("button", {
-		attr: {
-			id: "showAllMonths",
-		},
-	});
-	if (Number(selectedYear) === nowYear) {
-		showAllMonthsButton.createEl("span", {
-			text: allMonths[Number(selectedMonth) - 1],
-			attr: {
-				id: "showAllMonths",
-			},
-		});
-	} else {
-		showAllMonthsButton.createEl("span", {
-			text: `${allMonths[Number(selectedMonth) - 1]} ${selectedYear}`,
-			attr: {
-				id: "showAllMonths",
-			},
-		});
-	}
-
-	showAllMonthsButton.addEventListener("click", () => {
-		if (contentEl.dataset.page === "home") {
-			contentEl.setAttribute("data-page", "months");
-			void showAllMonths();
-		}
-	});
+	await renderFinanceHeader();
 	contentEl.setAttribute("data-page", "home");
 
 	await otherMonthHomeButtons();

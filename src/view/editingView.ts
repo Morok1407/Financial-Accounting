@@ -1,3 +1,4 @@
+import { activeCurrency, inActiveCurrency } from '../middleware/otherFunc';
 import { Notice, setIcon } from 'obsidian';
 import MainPlugin from '../../main';
 import { FinancialAccountingView, ConfirmModal } from '../../main'
@@ -173,13 +174,13 @@ export const editingHistory = async (e: MouseEvent) => {
 			categories.forEach(plan => {
 				if (plan.id === history.item.category.id) {
 					selectCategory.createEl('option', {
-						text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+						text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount.toString())} ${getCurrencySymbol(activeCurrency())}`,
 						attr: { value: plan.id, selected: 'selected' }
 					})
 					return
 				}
 				selectCategory.createEl('option', {
-					text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+					text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount.toString())} ${getCurrencySymbol(activeCurrency())}`,
 					attr: { value: plan.id }
 				})
 			})
@@ -191,13 +192,13 @@ export const editingHistory = async (e: MouseEvent) => {
 			categories.forEach(plan => {
 				if (plan.id === history.item.category.id) {
 					selectCategory.createEl('option', {
-						text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+						text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount.toString())} ${getCurrencySymbol(activeCurrency())}`,
 						attr: { value: plan.id, selected: 'selected' }
 					})
 					return
 				}
 				selectCategory.createEl('option', {
-					text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount.toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+					text: `${plan.emoji} ${plan.name} • ${formatNumbers(plan.amount.toString())} ${getCurrencySymbol(activeCurrency())}`,
 					attr: { value: plan.id }
 				})
 			})
@@ -319,10 +320,7 @@ async function editingHistoryButton(data: HistoryData, oldData: HistoryData, sel
 		console.error(billOption.error)
 		return
 	}
-	if (billOption.item.currency !== MainPlugin.instance.settings.baseCurrency) {
-		new Notice('I apologize, but for now you can only add transactions to accounts in the base currency.')
-		return
-	}
+	data.currency = billOption.item.currency;
 
 	const resultOfEditing = await editingJsonToHistory(data, oldData)
 	if (resultOfEditing.status === "success") {
@@ -753,7 +751,7 @@ export const editingBill = async (e: MouseEvent) => {
 		}
 	})
 
-	const bills = await getAdditionalData<BillData>('accounts')
+	const bills = await getAdditionalData<BillData>('accounts', undefined, true)
 	if (bills.status === 'error') {
 		new Notice(bills.error.message)
 		console.error(bills.error)
@@ -779,9 +777,7 @@ export const editingBill = async (e: MouseEvent) => {
 		cls: 'form-checkbox-div'
 	})
 
-	if (bill.item.currency !== MainPlugin.instance.settings.baseCurrency) {
-		chechboxDiv.classList.add('disable-element')
-	}
+
 
 	const checkboxInput = chechboxDiv.createEl('input', {
 		cls: 'form-checkbox',
@@ -914,7 +910,7 @@ export const transferBetweenBillsView = async (billId: string) => {
 		return 'Element not found'
 	}
 
-	const bills = await getAdditionalData<BillData>('accounts')
+	const bills = await getAdditionalData<BillData>('accounts', undefined, true)
 	if (bills.status === 'error') {
 		new Notice(bills.error.message)
 		console.error(bills.error)

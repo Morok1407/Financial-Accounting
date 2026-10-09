@@ -1,3 +1,4 @@
+import { activeCurrency, inActiveCurrency } from '../middleware/otherFunc';
 import Big from "big.js";
 import MainPlugin from "../../main";
 import { Notice, setIcon } from "obsidian";
@@ -46,7 +47,7 @@ export const showHome = async (mainContent: HTMLDivElement) => {
 	});
 
 	balanceTop.createEl("p", {
-		text: `${formatNumbers(SummarizingDataForTheTrueBills(bills.jsonData).toString())} ${getCurrencySymbol(MainPlugin.instance.settings.baseCurrency)}`,
+		text: `${formatNumbers(SummarizingDataForTheTrueBills(bills.jsonData).toString())} ${getCurrencySymbol(activeCurrency())}`,
 	});
 
 	balanceTop.createEl("span", {
@@ -81,7 +82,7 @@ const showHomeCategories = async (container: HTMLDivElement) => {
 	]);
 	if (!isSuccess(expenses) || !isSuccess(income) || !isSuccess(history)) return;
 
-	const currency = getCurrencySymbol(MainPlugin.instance.settings.baseCurrency);
+	const currency = getCurrencySymbol(activeCurrency());
 	const { selectedYear, selectedMonth } = stateManager();
 	const now = getDate();
 	const period = new Date(Number(selectedYear ?? now.year), Number(selectedMonth ?? now.month) - 1, 1)
@@ -371,7 +372,7 @@ const gridContent = async (mainContent: HTMLDivElement) => {
 			console.error(res.error);
 			return;
 		}
-		yearFilesMap.set(yearsToFetch[i], res.json);
+		yearFilesMap.set(Number(yearsToFetch[i]), res.json);
 	}
 
 	const calculateYearStats = (yearDataJson?: YearData) => {
@@ -381,8 +382,8 @@ const gridContent = async (mainContent: HTMLDivElement) => {
 
 		if (yearDataJson?.months) {
 			Object.values(yearDataJson.months).forEach(month => {
-				length = length.plus(month.history.length);
-				month.history.forEach(tx => {
+				length = length.plus(month.history.filter(inActiveCurrency).length);
+				month.history.filter(inActiveCurrency).forEach(tx => {
 					const amount = new Big(tx.amount);
 					if (tx.type === 'expense') expense = expense.plus(amount);
 					if (tx.type === 'income') income = income.plus(amount);
@@ -406,7 +407,7 @@ const gridContent = async (mainContent: HTMLDivElement) => {
 	}
 	const totalAllBalance = totalAllIncome.minus(totalAllExpense);
 
-	const currency = getCurrencySymbol(MainPlugin.instance.settings.baseCurrency);
+	const currency = getCurrencySymbol(activeCurrency());
 
 	const monthData: CardItem[] = [
 		{ title: "Income", value: `${formatNumbers(SummarizingData(incomePlan.jsonData).toString())} ${currency}`, icon: "arrow-up", type: "income" },
