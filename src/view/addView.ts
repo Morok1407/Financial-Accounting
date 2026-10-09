@@ -1,3 +1,4 @@
+import { transferBetweenBillsView } from './editingView';
 import { activeCurrency, inActiveCurrency } from '../middleware/otherFunc';
 import { Notice, setIcon } from "obsidian";
 import MainPlugin from "../../main";
@@ -23,7 +24,6 @@ export const addHistory = async () => {
 		console.error(expensePlan.error)
 		return
 	}
-	if (expensePlan.jsonData.length === 0) return new Notice('Add a expenditure plan')
 
 	const incomePlan = await getAdditionalData<PlanData>('categories', 'income_plan')
 	if (incomePlan.status === 'error') {
@@ -31,7 +31,6 @@ export const addHistory = async () => {
 		console.error(incomePlan.error)
 		return
 	}
-	if (incomePlan.jsonData.length === 0) return new Notice('Add a income plan')
 
 	const history = await getMainData()
 	if (history.status === 'error') {
@@ -97,7 +96,31 @@ export const addHistory = async () => {
 		}
 	})
 
+    const radioTransfer = expenseOrIncome.createEl('button', {
+        text: 'Transfer', cls: 'main-radio_income', attr: { type: 'button', 'data-radio': 'transfer' }
+    });
+    expenseOrIncome.addClass('operation-tabs');
+    const transferHost = mainAddForm.createDiv({ cls: 'operation-transfer' });
+    transferHost.hidden = true;
+    let transferLoaded = false;
+    radioTransfer.addEventListener('click', () => {
+        radioExpense.removeClass('main-radion-button--active');
+        radioIncome.removeClass('main-radion-button--active');
+        radioTransfer.addClass('main-radion-button--active');
+        mainFormInput.hidden = true;
+        transferHost.hidden = false;
+        if (!transferLoaded) {
+            transferLoaded = true;
+            void transferBetweenBillsView(selectBills.value, transferHost);
+        }
+    });
+    const showTransaction = () => {
+        radioTransfer.removeClass('main-radion-button--active');
+        transferHost.hidden = true;
+        mainFormInput.hidden = false;
+    };
 	radioIncome.addEventListener('click', () => {
+        showTransaction();
 		if (radioIncome.dataset.radio === 'income') {
 			radioExpense.removeClass('main-radion-button--active')
 			radioIncome.addClass('main-radion-button--active')
@@ -107,6 +130,7 @@ export const addHistory = async () => {
 		}
 	})
 	radioExpense.addEventListener('click', () => {
+        showTransaction();
 		if (radioExpense.dataset.radio === 'expense') {
 			radioIncome.removeClass('main-radion-button--active')
 			radioExpense.addClass('main-radion-button--active')
@@ -317,7 +341,7 @@ export const addHistory = async () => {
 	addButton.addEventListener('click', (e) => {
 		e.preventDefault();
 
-		if (!(Number(inputSum.value) >= 1)) {
+		if (!(Number(inputSum.value) > 0)) {
 			inputSum.focus()
 			new Notice('Enter the amount')
 			return
@@ -328,6 +352,10 @@ export const addHistory = async () => {
 			return
 		}
 
+		if (!selectCategory.value) {
+			new Notice('Create a category for this operation type first.');
+			return;
+		}
 		const data: HistoryData = {
 			id: String(generateUUID()),
 			amount: String(inputSum.value),
@@ -377,7 +405,6 @@ export const addPlan = async () => {
 		console.error(expensePlan.error)
 		return
 	}
-	if (expensePlan.jsonData.length === 0) return new Notice('Add a expenditure plan')
 
 	const incomePlan = await getAdditionalData<PlanData>('categories', 'income_plan')
 	if (incomePlan.status === 'error') {
@@ -385,7 +412,6 @@ export const addPlan = async () => {
 		console.error(incomePlan.error)
 		return
 	}
-	if (incomePlan.jsonData.length === 0) return new Notice('Add a income plan')
 
 	const exitButton = contentEl.createEl('div', {
 		cls: 'exit-button',
@@ -685,7 +711,7 @@ export const addBills = () => {
 	popularCurrencies.forEach(cur => {
 		const option = document.createElement("option");
 		option.value = cur.code;
-		option.textContent = `${cur.flagEmoji} ${cur.code} • ${cur.name} • ${cur.symbol}`;
+		option.textContent = `${cur.code} • ${cur.name} • ${cur.symbol}`;
 		popularGroup.appendChild(option);
 	});
 
@@ -696,7 +722,7 @@ export const addBills = () => {
 	otherCurrencies.forEach(cur => {
 		const option = document.createElement("option");
 		option.value = cur.code;
-		option.textContent = `${cur.flagEmoji} ${cur.code} ${cur.name} • ${cur.symbol}`;
+		option.textContent = `${cur.code} ${cur.name} • ${cur.symbol}`;
 		otherGroup.appendChild(option);
 	});
 

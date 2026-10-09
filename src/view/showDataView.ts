@@ -336,12 +336,11 @@ function donutSegmentPath(start: number, sweep: number): string {
 }
 
 const gridContent = async (mainContent: HTMLDivElement) => {
-	const [bills, expensePlan, incomePlan, history, pluginData] = await Promise.all([
+	const [bills, expensePlan, incomePlan, history] = await Promise.all([
 		getAdditionalData<BillData>('accounts'),
 		getAdditionalData<PlanData>('categories', 'expenditure_plan'),
 		getAdditionalData<PlanData>('categories', 'income_plan'),
-		getMainData(),
-		MainPlugin.instance.loadData()
+		getMainData()
 	]);
 
 	if (
@@ -356,13 +355,13 @@ const gridContent = async (mainContent: HTMLDivElement) => {
 	const { selectedYear } = stateManager();
 	const currentYear = selectedYear ?? getDate().year;
 	const nowYear = new Date().getFullYear();
-	const startYear = pluginData.startYear ?? nowYear;
+	const startYear = MainPlugin.instance.settings.startYear;
 
 	const yearsToFetch = Array.from(
-		new Set([...Array.from({ length: nowYear - startYear + 1 }, (_, i) => startYear + i), currentYear])
+		new Set([...Array.from({ length: nowYear - startYear + 1 }, (_, i) => startYear + i), Number(currentYear)])
 	);
 
-	const yearFilesResults = await Promise.all(yearsToFetch.map(y => getAllFile<YearData>(y)));
+	const yearFilesResults = await Promise.all(yearsToFetch.map(y => getAllFile<YearData>(String(y))));
 	const yearFilesMap = new Map<number, YearData>();
 
 	for (let i = 0; i < yearsToFetch.length; i++) {
@@ -719,35 +718,38 @@ export const showPlans = async (mainContent: HTMLDivElement) => {
 	const notArcivedExpensePlan = expensePlan.jsonData.filter((e: PlanData) => !e.archived)
 	const notArcivedIncomePlan = incomePlan.jsonData.filter((e: PlanData) => !e.archived)
 
+	const headerPage = mainContentBody.createEl('div', {
+		cls: 'header-page'
+	})
+	headerPage.createEl('h2', {
+		text: 'Categories'
+	})
+	const creatButton = headerPage.createEl('button', {
+		cls: 'creat-button',
+		attr: { type: 'button', 'aria-label': 'Create category', title: 'Create category' },
+	})
+	setIcon(creatButton, 'plus')
+	creatButton.addEventListener('click', (): void => {
+		void addPlan();
+	})
+
 	if (!expensePlan.jsonData.length && !incomePlan.jsonData.length) {
 		const undefinedContent = mainContentBody.createEl('div', {
-			cls: 'undefined-content'
+			cls: 'undefined-content section-empty'
 		})
-		mainContentBody.addClass('main-content-body--undefined')
+
 
 		undefinedContent.createEl('span', {
 			text: '🍕 🎮 👕'
 		})
 
 		undefinedContent.createEl('p', {
-			text: 'Enter any income and expenses to see how much money is actually left.'
+			text: 'Create your first category to organize income and expenses.'
 		})
 	} else {
 		mainContentBody.removeClass('main-content-body--undefined')
 
-		const headerPage = mainContentBody.createEl('div', {
-			cls: 'header-page'
-		})
-		headerPage.createEl('h2', {
-			text: 'Categories'
-		})
-		const creatButton = headerPage.createEl('a', {
-			cls: 'creat-button',
-		})
-		setIcon(creatButton, 'plus')
-		creatButton.addEventListener('click', (): void => {
-			addPlan();
-		})
+
 
 		if (notArcivedExpensePlan.length) {
 			const resultExpense = notArcivedExpensePlan.slice().sort((a: PlanData, b: PlanData) => new Big(b.amount).cmp(new Big(a.amount)))
@@ -1033,35 +1035,38 @@ export const showBills = async (mainContent: HTMLDivElement) => {
 	const arcivedMainBills = bills.jsonData.filter((e: BillData) => e.archived && e.generalBalance)
 	const arcivedAdditionalBills = bills.jsonData.filter((e: BillData) => e.archived && !e.generalBalance)
 
+	const headerPage = mainContentBody.createEl('div', {
+		cls: 'header-page'
+	})
+	headerPage.createEl('h2', {
+		text: 'Accounts'
+	})
+	const creatButton = headerPage.createEl('button', {
+		cls: 'creat-button',
+		attr: { type: 'button', 'aria-label': 'Create account', title: 'Create account' },
+	})
+	setIcon(creatButton, 'plus')
+	creatButton.addEventListener('click', (): void => {
+		void addBills();
+	})
+
 	if (!bills.jsonData.length) {
 		const undefinedContent = mainContentBody.createEl('div', {
-			cls: 'undefined-content'
+			cls: 'undefined-content section-empty'
 		})
-		mainContentBody.addClass('main-content-body--undefined')
+
 
 		undefinedContent.createEl('span', {
-			text: '🍕 🎮 👕'
+			text: '💳🏦👛'
 		})
 
 		undefinedContent.createEl('p', {
-			text: 'Enter any income and expenses to see how much money is actually left.'
+			text: 'No accounts in this currency yet. Create an account to get started.'
 		})
 	} else {
 		mainContentBody.removeClass('main-content-body--undefined')
 
-		const headerPage = mainContentBody.createEl('div', {
-			cls: 'header-page'
-		})
-		headerPage.createEl('h2', {
-			text: 'Accounts'
-		})
-		const creatButton = headerPage.createEl('a', {
-			cls: 'creat-button',
-		})
-		setIcon(creatButton, 'plus')
-		creatButton.addEventListener('click', (): void => {
-			addBills();
-		})
+
 
 		if (notArcivedMainBills.length >= 1) {
 

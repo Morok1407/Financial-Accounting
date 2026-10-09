@@ -2,7 +2,7 @@ import { Plugin, ItemView, WorkspaceLeaf, Platform, PluginSettingTab, Setting, N
 import { showInitialView, showAnotherInitialView } from './src/view/homeView';
 import { getDate } from './src/middleware/otherFunc';
 import { getCurrencyGroups } from './src/middleware/otherFunc';
-import { getAdditionalData } from './src/controllers/searchData';
+// import { getAdditionalData } from './src/controllers/searchData';
 import { generateYearlyFile } from './src/controllers/DB';
 
 const FINANCIAL_ACCOUNTING_VIEW = "financial-accounting-view";
@@ -116,14 +116,14 @@ export type TransferData =
 		readonly type: 'same-currency';
 		readonly fromBillId: string;
 		readonly toBillId: string;
-		amount: number;
+		amount: string;
 	}
 	| {
 		readonly type: 'cross-currency';
 		readonly fromBillId: string;
 		readonly toBillId: string;
-		sourceAmount: number;
-		targetAmount: number;
+		sourceAmount: string;
+		targetAmount: string;
 	};
 
 export type DataFileResult<T> =
@@ -237,6 +237,7 @@ export default class MainPlugin extends Plugin {
 		const loaded = await this.loadData();
 		const defaults = new DefaultSettings();
 		this.settings = Object.assign({}, defaults, loaded || {});
+		if (loaded == null) await this.saveSettings();
 	}
 	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
@@ -345,7 +346,7 @@ class SettingsTab extends PluginSettingTab {
 		popularCurrencies.forEach((cur: CurrencyType) => {
 			const option = document.createElement("option");
 			option.value = cur.code;
-			option.textContent = `${cur.flagEmoji} ${cur.code} • ${cur.name} • ${cur.symbol}`;
+			option.textContent = `${cur.code} • ${cur.name} • ${cur.symbol}`;
 			popularGroup.appendChild(option);
 		});
 
@@ -356,7 +357,7 @@ class SettingsTab extends PluginSettingTab {
 		otherCurrencies.forEach((cur: CurrencyType) => {
 			const option = document.createElement("option");
 			option.value = cur.code;
-			option.textContent = `${cur.flagEmoji} ${cur.code} ${cur.name} • ${cur.symbol}`;
+			option.textContent = `${cur.code} ${cur.name} • ${cur.symbol}`;
 			otherGroup.appendChild(option);
 		});
 
@@ -378,27 +379,27 @@ async function SelectingTheBaseCurrency({ event, selectEl, plugin }: { event: Ev
 	const target = event.target as HTMLSelectElement;
 	const newCurrency = target.value;
 
-	const bills = await getAdditionalData<BillData>('accounts');
-	if (bills.status === 'error') {
-		new Notice(`Error fetching archive bills: ${bills.error.message}`);
-		return { status: 'error', error: bills.error };
-	}
+	// const bills = await getAdditionalData<BillData>('accounts');
+	// if (bills.status === 'error') {
+	// 	new Notice(`Error fetching archive bills: ${bills.error.message}`);
+	// 	return { status: 'error', error: bills.error };
+	// }
 
-	const generalBalanceBills = bills.jsonData?.filter(
-		bill => bill.generalBalance && bill.currency !== newCurrency
-	);
+	// const generalBalanceBills = bills.jsonData?.filter(
+	// 	bill => bill.generalBalance && bill.currency !== newCurrency
+	// );
 
 	try {
-		if (generalBalanceBills && generalBalanceBills.length > 0) {
-			const bill = generalBalanceBills[0];
+		// if (generalBalanceBills && generalBalanceBills.length > 0) {
+		// 	const bill = generalBalanceBills[0];
 
-			selectEl.value = plugin.settings.baseCurrency;
+		// 	selectEl.value = plugin.settings.baseCurrency;
 
-			new Notice(
-				`Cannot change base currency. Bill "${bill.name}" is set to general balance with currency ${bill.currency}. Please change or disable general balance on this bill first.`
-			);
-			return { status: 'error', error: new Error(`General balance bill "${bill.name}" has currency ${bill.currency}`) };
-		}
+		// 	new Notice(
+		// 		`Cannot change base currency. Bill "${bill.name}" is set to general balance with currency ${bill.currency}. Please change or disable general balance on this bill first.`
+		// 	);
+		// 	return { status: 'error', error: new Error(`General balance bill "${bill.name}" has currency ${bill.currency}`) };
+		// }
 
 		plugin.settings.baseCurrency = newCurrency;
 		await plugin.saveSettings().catch(console.error);

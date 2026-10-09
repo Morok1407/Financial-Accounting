@@ -7,7 +7,8 @@
 		"dev": "node dev.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs",
-		"test:currency-filter": "node tests/currency-filter.test.cjs"
+		"test:currency-filter": "node tests/currency-filter.test.cjs",
+		"test": "node tests/first-run.test.cjs && node tests/currency-filter.test.cjs && node tests/transactions.test.cjs"
 	},
 	"keywords": [],
 	"author": "Bugayev Daniil",

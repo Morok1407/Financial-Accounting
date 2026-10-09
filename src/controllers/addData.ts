@@ -1,11 +1,13 @@
 import { getAllFile } from "./searchData";
-import { checkBill } from "../middleware/checkData";
+import { checkBill, validateHistory } from "../middleware/checkData";
 import { updateFile } from "../controllers/editingData";
 import { expenditureTransaction, incomeTransaction } from "../middleware/transferring";
 import { HistoryData, PlanData, BillData, ResultOfExecution, stateManager, YearData, categoriesData, accountsData } from "../../main";
 import { getDate } from '../middleware/otherFunc';
 
 export const addJsonToHistory = async (data: HistoryData): Promise<ResultOfExecution> => {
+	const validation = await validateHistory(data);
+	if (validation.status === 'error') return validation;
 	if (data.type === 'expense') {
 		const resultCheckBill = await checkBill(data)
 		if (resultCheckBill.status === 'error') {

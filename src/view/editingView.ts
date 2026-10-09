@@ -271,7 +271,7 @@ export const editingHistory = async (e: MouseEvent) => {
 	addButton.addEventListener('click', (e) => {
 		e.preventDefault();
 
-		if (!(Number(inputSum.value) >= 1)) {
+		if (!(Number(inputSum.value) > 0)) {
 			inputSum.focus()
 			new Notice('Enter the amount')
 			return
@@ -751,28 +751,6 @@ export const editingBill = async (e: MouseEvent) => {
 		}
 	})
 
-	const bills = await getAdditionalData<BillData>('accounts', undefined, true)
-	if (bills.status === 'error') {
-		new Notice(bills.error.message)
-		console.error(bills.error)
-		return
-	}
-	if (bills.jsonData === null || bills.jsonData === undefined) throw new Error('Bills is null or undefined')
-
-	if (bills.jsonData.length > 1) {
-		const transferUploadDiv = mainFormInput.createEl('div', {
-			cls: 'form-transfer-expense-div'
-		})
-		setIcon(transferUploadDiv, 'upload')
-		transferUploadDiv.createEl('span', {
-			text: 'Transactions between bills',
-			cls: 'form-text-transfer',
-		})
-		transferUploadDiv.addEventListener('click', () => {
-			void transferBetweenBillsView(bill.item.id)
-		})
-	}
-
 	const chechboxDiv = mainFormInput.createEl('div', {
 		cls: 'form-checkbox-div'
 	})
@@ -905,10 +883,7 @@ async function editingBillButton(data: BillData): Promise<void> {
 	}
 }
 
-export const transferBetweenBillsView = async (billId: string) => {
-	if (!billId) {
-		return 'Element not found'
-	}
+export const transferBetweenBillsView = async (billId: string, container?: HTMLDivElement) => {
 
 	const bills = await getAdditionalData<BillData>('accounts', undefined, true)
 	if (bills.status === 'error') {
@@ -917,8 +892,14 @@ export const transferBetweenBillsView = async (billId: string) => {
 		return
 	}
 	if (!bills.jsonData) return 'Bill is null or undifined'
+	if (bills.jsonData.filter(b => !b.archived).length < 2) {
+		if (container) container.createEl('p', { text: 'Create at least two accounts to make a transfer.' });
+		return;
+	}
+	bills.jsonData.splice(0, bills.jsonData.length, ...bills.jsonData.filter(b => !b.archived));
 
-	const { contentEl } = FinancialAccountingView.instance
+	const contentEl = container ?? FinancialAccountingView.instance.contentEl;
+	if (!container) {
 	contentEl.empty()
 
 	const exitButton = contentEl.createEl('div', {
@@ -938,7 +919,9 @@ export const transferBetweenBillsView = async (billId: string) => {
 	header.createEl('h1', {
 		text: 'Transfer'
 	})
-	const mainAddForm = contentEl.createEl('form', {
+
+	}
+	const mainAddForm = container ?? contentEl.createEl('form', {
 		cls: 'main-add-form',
 		attr: {
 			id: 'main-add-form'
@@ -1149,7 +1132,7 @@ export const transferBetweenBillsView = async (billId: string) => {
 				type: 'same-currency',
 				fromBillId: selectFromBill.value,
 				toBillId: selectToBill.value,
-				amount: Number(inputSum.value),
+				amount: inputSum.value,
 			};
 		} else {
 			if (!sourceAmount.value || !targetAmount.value) {
@@ -1162,8 +1145,8 @@ export const transferBetweenBillsView = async (billId: string) => {
 				type: 'cross-currency',
 				fromBillId: selectFromBill.value,
 				toBillId: selectToBill.value,
-				sourceAmount: Number(sourceAmount.value),
-				targetAmount: Number(targetAmount.value),
+				sourceAmount: sourceAmount.value,
+				targetAmount: targetAmount.value,
 			};
 		}
 

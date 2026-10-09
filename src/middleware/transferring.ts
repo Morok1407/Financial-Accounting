@@ -3,8 +3,7 @@ import { BillData, HistoryData, ResultOfExecution, TransferData, accountsData } 
 import { getAllFile } from "../controllers/searchData";
 import { updateFile } from "../controllers/editingData";
 
-Big.DP = 2;
-Big.RM = Big.roundHalfUp;
+
 
 export const expenditureTransaction = async (
 	data: HistoryData,
@@ -28,7 +27,7 @@ export const expenditureTransaction = async (
 
 	const updateBill = (billId: string, delta: Big) => {
 		bills = bills.map((b: BillData) =>
-			b.id === billId ? { ...b, balance: new Big(b.balance).plus(delta).toFixed(2) } : b
+			b.id === billId ? { ...b, balance: new Big(b.balance).plus(delta).toString() } : b
 		);
 	};
 
@@ -38,12 +37,6 @@ export const expenditureTransaction = async (
 		const oldAmount = new Big(oldData.amount)
 
 		updateBill(oldData.bill.id, oldAmount);
-		await update();
-
-		const newBillsRes = await getAllFile<accountsData>('accounts');
-		if (newBillsRes.status === 'error') return { status: 'error', error: newBillsRes.error };
-
-		bills = newBillsRes.json.accounts;
 
 		updateBill(data.bill.id, amount.times(-1));
 		return await update();
@@ -89,7 +82,7 @@ export const incomeTransaction = async (
 	const updateBill = (billId: string, delta: Big) => {
 		bills = bills.map((b: BillData) =>
 			b.id === billId
-				? { ...b, balance: new Big(b.balance).plus(delta).toFixed(2) }
+				? { ...b, balance: new Big(b.balance).plus(delta).toString() }
 				: b
 		);
 	};
@@ -100,12 +93,6 @@ export const incomeTransaction = async (
 		const oldAmount = new Big(oldData.amount)
 
 		updateBill(oldData.bill.id, oldAmount.times(-1));
-		await update();
-
-		const newBillsRes = await getAllFile<accountsData>('accounts');
-		if (newBillsRes.status === 'error') return { status: 'error', error: newBillsRes.error };
-
-		bills = newBillsRes.json.accounts;
 
 		updateBill(data.bill.id, amount);
 		return await update();
@@ -149,6 +136,10 @@ export const transferBetweenBills = async (data: TransferData): Promise<ResultOf
 	let debit: Big;
 	let credit: Big;
 
+    if ((fromBill.currency === toBill.currency) !== (data.type === 'same-currency')) {
+        return { status: 'error', error: new Error('Transfer type does not match account currencies') };
+    }
+    try {
 	if (data.type === 'same-currency') {
 		debit = new Big(data.amount);
 		credit = debit;
@@ -157,6 +148,12 @@ export const transferBetweenBills = async (data: TransferData): Promise<ResultOf
 		credit = new Big(data.targetAmount);
 	}
 
+    } catch {
+        return { status: 'error', error: new Error('Enter valid transfer amounts') };
+    }
+    if (!debit.gt(0) || !credit.gt(0)) {
+        return { status: 'error', error: new Error('Transfer amounts must be positive') };
+    }
 	if (debit.gt(fromBalance)) {
 		return { status: 'error', error: new Error(`Insufficient funds in bill ${fromBill.name}`) };
 	}
@@ -166,10 +163,10 @@ export const transferBetweenBills = async (data: TransferData): Promise<ResultOf
 
 	const newBills = bills.json.accounts.map((bill: BillData) => {
 		if (bill.id === fromBill.id) {
-			return { ...bill, balance: newFromBalance.toFixed(2) };
+			return { ...bill, balance: newFromBalance.toString() };
 		}
 		if (bill.id === toBill.id) {
-			return { ...bill, balance: newToBalance.toFixed(2) };
+			return { ...bill, balance: newToBalance.toString() };
 		}
 		return bill;
 	});
@@ -177,9 +174,7 @@ export const transferBetweenBills = async (data: TransferData): Promise<ResultOf
 	bills.json.accounts = newBills;
 
 	try {
-		await updateFile('accounts', bills.json);
-
-		return { status: 'success' };
+		return await updateFile('accounts', bills.json);
 	} catch (error) {
 		return { status: 'error', error: error instanceof Error ? error : new Error(`Error tranfer berween bills: ${String(error)}`) }
 	}

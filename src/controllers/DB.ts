@@ -1,7 +1,5 @@
 import MainPlugin from "../../main";
-import { ResultOfExecution, PlanDataWithoutAmount, categoriesData } from "../../main";
-import { updateFile } from "./editingData";
-import { getAllFile } from "./searchData";
+import { ResultOfExecution } from "../../main";
 
 export const initDB = async (): Promise<ResultOfExecution> => {
     const accountsFilePath = `${MainPlugin.instance.dbPath}/accounts.json`;
@@ -30,7 +28,7 @@ export const initDB = async (): Promise<ResultOfExecution> => {
 }
 
 export const generateYearlyFile = async (): Promise<ResultOfExecution> => {
-    const { startYear } = await MainPlugin.instance.loadData();
+    const { startYear } = MainPlugin.instance.settings;
 
     try {
         for(let year = startYear; year <= new Date().getFullYear(); year++) {
@@ -56,40 +54,11 @@ export const generateYearlyFile = async (): Promise<ResultOfExecution> => {
 
         if (!(await MainPlugin.instance.app.vault.adapter.exists(yearlyFilesPath))) {
             await MainPlugin.instance.app.vault.create(yearlyFilesPath, yearlyFileTemplate);
-            const result = await dataDuplication(yearlyFilesPath)
-            if(result.status === 'error') return { status: 'error', error: result.error };
         }
     }
     
         return { status: 'success' };
     } catch (error) {
         return { status: 'error', error: error instanceof Error ? error : new Error(`Error in generateYearlyFile: ${String(error)}`)}
-    }
-}
-
-const dataDuplication = async (filePath: string): Promise<ResultOfExecution> => {
-    const additionalData = await getAllFile<categoriesData>('categories');
-    if(additionalData.status === 'error') return { status: 'error', error: additionalData.error };
-
-    try {
-        const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
-        const jsonData = JSON.parse(file);
-
-        for (const month in jsonData.months) {
-            additionalData.json.categories.income_plan.forEach((item: PlanDataWithoutAmount) => {
-                jsonData.months[month].income_plan.push({id: item.id, amount: '0'});
-            });
-
-            additionalData.json.categories.expenditure_plan.forEach((item: PlanDataWithoutAmount) => {
-                jsonData.months[month].expenditure_plan.push({id: item.id, amount: '0'});
-            });
-        }
-
-        const result = await updateFile(`${jsonData.year}`, jsonData);
-        if (result.status === 'error') return { status: 'error', error: result.error };
-
-        return { status: 'success' };
-    } catch (error) {
-        return { status: 'error', error: error instanceof Error ? error : new Error(`Error in dataDuplication: ${String(error)}`)}
     }
 }
