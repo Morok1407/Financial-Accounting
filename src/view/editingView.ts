@@ -443,6 +443,7 @@ export const editingPlan = async (e: MouseEvent) => {
 		inputEmoji.value = emojiOnly.slice(0, 1).join('');
 	});
 
+	/* Parent category selection is disabled.
 	const parentSelect = mainFormInput.createEl('select', {
 		cls: 'form-selects',
 		attr: {
@@ -515,6 +516,7 @@ export const editingPlan = async (e: MouseEvent) => {
 		}
 	}
 
+	*/
 	const commentInput = mainFormInput.createEl('input', {
 		cls: 'form-inputs',
 		attr: {
@@ -544,7 +546,7 @@ export const editingPlan = async (e: MouseEvent) => {
 				name: inputName.value.trim(),
 				emoji: inputEmoji.value,
 				amount: plan.amount,
-				parentId: parentSelect.value,
+				// parentId: parentSelect.value,
 				comment: commentInput.value.trim(),
 				type: plan.type,
 				archived: !plan.archived,
@@ -584,7 +586,7 @@ export const editingPlan = async (e: MouseEvent) => {
 			name: inputName.value.trim(),
 			emoji: inputEmoji.value,
 			amount: plan.amount,
-			parentId: parentSelect.value,
+			// parentId: parentSelect.value,
 			comment: commentInput.value.trim(),
 			type: plan.type,
 			archived: plan.archived,

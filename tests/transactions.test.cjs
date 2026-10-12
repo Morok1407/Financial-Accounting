@@ -43,7 +43,7 @@ const esbuild = require('esbuild');
     const ok = result => assert.equal(result.status, 'success', result.error?.message);
     const bad = result => assert.equal(result.status, 'error');
 
-    ok(await api.addJsonToPlan({ id: 'food', name: 'Food', emoji: '🍕', type: 'expense', amount: '0', parentId: null, archived: false }));
+    ok(await api.addJsonToPlan({ id: 'food', name: 'Food', emoji: '🍕', type: 'expense', amount: '0', /* parentId: null, */ archived: false }));
     const expense = tx('a', 'usd', '0.125');
     ok(await api.addJsonToHistory(expense));
     assert.equal(balance('usd'), '99.875');

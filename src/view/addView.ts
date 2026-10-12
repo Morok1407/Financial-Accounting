@@ -399,6 +399,7 @@ export const addPlan = async () => {
 	const { contentEl } = FinancialAccountingView.instance;
 	contentEl.empty()
 
+	/* Parent category selection is disabled.
 	const expensePlan = await getAdditionalData<PlanData>('categories', 'expenditure_plan')
 	if (expensePlan.status === 'error') {
 		new Notice(expensePlan.error.message)
@@ -412,6 +413,7 @@ export const addPlan = async () => {
 		console.error(incomePlan.error)
 		return
 	}
+	*/
 
 	const exitButton = contentEl.createEl('div', {
 		cls: 'exit-button',
@@ -473,7 +475,7 @@ export const addPlan = async () => {
 			radioIncome.addClass('main-radion-button--active')
 			resultRadio = radioIncome.dataset.radio
 			inputName.focus()
-			selectParent()
+			// selectParent()
 		}
 	})
 	radioExpense.addEventListener('click', () => {
@@ -482,7 +484,7 @@ export const addPlan = async () => {
 			radioExpense.addClass('main-radion-button--active')
 			resultRadio = radioExpense.dataset.radio
 			inputName.focus()
-			selectParent()
+			// selectParent()
 		}
 	})
 
@@ -517,6 +519,7 @@ export const addPlan = async () => {
 		inputEmoji.value = emojiOnly.slice(0, 1).join('');
 	});
 
+	/* Parent category selection is disabled.
 	const parentSelect = mainFormInput.createEl('select', {
 		cls: 'form-selects',
 		attr: {
@@ -574,6 +577,7 @@ export const addPlan = async () => {
 		}
 	}
 
+	*/
 	const commentInput = mainFormInput.createEl('input', {
 		cls: 'form-inputs',
 		attr: {
@@ -611,7 +615,7 @@ export const addPlan = async () => {
 			name: inputName.value.trim(),
 			emoji: inputEmoji.value,
 			amount: '0',
-			parentId: parentSelect.value,
+			// parentId: parentSelect.value,
 			comment: commentInput.value.trim(),
 			type: resultRadio,
 			archived: false,

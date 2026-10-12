@@ -52,9 +52,9 @@ export const addJsonToPlan = async (data: PlanData): Promise<ResultOfExecution> 
 
 	try {
 		if (data.type === 'income') {
-			additionalData.json.categories.income_plan.push({ id: data.id, name: data.name, emoji: data.emoji, comment: data.comment, parentId: data.parentId, type: data.type, archived: data.archived });
+			additionalData.json.categories.income_plan.push({ id: data.id, name: data.name, emoji: data.emoji, comment: data.comment, /* parentId: data.parentId, */ type: data.type, archived: data.archived });
 		} else if (data.type === 'expense') {
-			additionalData.json.categories.expenditure_plan.push({ id: data.id, name: data.name, emoji: data.emoji, comment: data.comment, parentId: data.parentId, type: data.type, archived: data.archived });
+			additionalData.json.categories.expenditure_plan.push({ id: data.id, name: data.name, emoji: data.emoji, comment: data.comment, /* parentId: data.parentId, */ type: data.type, archived: data.archived });
 		} else {
 			return { status: 'error', error: new Error('The specified type is not suitable') }
 		}

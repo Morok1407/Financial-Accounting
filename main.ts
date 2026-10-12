@@ -26,7 +26,7 @@ export interface PlanData {
 	name: string;
 	emoji: string;
 	amount: string;
-	parentId: null | string;
+	// parentId: null | string;
 	comment?: string;
 	type: 'expense' | 'income';
 	archived: boolean;

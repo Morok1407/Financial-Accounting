@@ -6,7 +6,7 @@ Track personal income, expenses, and account balances inside [Obsidian](https://
 
 - **Finance dashboard:** review your balance, income and expense summaries, and a monthly expense chart. Select chart categories to inspect the related operations.
 - **Transaction history:** record income and expenses with an account, category, date, and optional note. Search the selected month by amount, transaction type, account, category, or note.
-- **Categories:** organize income and expenses with names, emoji, and optional parent categories. Review totals calculated from recorded transactions.
+- **Categories:** organize income and expenses with names and emoji<!-- , and optional parent categories -->. Review totals calculated from recorded transactions.
 - **Currency switching:** view one currency at a time. The header selector filters accounts, history, category totals, charts, and statistics without converting or adding different currencies together.
 - **Multiple accounts:** track cash, cards, and other balances. Choose which accounts contribute to the general balance and archive accounts you no longer use.
 - **Transfers:** move money between accounts in the same currency or enter separate source and target amounts for a cross-currency transfer.
@@ -60,7 +60,7 @@ Enable **Take into account in the general balance** for accounts you want to inc
 
 ### 4. Create categories
 
-Open **Categories** and use the **+** button to create income and expense categories, such as Salary and Groceries. Give each category a name and emoji; optionally add a note or parent category.
+Open **Categories** and use the **+** button to create income and expense categories, such as Salary and Groceries. Give each category a name and emoji; optionally add a note<!-- or parent category -->.
 
 Create a category for the type of operation you want to record. You can create your first category from the empty Categories section. Transfers do not require categories.
 

@@ -458,17 +458,33 @@
   margin: 0;
 }
 
-.creat-button {
+.finance-content .header-page button.creat-button {
   all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
   cursor: pointer;
-  padding: 6px 6px 2px;
-  border-radius: 50px;
-  border: 1px var(--background-modifier-border) solid;
-  background-color: var(--background-modifier-active-hover);
+  border-radius: 50%;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  box-shadow: var(--input-shadow);
+  transition: background-color 120ms ease;
 }
-.creat-button svg {
+.finance-content .header-page button.creat-button:hover {
+  background-color: var(--interactive-accent-hover);
+}
+.finance-content .header-page button.creat-button:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 3px;
+}
+.finance-content .header-page button.creat-button svg {
   width: 30px;
   height: 30px;
+  display: block;
 }
 
 .stats-grid {
@@ -1041,7 +1057,9 @@
 .calendar-list-title {
   display: flex;
   justify-content: space-between;
-  width: 260px;
+  width: calc(100% - 40px);
+  box-sizing: border-box;
+  padding: 0 16px;
   margin-top: 20px;
 }
 
@@ -1245,10 +1263,6 @@
     min-height: 240px;
     padding: 24px 12px;
     box-sizing: border-box;
-}
-.creat-button:focus-visible {
-    outline: 2px solid var(--interactive-accent);
-    outline-offset: 3px;
 }
 
 .finance-content h1 { font-size: 32px; line-height: 1.25; }
