@@ -4,6 +4,7 @@ import { getDate } from './src/middleware/otherFunc';
 import { getCurrencyGroups } from './src/middleware/otherFunc';
 // import { getAdditionalData } from './src/controllers/searchData';
 import { generateYearlyFile } from './src/controllers/DB';
+import { exportHistoryCsv } from './src/controllers/exportData';
 
 const FINANCIAL_ACCOUNTING_VIEW = "financial-accounting-view";
 const { year } = getDate();
@@ -367,15 +368,33 @@ class SettingsTab extends PluginSettingTab {
 		selectEl.value = this.plugin.settings.baseCurrency;
 
 		selectEl.addEventListener("change", (event: Event) => {
-			const result = SelectingTheBaseCurrency({ event, selectEl, plugin: this.plugin })
+			const result = SelectingTheBaseCurrency({ event, plugin: this.plugin })
 			if (result instanceof Promise) {
 				result.catch(console.error);
 			}
 		});
+
+		new Setting(containerEl)
+			.setName('Export operation history')
+			.setDesc('Export all years and currencies to a CSV file in the vault root, with category and account names and emoji.')
+			.addButton(button => button
+				.setButtonText('Export CSV')
+				.onClick(async () => {
+					button.setDisabled(true);
+					try {
+						const path = await exportHistoryCsv(this.plugin);
+						new Notice(`History exported: ${path}`);
+					} catch (error) {
+						console.error('CSV export failed', error);
+						new Notice(`CSV export failed: ${error instanceof Error ? error.message : String(error)}`);
+					} finally {
+						button.setDisabled(false);
+					}
+				}));
 	}
 }
 
-async function SelectingTheBaseCurrency({ event, selectEl, plugin }: { event: Event; selectEl: HTMLSelectElement; plugin: MainPlugin }): Promise<ResultOfExecution> {
+async function SelectingTheBaseCurrency({ event, plugin }: { event: Event; plugin: MainPlugin }): Promise<ResultOfExecution> {
 	const target = event.target as HTMLSelectElement;
 	const newCurrency = target.value;
 

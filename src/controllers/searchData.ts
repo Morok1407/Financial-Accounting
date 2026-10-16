@@ -1,7 +1,7 @@
 import { Notice } from "obsidian";
 import Big from "big.js";
 import { stateManager, DataFileResult, HistoryData, PlanData, BillData, DataItemResult, ResultOfAllData, categoriesData, accountsData, PlanDataWithoutAmount } from "../../main";
-import { getDate, inActiveCurrency } from "../middleware/otherFunc";
+import { getDate, inActiveCurrency, normalizeMoneyField } from "../middleware/otherFunc";
 import MainPlugin from "../../main";
 
 export const getMainData = async (): Promise<DataFileResult<HistoryData>> => {
@@ -10,8 +10,6 @@ export const getMainData = async (): Promise<DataFileResult<HistoryData>> => {
 		selectedYear && selectedMonth
 			? { year: selectedYear, month: selectedMonth }
 			: getDate();
-
-	const filePath = `${MainPlugin.instance.dbPath}/${year}.json`;
 
 	try {
 		const result = await getAllFile<import('../../main').YearData>(year);
@@ -63,7 +61,7 @@ export const getAdditionalData = async <T extends { id: string }>(option: 'accou
 
 		const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
 		if (categoriName === 'income_plan' || categoriName === 'expenditure_plan') {
-			const metaData: T[] = JSON.parse(file)[option][categoriName];
+			const metaData: T[] = JSON.parse(file, normalizeMoneyField)[option][categoriName];
 			const amountMap = new Map(
 				amountData.map(item => [item.id, item.amount])
 			);
@@ -90,7 +88,7 @@ export const getAllFile = async <T>(option: string): Promise<ResultOfAllData<T>>
 
 	try {
 		const file = await MainPlugin.instance.app.vault.adapter.read(filePath);
-		const jsonData = JSON.parse(file);
+		const jsonData = JSON.parse(file, normalizeMoneyField);
         if (jsonData.months) {
             const accounts = await getAllFile<accountsData>('accounts');
             if (accounts.status === 'error') return accounts;

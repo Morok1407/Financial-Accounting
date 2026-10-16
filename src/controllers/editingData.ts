@@ -1,5 +1,5 @@
 import { getAllFile } from "./searchData";
-import { getDate} from "../middleware/otherFunc";
+import { getDate, normalizeMoneyField } from "../middleware/otherFunc";
 import { checkBill, validateHistory } from "../middleware/checkData";
 import { expenditureTransaction, incomeTransaction } from "../middleware/transferring";
 import { HistoryData, PlanData, BillData, ResultOfExecution, stateManager, accountsData, categoriesData, YearData, PlanDataWithoutAmount } from "../../main";
@@ -94,7 +94,7 @@ export const updateFile = async (file: string, data: BillData[] | HistoryData[] 
         
         await MainPlugin.instance.app.vault.adapter.write(
             `${MainPlugin.instance.dbPath}/${file}.json`,
-            JSON.stringify(data, null, 4)
+            JSON.stringify(data, normalizeMoneyField, 4)
         );
 
         return { status: 'success' };

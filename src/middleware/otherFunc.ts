@@ -361,8 +361,8 @@ export function getLocalTimeISO() {
 	return d.toISOString().split('T')[1].split('.')[0];
 }
 
-export function formatNumbers(input: string): string {
-	return input.replace(/\d+(\.\d+)?/g, (num) => {
+export function formatNumbers(input: string | number): string {
+	return String(input).replace(/\d+(\.\d+)?/g, (num) => {
 		const [integerPart, decimalPart] = num.split(".");
 
 		const formattedInt = integerPart.replace(
@@ -417,4 +417,40 @@ export function isSuccess<T>(res: Result<T>): res is SuccessResult<T> {
 		return false;
 	}
 	return true;
+}
+
+
+
+/** A collection of amounts. Different currencies are never added together. */
+export class MoneyTotals {
+    readonly values = new Map<string, Big>();
+    add(currency: string, amount: Big | string): this {
+        this.values.set(currency, (this.values.get(currency) ?? new Big(0)).plus(amount));
+        return this;
+    }
+    plus(other: MoneyTotals): MoneyTotals {
+        const result = new MoneyTotals();
+        for (const [currency, amount] of this.values) result.add(currency, amount);
+        for (const [currency, amount] of other.values) result.add(currency, amount);
+        return result;
+    }
+    minus(other: MoneyTotals): MoneyTotals {
+        const negative = new MoneyTotals();
+        for (const [currency, amount] of other.values) negative.add(currency, amount.neg());
+        return this.plus(negative);
+    }
+    toString(): string {
+        return [...this.values].sort(([a], [b]) => a.localeCompare(b))
+            .map(([currency, amount]) => `${amount.toString()} ${currency}`).join(' · ') || '0';
+    }
+}
+
+// Used as a JSON reviver/replacer at the storage boundary. Preserve existing
+// decimal strings exactly; only legacy numeric monetary fields need conversion.
+export function normalizeMoneyField(key: string, value: unknown): unknown {
+    if ((key === 'amount' || key === 'balance') && typeof value === 'number') {
+        if (!Number.isFinite(value)) throw new Error(`Invalid monetary value: ${key}`);
+        return String(value);
+    }
+    return value;
 }

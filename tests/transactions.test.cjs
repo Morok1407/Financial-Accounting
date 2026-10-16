@@ -6,7 +6,9 @@ const esbuild = require('esbuild');
         stdin: { contents: `export { default as Plugin, stateManager } from './main';
             export * from './src/controllers/addData'; export * from './src/controllers/editingData';
             export * from './src/controllers/deleteData'; export * from './src/middleware/transferring';
-            export * from './src/middleware/checkData';`, resolveDir: process.cwd(), loader: 'ts' },
+            export * from './src/middleware/checkData';
+            export { getAllFile, getMainData } from './src/controllers/searchData';
+            export { formatNumbers } from './src/middleware/otherFunc';`, resolveDir: process.cwd(), loader: 'ts' },
         bundle: true, platform: 'node', format: 'cjs', write: false,
         plugins: [{ name: 'obsidian-test', setup(build) {
             build.onResolve({ filter: /^obsidian$/ }, () => ({ path: 'obsidian', namespace: 'test' }));
@@ -73,6 +75,38 @@ const esbuild = require('esbuild');
     assert.equal(balance('usd2'), '10.125');
     ok(await api.transferBetweenBills({ type: 'cross-currency', fromBillId: 'usd', toBillId: 'eur', sourceAmount: '10', targetAmount: '9.25' }));
     assert.equal(balance('eur'), '59.25');
+    // Legacy files mix numeric and string money, including untouched records.
+    files.accounts.accounts.find(b => b.id === 'usd').balance = 79.875;
+    files.accounts.accounts.find(b => b.id === 'usd2').balance = 10.125;
+    files[2026].months[10].history.push(tx('legacy', 'usd', 1.25));
+    files[2026].months[9] = { history: [tx('older', 'usd', 0)] };
+    const readAccounts = await api.getAllFile('accounts');
+    ok(readAccounts);
+    assert.equal(readAccounts.json.accounts.find(b => b.id === 'usd').balance, '79.875');
+    const readHistory = await api.getMainData();
+    ok(readHistory);
+    assert.equal(readHistory.jsonData.find(t => t.id === 'legacy').amount, '1.25');
+    assert.equal(typeof files[2026].months[10].history[0].amount, 'number', 'reads do not rewrite files');
+    assert.equal(api.formatNumbers(1234.5), '1 234.5');
+    assert.equal(api.formatNumbers('1234.5000'), '1 234.5000');
+    ok(await api.addJsonToHistory(tx('numeric', 'usd', 0.125)));
+    assert.equal(balance('usd'), '79.75');
+    assert.equal(typeof balance('usd2'), 'string', 'untouched balances are normalized on save');
+    assert(files[2026].months[10].history.every(t => typeof t.amount === 'string'));
+    assert.equal(files[2026].months[9].history[0].amount, '0');
+    const legacy = tx('legacy', 'usd', 1.25);
+    ok(await api.editingJsonToHistory({ ...legacy, amount: 0.5 }, legacy));
+    assert.equal(balance('usd'), '80.5');
+    assert.equal(files[2026].months[10].history.find(t => t.id === 'legacy').amount, '0.5');
+    ok(await api.deleteHistory({ ...legacy, amount: 0.5 }));
+    assert.equal(balance('usd'), '81');
+    ok(await api.addJsonToBills(bill('numeric-bill', 'USD', 0)));
+    assert.equal(balance('numeric-bill'), '0');
+    ok(await api.editingJsonToBill(bill('numeric-bill', 'USD', 2.5)));
+    assert.equal(balance('numeric-bill'), '2.5');
+    ok(await api.transferBetweenBills({ type: 'same-currency', fromBillId: 'usd', toBillId: 'usd2', amount: 0.25 }));
+    assert.equal(balance('usd'), '80.75');
+    assert.equal(balance('usd2'), '10.375');
     const snapshot = JSON.stringify(files);
     for (const amount of ['-1', '0', 'invalid', '999']) bad(await api.transferBetweenBills({ type: 'same-currency', fromBillId: 'usd', toBillId: 'usd2', amount }));
     bad(await api.transferBetweenBills({ type: 'same-currency', fromBillId: 'usd', toBillId: 'usd', amount: '1' }));

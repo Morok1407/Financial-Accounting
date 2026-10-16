@@ -383,6 +383,29 @@ $intermediate-white-color: color-mix(in srgb, var(--background-modifier-active-h
     gap: 20px;
 }
 
+.operation-note-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: -10px;
+}
+
+.operation-note-suggestions[hidden] {
+    display: none;
+}
+
+.operation-note-suggestions button {
+    max-width: 100%;
+    height: auto;
+    padding: 6px 10px;
+    border-radius: 12px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+    font-size: 13px;
+    cursor: pointer;
+}
+
 .main-radio_exprense {
     font-size: 16px;
     width: 100%;

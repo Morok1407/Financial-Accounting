@@ -1,12 +1,13 @@
 import { transferBetweenBillsView } from './editingView';
-import { activeCurrency, inActiveCurrency } from '../middleware/otherFunc';
+
+import { activeCurrency } from '../middleware/otherFunc';
 import { Notice, setIcon } from "obsidian";
 import MainPlugin from "../../main";
 import { FinancialAccountingView } from "../../main";
 import { addJsonToHistory, addJsonToPlan, addJsonToBills } from "../controllers/addData";
 import { getAdditionalData, getMainData, searchElementById } from "../controllers/searchData";
 import { stateManager } from "../../main";
-import { HistoryData, PlanData, BillData } from "../../main";
+import { HistoryData, PlanData, BillData, YearData } from "../../main";
 import { getCurrencySymbol, fillMonthDates, getLocalTimeISO, selectRelativeDate, getCurrencyGroups, generateUUID, formatNumbers } from "../middleware/otherFunc";
 
 export const addHistory = async () => {
@@ -126,6 +127,7 @@ export const addHistory = async () => {
 			radioIncome.addClass('main-radion-button--active')
 			resultRadio = radioIncome.dataset.radio
 			createOptionCategory()
+			refreshNoteSuggestions()
 			inputSum.focus()
 		}
 	})
@@ -136,6 +138,7 @@ export const addHistory = async () => {
 			radioExpense.addClass('main-radion-button--active')
 			resultRadio = radioExpense.dataset.radio
 			createOptionCategory()
+			refreshNoteSuggestions()
 			inputSum.focus()
 		}
 	})
@@ -279,6 +282,8 @@ export const addHistory = async () => {
 			type: 'text'
 		}
 	})
+
+	const refreshNoteSuggestions = attachNoteSuggestions(mainFormInput, commentInput, selectCategory, () => resultRadio);
 
 	const selectDate = mainFormInput.createEl('select', {
 		cls: 'form-selects',
@@ -823,4 +828,62 @@ async function addBillsButton(data: BillData): Promise<void> {
 		new Notice(resultOfadd.error.message)
 		console.error(resultOfadd.error)
 	}
+}
+
+
+export function attachNoteSuggestions(
+    parent: HTMLElement,
+    input: HTMLInputElement,
+    category: HTMLSelectElement,
+    getType: () => HistoryData['type'],
+): () => void {
+    const suggestions = parent.createDiv({ cls: 'operation-note-suggestions' });
+    suggestions.hidden = true;
+    const notes = new Map<string, Set<string>>();
+    const updateVisibility = () => {
+        suggestions.hidden = input.value.length > 0 || suggestions.childElementCount === 0;
+    };
+    const render = () => {
+        suggestions.empty();
+        for (const note of notes.get(`${getType()}:${category.value}`) ?? []) {
+            const button = suggestions.createEl('button', {
+                text: note,
+                attr: { type: 'button' },
+            });
+            button.addEventListener('click', () => {
+                input.value = note;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.focus();
+            });
+        }
+        updateVisibility();
+    };
+    input.addEventListener('input', updateVisibility);
+    category.addEventListener('change', render);
+
+    const load = async () => {
+        const plugin = MainPlugin.instance;
+        const adapter = plugin.app.vault.adapter;
+        const listing = await adapter.list(plugin.dbPath);
+        const files = listing.files.filter(path => /(?:^|\/)\d{4}\.json$/.test(path)).sort().reverse();
+        for (const path of files) {
+            const data: YearData = JSON.parse(await adapter.read(path));
+            const history = Object.values(data.months).flatMap(month => month.history);
+            history.sort((a, b) => b.date.localeCompare(a.date));
+            for (const item of history) {
+                const note = item.comment?.trim();
+                if (!note) continue;
+                const key = `${item.type}:${item.category.id}`;
+                const categoryNotes = notes.get(key) ?? new Set<string>();
+                categoryNotes.add(note);
+                notes.set(key, categoryNotes);
+            }
+        }
+        render();
+    };
+    void load().catch(error => {
+        console.error('Unable to load note suggestions', error);
+        new Notice('Unable to load previously used notes.');
+    });
+    return render;
 }

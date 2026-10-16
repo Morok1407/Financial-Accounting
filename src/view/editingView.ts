@@ -1,4 +1,5 @@
-import { activeCurrency, inActiveCurrency } from '../middleware/otherFunc';
+import { activeCurrency } from '../middleware/otherFunc';
+import { attachNoteSuggestions } from './addView';
 import { Notice, setIcon } from 'obsidian';
 import MainPlugin from '../../main';
 import { FinancialAccountingView, ConfirmModal } from '../../main'
@@ -216,6 +217,8 @@ export const editingHistory = async (e: MouseEvent) => {
 			value: history.item.comment ?? '',
 		}
 	})
+
+	attachNoteSuggestions(mainFormInput, commentInput, selectCategory, () => history.item.type);
 
 	const selectDate = mainFormInput.createEl('select', {
 		cls: 'form-selects',

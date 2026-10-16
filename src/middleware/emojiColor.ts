@@ -208,7 +208,8 @@ function rgbToHsl({ r, g, b }: RGB): HSL {
  * Делает цвет более подходящим для pie chart.
  */
 function normalizeForChart(hsl: HSL): HSL {
-	let { h, s, l } = hsl;
+	const { h } = hsl;
+	let { s, l } = hsl;
 
 	/*
 	 * Если emoji практически серый/чёрный/белый,

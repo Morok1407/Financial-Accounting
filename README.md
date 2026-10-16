@@ -12,6 +12,8 @@ Track personal income, expenses, and account balances inside [Obsidian](https://
 - **Transfers:** move money between accounts in the same currency or enter separate source and target amounts for a cross-currency transfer.
 - **Monthly navigation:** use the calendar to revisit earlier months and their transaction records.
 - **Local storage:** financial records are saved as JSON files in your vault's configuration folder.
+- **Reusable notes:** select a previously used note for the current category when the note field is empty.
+- **CSV export:** export operation history for all years and currencies from plugin settings to a new CSV file in the vault root, including category and account names with emoji.
 
 Requires **Obsidian 1.8.0 or later**. The plugin supports desktop and mobile layouts. The account section is titled **Accounts**; some internal names still use **Bills**.
 
@@ -19,7 +21,7 @@ Requires **Obsidian 1.8.0 or later**. The plugin supports desktop and mobile lay
 
 ### Manual installation
 
-1. Download `main.js`, `manifest.json`, `styles.css`, `LICENSE-TWEMOJI.txt`, and `TWEMOJI-NOTICE.md` from a release on the [releases page](https://github.com/Morok1407/Financial-Accounting/releases).
+1. Download `main.js`, `manifest.json`, `styles.css`, `LICENSE-TWEMOJI.txt`, and `TWEMOJI-NOTICE.md` from a release on the [releases page](https://github.com/DannyVeil/Financial-Accounting/releases).
 2. Create the following folder in your vault:
 
    ```text
@@ -129,7 +131,7 @@ Plugin settings are saved separately in `data.json` in the plugin folder. A cust
 Clone the repository and install its dependencies with Node.js and npm:
 
 ```sh
-git clone https://github.com/Morok1407/Financial-Accounting.git
+git clone https://github.com/DannyVeil/Financial-Accounting.git
 cd Financial-Accounting
 npm ci
 npm test
@@ -150,12 +152,12 @@ Do not include `data.json` or `db/` in a release. Keep the package version, mani
 
 ## Feedback and contributions
 
-Report bugs and suggest improvements through [GitHub Issues](https://github.com/Morok1407/Financial-Accounting/issues). For bug reports, include your Obsidian version, plugin version, platform, and steps to reproduce the problem. Use sample records instead of sharing private financial data.
+Report bugs and suggest improvements through [GitHub Issues](https://github.com/DannyVeil/Financial-Accounting/issues). For bug reports, include your Obsidian version, plugin version, platform, and steps to reproduce the problem. Use sample records instead of sharing private financial data.
 
 Pull requests are welcome. For publishing requirements, see Obsidian's [plugin submission guide](https://docs.obsidian.md/Plugins/Releasing/Submit%20your%20plugin).
 
 ## License
 
-[MIT](LICENSE) © 2026 [Bugayev Daniil](https://github.com/Morok1407).
+[MIT](LICENSE) © 2026 [Bugayev Daniil](https://github.com/DannyVeil).
 
 Flag artwork: Twemoji v17.0.3, © Twitter, Inc. and other contributors, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). See [graphics license](src/assets/LICENSE-TWEMOJI.txt) and [attribution](src/assets/README.md).

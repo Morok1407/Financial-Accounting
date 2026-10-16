@@ -1,5 +1,6 @@
-import { activeCurrency, inActiveCurrency } from '../middleware/otherFunc';
-import { currencyLabel } from './currencyLabel';
+import { activeCurrency } from '../middleware/otherFunc';
+import currencies from '../../currencies.json';
+import flags from '../assets/currency-flags.json';
 import { setIcon, Notice, Menu } from "obsidian";
 import MainPlugin from "../../main";
 import { FinancialAccountingView } from '../../main'
@@ -11,42 +12,84 @@ import { getAdditionalData } from "../controllers/searchData";
 import { SummarizingDataForTheTrueBills, divideByRemainingDays, switchBalanceLine, SummarizingData, getCurrencySymbol, TheSumOfExpensesAndIncomeForTheYear, IncomeAndExpensesForTheMonth } from "../middleware/otherFunc";
 import { addHistory } from "../view/addView";
 
-async function renderFinanceHeader(calendar = false): Promise<void> {
- const { contentEl } = FinancialAccountingView.instance;
- const { selectedMonth, selectedYear } = stateManager();
- const now = getDate();
- const header = contentEl.createDiv({ cls: 'finance-header finance-header--currency' });
- const back = header.createEl('button', { cls: 'finance-back', attr: { type: 'button', 'aria-label': 'Back', title: 'Back' } });
- setIcon(back, 'chevron-left');
- back.disabled = !calendar && !selectedMonth;
- back.addEventListener('click', () => {
-  if (!calendar) stateManager({ selectedMonth: null, selectedYear: null });
-  void FinancialAccountingView.instance.onOpen();
- });
- const month = header.createEl('button', { cls: 'finance-month', attr: { type: 'button', 'aria-label': 'Select month' } });
- const monthLabels = ['☃️ January', '🌨️ February', '🌷 March', '🌱 April', '☀️ May', '🌳 June', '🏖️ July', '🌾 August', '🍁 September', '🍂 October', '☔ November', '❄️ December'];
- const yearLabel = selectedYear && selectedYear !== now.year ? ' ' + selectedYear : '';
- month.createSpan({ text: monthLabels[Number(selectedMonth ?? now.month) - 1] + yearLabel });
- month.addEventListener('click', () => { void showAllMonths(); });
- const currency = header.createEl('button', { cls: 'finance-currency', attr: { type: 'button', 'aria-label': 'Select currency', 'aria-haspopup': 'menu', title: 'Currency' } });
- currency.createSpan({ cls: 'finance-currency-label' }).appendChild(currencyLabel(activeCurrency()));
- setIcon(currency.createSpan({ cls: 'finance-header-chevron' }), 'chevron-down');
- const accounts = await getAdditionalData<BillData>('accounts', undefined, true);
- const codes = new Set([MainPlugin.instance.settings.baseCurrency, activeCurrency()]);
- if (accounts.status === 'success') for (const account of accounts.jsonData) codes.add(account.currency);
- else new Notice(accounts.error.message);
- currency.addEventListener('click', event => {
-  const menu = new Menu();
-  for (const code of [...codes].sort()) menu.addItem(item => item
-   .setTitle(currencyLabel(code))
-   .setChecked(code === activeCurrency())
-   .onClick(() => {
-    stateManager({ selectedCurrency: code });
-    if (calendar) void showAllMonths();
-    else void FinancialAccountingView.instance.onOpen();
-   }));
-  menu.showAtMouseEvent(event);
- });
+async function renderFinanceHeader(page: 'home' | 'calendar' = 'home'): Promise<void> {
+	const { contentEl } = FinancialAccountingView.instance;
+	const { selectedMonth, selectedYear } = stateManager();
+	const currentDate = getDate();
+	const isCalendar = page === 'calendar';
+	const header = contentEl.createDiv({ cls: 'finance-header finance-header--currency' });
+
+	const backButton = header.createEl('button', {
+		cls: 'finance-back',
+		attr: { type: 'button', 'aria-label': 'Back', title: 'Back' },
+	});
+	setIcon(backButton, 'chevron-left');
+	backButton.disabled = !isCalendar && !selectedMonth;
+	backButton.addEventListener('click', () => {
+		if (!isCalendar) {
+			stateManager({ selectedMonth: null, selectedYear: null });
+		}
+		void FinancialAccountingView.instance.onOpen();
+	});
+
+	const monthLabels = [
+		'☃️ January', '🌨️ February', '🌷 March', '🌱 April',
+		'☀️ May', '🌳 June', '🏖️ July', '🌾 August',
+		'🍁 September', '🍂 October', '☔ November', '❄️ December',
+	];
+	const monthIndex = Number(selectedMonth ?? currentDate.month) - 1;
+	const yearLabel = selectedYear && selectedYear !== currentDate.year ? ' ' + selectedYear : '';
+	const monthButton = header.createEl('button', {
+		cls: 'finance-month',
+		attr: { type: 'button', 'aria-label': 'Select month' },
+	});
+	monthButton.createSpan({ text: monthLabels[monthIndex] + yearLabel });
+	monthButton.addEventListener('click', () => {
+		void showAllMonths();
+	});
+
+	const currencyButton = header.createEl('button', {
+		cls: 'finance-currency',
+		attr: {
+			type: 'button',
+			'aria-label': 'Select currency',
+			'aria-haspopup': 'menu',
+			title: 'Currency',
+		},
+	});
+	const label = currencyButton.createSpan({ cls: 'finance-currency-label' });
+	label.appendChild(currencyLabel(activeCurrency()));
+	const chevron = currencyButton.createSpan({ cls: 'finance-header-chevron' });
+	setIcon(chevron, 'chevron-down');
+
+	const accounts = await getAdditionalData<BillData>('accounts', undefined, true);
+	const currencyCodes = new Set([MainPlugin.instance.settings.baseCurrency, activeCurrency()]);
+	if (accounts.status === 'success') {
+		for (const account of accounts.jsonData) {
+			currencyCodes.add(account.currency);
+		}
+	} else {
+		new Notice(accounts.error.message);
+	}
+
+	currencyButton.addEventListener('click', event => {
+		const menu = new Menu();
+		for (const code of [...currencyCodes].sort()) {
+			menu.addItem(item => {
+				item.setTitle(currencyLabel(code));
+				item.setChecked(code === activeCurrency());
+				item.onClick(() => {
+					stateManager({ selectedCurrency: code });
+					if (isCalendar) {
+						void showAllMonths();
+					} else {
+						void FinancialAccountingView.instance.onOpen();
+					}
+				});
+			});
+		}
+		menu.showAtMouseEvent(event);
+	});
 }
 
 export const showInitialView = async (): Promise<void> => {
@@ -69,7 +112,7 @@ export const showInitialView = async (): Promise<void> => {
 	stateManager({ selectedMonth: null, selectedYear: null });
 
 	const { contentEl } = FinancialAccountingView.instance;
-	const { month } = getDate();
+
 
 	contentEl.empty();
 	contentEl.addClass("finance-content");
@@ -360,7 +403,7 @@ const showAllMonths = async (): Promise<void> => {
 
 	const { year } = getDate();
 
-	await renderFinanceHeader(true);
+	await renderFinanceHeader('calendar');
 
 	const calendarHead = contentEl.createEl("div", {
 		cls: "calendar-header",
@@ -440,10 +483,6 @@ export const initOtherMonth = async (e: MouseEvent): Promise<void> => {
 
 export const showAnotherInitialView = async (): Promise<void> => {
 	if (!FinancialAccountingView.instance || !MainPlugin.instance) return;
-
-	const nowYear: number = new Date().getFullYear()
-
-	const { selectedMonth, selectedYear } = stateManager();
 
 	const { contentEl } = FinancialAccountingView.instance;
 	contentEl.empty();
@@ -675,4 +714,25 @@ const otherMonthHomeButtons = async (): Promise<void> => {
 		planButton.removeClass("home_button--active");
 		historyButton.removeClass("home_button--active");
 	}
+}
+
+
+/** Local artwork avoids reliance on the operating system's flag emoji font. */
+function currencyLabel(code: string): DocumentFragment {
+    const fragment = document.createDocumentFragment();
+    const emoji = currencies[code as keyof typeof currencies]?.flagEmoji ?? '🌐';
+    const svg = (flags as Record<string, string>)[emoji];
+    if (svg) {
+        const image = document.createElement('img');
+        image.className = 'finance-currency-flag';
+        image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+        image.alt = '';
+        image.setAttribute('aria-hidden', 'true');
+        image.width = 22;
+        image.height = 22;
+        image.draggable = false;
+        fragment.appendChild(image);
+    }
+    fragment.appendChild(document.createTextNode(code));
+    return fragment;
 }
